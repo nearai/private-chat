@@ -1,9 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
 import { useConfig } from "@/api/config/queries";
+import { queryKeys } from "@/api/query-keys";
 import CheckIcon from "@/assets/icons/check-icon.svg?react";
 import GitHubIcon from "@/assets/icons/github-icon.svg?react";
 import GoogleIcon from "@/assets/icons/google-icon.svg?react";
@@ -16,8 +18,9 @@ const TERMS_VERSION = "V1";
 
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  console.log(searchParams.get("token"), "searchParams");
+
   const [agreedTerms, setAgreedTerms] = useState(localStorage.getItem("agreedTerms") === TERMS_VERSION);
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
@@ -37,9 +40,11 @@ const AuthPage: React.FC = () => {
     const token = searchParams.get("token");
     if (token) {
       localStorage.setItem("token", token);
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
       navigate(APP_ROUTES.HOME, { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, queryClient]);
 
   if (!config) {
     return (

@@ -14,18 +14,18 @@ export type OAuth2Provider = "google" | "github" | "microsoft" | "oidc";
 export type UserRole = "user" | "admin" | "pending";
 
 export interface User {
-  api_key?: string;
-  created_at: number;
-  email: string;
-  id: string;
-  info?: unknown; //TODO
-  last_active_at: number;
-  name: string;
-  oauth_sub?: string;
-  profile_image_url?: string;
-  role: UserRole;
-  settings?: unknown; //TODO
-  updated_at: number;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url: string;
+    created_at: string;
+    updated_at: string;
+  };
+  linked_accounts: {
+    provider: OAuth2Provider;
+    linked_at: string;
+  }[];
 }
 
 export interface ConversationInfo {

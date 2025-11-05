@@ -1,6 +1,6 @@
 import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/api/query-keys";
-import { useChatStore } from "@/stores/useChatStore";
+// import { useChatStore } from "@/stores/useChatStore";
 import type { Chat, ChatHistory, Message } from "@/types";
 
 // import { chatClient } from "../client";
@@ -26,7 +26,7 @@ export const createMessagesList = (history: ChatHistory, messageId: string): Mes
 };
 
 export const useChatById = ({ id }: ChatIdProps, options?: UseChatByIdOptions) => {
-  const { setSelectedModels } = useChatStore();
+  // const { setSelectedModels } = useChatStore();
 
   return useQuery({
     queryKey: queryKeys.chat.byId(id),
@@ -41,7 +41,7 @@ export const useChatById = ({ id }: ChatIdProps, options?: UseChatByIdOptions) =
       //   ...chat,
       //   ...conversationItems,
       // });
-      setSelectedModels(["gpt-5-nano"]);
+      // setSelectedModels(["gpt-5-nano"]);
       return {} as Chat;
     },
     enabled: !!id,

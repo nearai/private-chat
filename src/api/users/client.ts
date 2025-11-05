@@ -48,9 +48,8 @@ class UsersClient extends ApiClient {
     return this.get<User>(`/users/${id}`);
   }
 
-  //TODO: add type
-  async getUserInfo(): Promise<unknown> {
-    return this.get<unknown>("/users/user/info");
+  async getUserData(): Promise<User> {
+    return this.get<User>("/users/me", { apiVersion: "v2" });
   }
 
   async updateUserInfo(info: unknown): Promise<void> {
