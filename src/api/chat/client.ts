@@ -309,7 +309,6 @@ class ChatClient extends ApiClient {
         stream: true,
         tools,
         include,
-        reasoning: { effort: "low", summary: "auto" },
       },
       { apiVersion: "v2", queryClient }
     );
