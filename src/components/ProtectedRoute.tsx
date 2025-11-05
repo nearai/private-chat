@@ -1,4 +1,5 @@
 import { Navigate } from "react-router";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { APP_ROUTES } from "@/pages/routes";
 
 interface ProtectedRouteProps {
@@ -7,7 +8,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // const user = useUserStore((state) => state.user);
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
   if (!token) {
     return <Navigate to={APP_ROUTES.WELCOME} replace />;
   }

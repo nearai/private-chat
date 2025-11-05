@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { type ModelAttestationReport, nearAIClient } from "@/api/nearai/client";
 import IntelLogo from "@/assets/images/intel-2.svg";
 import NvidiaLogo from "@/assets/images/nvidia-2.svg";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/index";
 import type { VerificationStatus } from "./types";
 
@@ -49,7 +50,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
 
   const fetchAttestationReport = useCallback(async () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     if (!model || !token) return;
 
@@ -117,7 +118,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }, [autoVerify, onStatusUpdate, verificationStatus]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     if ((show || autoVerify) && model && token) {
       fetchAttestationReport();

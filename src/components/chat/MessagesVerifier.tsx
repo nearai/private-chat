@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type MessageSignature, nearAIClient } from "@/api/nearai/client";
 import VerifiedLogo from "@/assets/images/verified.svg";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import type { Message } from "@/types";
 import VerifySignatureDialog from "./VerifySignatureDialog";
@@ -50,7 +51,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
   // Function to fetch message signature
   const fetchMessageSignature = useCallback(
     async (msgId: string) => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
       if (!token || !history || !chatCompletions.length || !msgId) return;
       const msg = chatCompletions.find((message) => message.chatCompletionId === msgId);
       if (!msg || !msg.chatCompletionId || messagesSignatures[msg.chatCompletionId]) return;

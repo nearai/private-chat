@@ -19,6 +19,7 @@ import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { allPrompts } from "@/pages/welcome/data";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Conversation } from "@/types";
@@ -80,6 +81,8 @@ const Home: React.FC = () => {
       ...files.map((file) => generateContentFileDataForOpenAI(file)),
     ];
 
+    const systemPrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || undefined;
+
     if (!chatId) {
       const newConversation = await createConversation.mutateAsync(
         {
@@ -112,6 +115,7 @@ const Home: React.FC = () => {
               model: selectedModels[0],
               conversation: data.id,
               role: "user",
+              systemPrompt,
               content: contentItems,
               queryClient: queryClient,
               tools: webSearchEnabled ? [{ type: "web_search" }] : [],
@@ -159,6 +163,7 @@ const Home: React.FC = () => {
         conversation: chatId,
         role: "user",
         content: contentItems,
+        systemPrompt,
         queryClient: queryClient,
         tools: webSearchEnabled ? [{ type: "web_search" }] : [],
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
@@ -194,10 +199,10 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     setOpacity(0);
-    const welcomePagePrompt = localStorage.getItem("welcomePagePrompt");
+    const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     if (welcomePagePrompt) {
       setInputValue(welcomePagePrompt);
-      localStorage.removeItem("welcomePagePrompt");
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     }
   }, []);
 

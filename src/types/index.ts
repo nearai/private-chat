@@ -435,6 +435,7 @@ export interface History {
 }
 
 export interface StartStreamProps {
+  systemPrompt?: string;
   model: string;
   role: "user" | "assistant";
   content: string | any[];

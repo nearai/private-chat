@@ -5,6 +5,7 @@ import type {
 } from "openai/resources/conversations/conversations.mjs";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { getTimeRange } from "@/lib/time";
 import type { Chat, ChatInfo, Conversation, ConversationItemsResponse, StartStreamProps, Tag } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
@@ -103,7 +104,7 @@ class ChatClient extends ApiClient {
     );
   }
   getConversationsIds() {
-    const conversations = localStorage.getItem("conversations");
+    const conversations = localStorage.getItem(LOCAL_STORAGE_KEYS.CONVERSATIONS);
     if (conversations) {
       return JSON.parse(conversations);
     }
@@ -296,7 +297,16 @@ class ChatClient extends ApiClient {
     return this.post<Chat>(`/chats/archive/all`);
   }
 
-  async startStream({ model, role, content, conversation, queryClient, tools, include }: StartStreamProps) {
+  async startStream({
+    systemPrompt,
+    model,
+    role,
+    content,
+    conversation,
+    queryClient,
+    tools,
+    include,
+  }: StartStreamProps) {
     const input = Array.isArray(content)
       ? [{ role, content }]
       : [{ role, content: [{ type: "input_text", text: content }] }];
@@ -309,6 +319,7 @@ class ChatClient extends ApiClient {
         stream: true,
         tools,
         include,
+        instructions: systemPrompt,
       },
       { apiVersion: "v2", queryClient }
     );

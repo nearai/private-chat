@@ -5,6 +5,7 @@ import ChevronDown from "@/assets/icons/chevron-welcome.svg?react";
 import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
 import ChatPlaceholder from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { APP_ROUTES } from "./routes";
 
@@ -14,10 +15,10 @@ const WelcomePage: React.FC = () => {
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    localStorage.setItem("welcomePagePrompt", value);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT, value);
   };
   const gotoAuth = async () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (token) {
       navigate(APP_ROUTES.HOME);
     } else {

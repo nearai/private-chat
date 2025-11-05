@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createParser, type EventSourceMessage } from "eventsource-parser";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import type { Conversation } from "@/types";
 import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK } from "./constants";
 
@@ -33,7 +34,7 @@ export class ApiClient {
       defaultHeaders = {},
       includeAuth = true,
     } = options;
-    const openAIToken = localStorage.getItem("token");
+    const openAIToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     this.baseURLV1 = `${baseURL}${apiPrefix}`;
     this.baseURLV2 = `${baseURLNgrok}/v1`;
@@ -63,7 +64,7 @@ export class ApiClient {
           };
 
       if (this.includeAuth) {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
@@ -154,7 +155,7 @@ export class ApiClient {
       };
 
       if (this.includeAuth) {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
