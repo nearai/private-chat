@@ -1,4 +1,5 @@
 import { ApiClient } from "@/api/base-client";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import type { OAuth2Provider, SessionUser } from "@/types";
 
 class AuthClient extends ApiClient {
@@ -13,7 +14,7 @@ class AuthClient extends ApiClient {
   }
 
   async getSessionUser(): Promise<SessionUser> {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     if (!token) {
       throw new Error("No token found");

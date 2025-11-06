@@ -10,16 +10,22 @@ import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
-import AdminUsersPage from "@/pages/admin/User";
+// import AdminUsersPage from "@/pages/admin/User";
 import Home from "@/pages/Home";
 import { APP_ROUTES } from "@/pages/routes";
 import WelcomePage from "@/pages/WelcomePage";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useModels } from "./api/models/queries";
+import { useUserData } from "./api/users/queries/useUserData";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
 
   const { settings } = useSettingsStore();
+
+  const { isFetching: isModelsFetching } = useModels();
+  const { isFetching: isUserDataFetching } = useUserData();
+  const isLoading = isModelsFetching || isUserDataFetching;
 
   const toasterTheme = useMemo(() => {
     if (settings.theme?.includes("dark")) {
@@ -31,7 +37,7 @@ function App() {
     return "light";
   }, [settings.theme]);
 
-  if (!isInitialized || isAppLoading) {
+  if (!isInitialized || isAppLoading || isLoading) {
     return <LoadingScreen />;
   }
 
@@ -58,7 +64,10 @@ function App() {
               }
             >
               <Route path={APP_ROUTES.ADMIN} element={<AdminPage />} />
-              <Route path={APP_ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
+              {/* <Route
+                path={APP_ROUTES.ADMIN_USERS}
+                element={<AdminUsersPage />}
+              /> */}
               <Route path={APP_ROUTES.ADMIN_SETTINGS} element={<AdminSettingsPage />} />
               {/* <Route path={APP_ROUTES.PLAYGROUND} element={<Playground />} /> */}
             </Route>

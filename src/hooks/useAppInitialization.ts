@@ -1,22 +1,15 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-
 import { useConfig } from "@/api/config/queries";
-import { useModels } from "@/api/models/queries";
-import { useChatStore } from "@/stores/useChatStore";
+import { queryKeys } from "@/api/query-keys";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 export const useAppInitialization = () => {
-  const token = localStorage.getItem("token");
-
+  const queryClient = useQueryClient();
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: config, isLoading: isConfigLoading } = useConfig();
-
-  // const { data: userData, isLoading: isUserLoading, error: userError } = useSessionUser({ enabled: !!token });
-
-  const { data: models, isLoading: isModelsLoading } = useModels({
-    enabled: !!token,
-  });
+  const { isLoading: isConfigLoading } = useConfig();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -30,25 +23,11 @@ export const useAppInitialization = () => {
           const params = new URLSearchParams(hash);
           const oauthToken = params.get("token");
           if (oauthToken) {
-            localStorage.setItem("token", oauthToken);
+            localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, oauthToken);
             window.history.replaceState(null, "", window.location.pathname);
+            queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
           }
         }
-
-        if (models) {
-          // useUserStore.getState().setUser(userData);
-          useChatStore.getState().setModels(models);
-          const selectedDefaultModel = models.find((model) => model.id === "gpt-5-nano");
-          useChatStore.getState().setSelectedModels([selectedDefaultModel?.id || models[0].id]);
-          // console.log("User loaded:", userData);
-        }
-
-        // else if (userError) {
-        //   console.error("Failed to load user data:", userError);
-
-        //   localStorage.removeItem("token");
-        //   useUserStore.getState().setUser(null);
-        // }
 
         setIsInitialized(true);
       } catch (error) {
@@ -58,13 +37,11 @@ export const useAppInitialization = () => {
       }
     };
 
-    if (config && (!token || models !== undefined)) {
-      initializeApp();
-    }
-  }, [config, models, isInitialized, isLoading, token]);
+    initializeApp();
+  }, [isInitialized, isLoading, queryClient]);
 
   return {
     isInitialized,
-    isLoading: isLoading || isConfigLoading || (token && isModelsLoading),
+    isLoading: isLoading || isConfigLoading,
   };
 };

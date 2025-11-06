@@ -1,13 +1,16 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
 import { useConfig } from "@/api/config/queries";
+import { queryKeys } from "@/api/query-keys";
 import CheckIcon from "@/assets/icons/check-icon.svg?react";
 import GitHubIcon from "@/assets/icons/github-icon.svg?react";
 import GoogleIcon from "@/assets/icons/google-icon.svg?react";
 import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import type { OAuth2Provider } from "@/types";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
@@ -16,9 +19,12 @@ const TERMS_VERSION = "V1";
 
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  console.log(searchParams.get("token"), "searchParams");
-  const [agreedTerms, setAgreedTerms] = useState(localStorage.getItem("agreedTerms") === TERMS_VERSION);
+
+  const [agreedTerms, setAgreedTerms] = useState(
+    localStorage.getItem(LOCAL_STORAGE_KEYS.AGREED_TERMS) === TERMS_VERSION
+  );
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
@@ -36,10 +42,12 @@ const AuthPage: React.FC = () => {
   useEffect(() => {
     const token = searchParams.get("token");
     if (token) {
-      localStorage.setItem("token", token);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
       navigate(APP_ROUTES.HOME, { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, queryClient]);
 
   if (!config) {
     return (
@@ -104,7 +112,7 @@ const AuthPage: React.FC = () => {
                   checked={agreedTerms}
                   onChange={(e) => {
                     setAgreedTerms(e.target.checked);
-                    localStorage.setItem("agreedTerms", e.target.checked ? TERMS_VERSION : "false");
+                    localStorage.setItem(LOCAL_STORAGE_KEYS.AGREED_TERMS, e.target.checked ? TERMS_VERSION : "false");
                   }}
                 />
                 <div

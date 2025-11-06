@@ -56,5 +56,6 @@ export const queryKeys = {
   users: {
     all: [USERS_KEY],
     detail: (id: string) => [USERS_KEY, "detail", id],
+    userData: [USERS_KEY, "userData"],
   },
 } as const;

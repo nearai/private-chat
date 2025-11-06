@@ -126,7 +126,7 @@ export default function ModelSelector() {
 
   const handleAddModel = () => {
     if (selectedModels.length < models.length) {
-      setSelectedModels([...selectedModels, ""]);
+      setSelectedModels([...selectedModels]);
     }
   };
 

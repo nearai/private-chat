@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import Collapsible from "@/components/common/Collapsible";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
-import { validateJSON } from "@/lib";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
 import type { Settings } from "@/types";
@@ -24,7 +25,8 @@ const GeneralSettings = () => {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [lang, setLang] = useState(i18n.language || "en-US");
   const [notificationEnabled, setNotificationEnabled] = useState(false);
-  const [system, setSystem] = useState("");
+  const [system, setSystem] = useState(localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || "");
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
   const [keepAlive, setKeepAlive] = useState<string | null>(null);
@@ -65,7 +67,7 @@ const GeneralSettings = () => {
     loadLanguages();
 
     setNotificationEnabled(settings.notificationEnabled ?? false);
-    setSystem(settings.system ?? "");
+    setSystem(settings.system || localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || "");
 
     let rf = settings.requestFormat ?? null;
     if (rf !== null && rf !== "json") {
@@ -138,51 +140,75 @@ const GeneralSettings = () => {
   };
 
   const handleSave = () => {
-    let finalRequestFormat: Settings["requestFormat"] = requestFormat;
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT, system);
+    // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
-    if (finalRequestFormat !== null && finalRequestFormat !== "json") {
-      if (!validateJSON(finalRequestFormat as string)) {
-        toast.error(t("Invalid JSON schema"));
-        return;
-      }
-      finalRequestFormat = JSON.parse(finalRequestFormat as string);
-    }
+    // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
+    //   if (!validateJSON(finalRequestFormat as string)) {
+    //     toast.error(t("Invalid JSON schema"));
+    //     return;
+    //   }
+    //   finalRequestFormat = JSON.parse(finalRequestFormat as string);
+    // }
 
-    setSettings({
-      system: system !== "" ? system : undefined,
-      params: {
-        stream_response: params.stream_response !== null ? params.stream_response : undefined,
-        function_calling: params.function_calling !== null ? params.function_calling : undefined,
-        seed: params.seed !== null ? params.seed : undefined,
-        stop: params.stop !== null ? params.stop : undefined,
-        temperature: params.temperature !== null ? params.temperature : undefined,
-        reasoning_effort: params.reasoning_effort !== null ? params.reasoning_effort : undefined,
-        logit_bias: params.logit_bias !== null ? params.logit_bias : undefined,
-        frequency_penalty: params.frequency_penalty !== null ? params.frequency_penalty : undefined,
-        presence_penalty: params.presence_penalty !== null ? params.presence_penalty : undefined,
-        repeat_penalty: params.repeat_penalty !== null ? params.repeat_penalty : undefined,
-        repeat_last_n: params.repeat_last_n !== null ? params.repeat_last_n : undefined,
-        mirostat: params.mirostat !== null ? params.mirostat : undefined,
-        mirostat_eta: params.mirostat_eta !== null ? params.mirostat_eta : undefined,
-        mirostat_tau: params.mirostat_tau !== null ? params.mirostat_tau : undefined,
-        top_k: params.top_k !== null ? params.top_k : undefined,
-        top_p: params.top_p !== null ? params.top_p : undefined,
-        min_p: params.min_p !== null ? params.min_p : undefined,
-        tfs_z: params.tfs_z !== null ? params.tfs_z : undefined,
-        num_ctx: params.num_ctx !== null ? params.num_ctx : undefined,
-        num_batch: params.num_batch !== null ? params.num_batch : undefined,
-        num_keep: params.num_keep !== null ? params.num_keep : undefined,
-        max_tokens: params.max_tokens !== null ? params.max_tokens : undefined,
-        use_mmap: params.use_mmap !== null ? params.use_mmap : undefined,
-        use_mlock: params.use_mlock !== null ? params.use_mlock : undefined,
-        num_thread: params.num_thread !== null ? params.num_thread : undefined,
-        num_gpu: params.num_gpu !== null ? params.num_gpu : undefined,
-      },
-      keepAlive: keepAlive ? (Number.isNaN(Number(keepAlive)) ? keepAlive : parseInt(keepAlive, 10)) : undefined,
-      requestFormat: finalRequestFormat !== null ? finalRequestFormat : undefined,
-    });
+    // setSettings({
+    //   system: system !== "" ? system : undefined,
+    //   params: {
+    //     stream_response:
+    //       params.stream_response !== null ? params.stream_response : undefined,
+    //     function_calling:
+    //       params.function_calling !== null
+    //         ? params.function_calling
+    //         : undefined,
+    //     seed: params.seed !== null ? params.seed : undefined,
+    //     stop: params.stop !== null ? params.stop : undefined,
+    //     temperature:
+    //       params.temperature !== null ? params.temperature : undefined,
+    //     reasoning_effort:
+    //       params.reasoning_effort !== null
+    //         ? params.reasoning_effort
+    //         : undefined,
+    //     logit_bias: params.logit_bias !== null ? params.logit_bias : undefined,
+    //     frequency_penalty:
+    //       params.frequency_penalty !== null
+    //         ? params.frequency_penalty
+    //         : undefined,
+    //     presence_penalty:
+    //       params.presence_penalty !== null
+    //         ? params.presence_penalty
+    //         : undefined,
+    //     repeat_penalty:
+    //       params.repeat_penalty !== null ? params.repeat_penalty : undefined,
+    //     repeat_last_n:
+    //       params.repeat_last_n !== null ? params.repeat_last_n : undefined,
+    //     mirostat: params.mirostat !== null ? params.mirostat : undefined,
+    //     mirostat_eta:
+    //       params.mirostat_eta !== null ? params.mirostat_eta : undefined,
+    //     mirostat_tau:
+    //       params.mirostat_tau !== null ? params.mirostat_tau : undefined,
+    //     top_k: params.top_k !== null ? params.top_k : undefined,
+    //     top_p: params.top_p !== null ? params.top_p : undefined,
+    //     min_p: params.min_p !== null ? params.min_p : undefined,
+    //     tfs_z: params.tfs_z !== null ? params.tfs_z : undefined,
+    //     num_ctx: params.num_ctx !== null ? params.num_ctx : undefined,
+    //     num_batch: params.num_batch !== null ? params.num_batch : undefined,
+    //     num_keep: params.num_keep !== null ? params.num_keep : undefined,
+    //     max_tokens: params.max_tokens !== null ? params.max_tokens : undefined,
+    //     use_mmap: params.use_mmap !== null ? params.use_mmap : undefined,
+    //     use_mlock: params.use_mlock !== null ? params.use_mlock : undefined,
+    //     num_thread: params.num_thread !== null ? params.num_thread : undefined,
+    //     num_gpu: params.num_gpu !== null ? params.num_gpu : undefined,
+    //   },
+    //   keepAlive: keepAlive
+    //     ? Number.isNaN(Number(keepAlive))
+    //       ? keepAlive
+    //       : parseInt(keepAlive, 10)
+    //     : undefined,
+    //   requestFormat:
+    //     finalRequestFormat !== null ? finalRequestFormat : undefined,
+    // });
 
-    toast.success(t("Settings saved successfully!"));
+    // toast.success(t("Settings saved successfully!"));
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -207,7 +233,7 @@ const GeneralSettings = () => {
             <div className="self-center font-medium text-xs">{t("Language")}</div>
             <div className="relative flex items-center">
               <SelectNative
-                className="w-fit rounded-sm bg-transparent px-2 py-2 pr-8 text-right text-xs outline-none"
+                className="w-fit rounded-sm bg-gray-900 px-2 py-2 pr-8 text-right text-xs outline-none"
                 value={lang}
                 onChange={(e) => handleLanguageChange(e.target.value)}
               >
@@ -226,6 +252,20 @@ const GeneralSettings = () => {
             value={notificationEnabled ? t("On") : t("Off")}
             onCycle={toggleNotification}
           />
+
+          <hr className="my-2 border-gray-50 dark:border-gray-700/10" />
+
+          <Collapsible title={"System Prompt"} className="w-full">
+            <div className="mt-2">
+              <textarea
+                value={system}
+                onChange={(e) => setSystem(e.target.value)}
+                className="w-full resize-none bg-gray-900 p-1.5 text-xs outline-hidden"
+                rows={4}
+                placeholder={"Enter system prompt"}
+              />
+            </div>
+          </Collapsible>
         </div>
 
         {/* Admin/Permission-based settings */}

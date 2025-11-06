@@ -55,7 +55,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   stopResponse = () => {},
   autoScroll = false,
   atSelectedModel,
-  selectedModels = [""],
+  selectedModels,
   history,
   taskIds = null,
   prompt,
@@ -86,7 +86,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const { data: filesData } = useFiles();
   console.log("filesData", filesData);
-  const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : selectedModels)].filter(
+  const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : (selectedModels ?? []))].filter(
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
   );
 
@@ -217,6 +217,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleSubmit = (e: React.FormEvent) => {
+    if (selectedModels?.length === 0) {
+      toast.error("Please select a model");
+      return;
+    }
     e.preventDefault();
     if (prompt.trim() || files.length > 0) {
       onSubmit(prompt, files, webSearchEnabled);
@@ -477,7 +481,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                 <img src={file.image_url} alt="input" className="size-14 rounded-xl object-cover" />
                                 {(atSelectedModel
                                   ? visionCapableModels.length === 0
-                                  : selectedModels.length !== visionCapableModels.length) && (
+                                  : selectedModels?.length !== visionCapableModels.length) && (
                                   <div className="absolute top-1 left-1">
                                     <svg
                                       xmlns="http://www.w3.org/2000/svg"

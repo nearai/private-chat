@@ -1,14 +1,9 @@
-import {
-  ArchiveBoxIcon,
-  ArrowRightStartOnRectangleIcon,
-  // CodeBracketSquareIcon,
-  Cog8ToothIcon,
-  UserCircleIcon,
-} from "@heroicons/react/24/outline";
+import { ArchiveBoxIcon, ArrowRightStartOnRectangleIcon, Cog8ToothIcon } from "@heroicons/react/24/outline";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { useSignOut } from "@/api/auth/queries";
+import { useUserData } from "@/api/users/queries/useUserData";
 import ArchivedChatsModal from "@/components/common/dialogs/archived-chats/ArchivedChatsModal";
 import SettingsDialog from "@/components/common/dialogs/settings/SettingsDialog";
 import {
@@ -18,8 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { APP_ROUTES } from "@/pages/routes";
-import { useUserStore } from "@/stores/useUserStore";
 
 interface DropdownItem {
   title?: string;
@@ -33,10 +26,11 @@ const UserMenu: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isArchivedChatsOpen, setIsArchivedChatsOpen] = useState(false);
-  const user = useUserStore((state) => state.user);
+
+  const { data: userData } = useUserData();
   const { mutateAsync: signOut } = useSignOut();
 
-  const isAdmin = user?.role === "admin";
+  // const isAdmin = user?.role === "admin";
 
   const dropdownItems = useMemo<DropdownItem[]>(() => {
     const items: (DropdownItem | false)[] = [
@@ -52,12 +46,12 @@ const UserMenu: React.FC = () => {
         type: "item",
         action: () => setIsArchivedChatsOpen(true),
       },
-      isAdmin && {
-        title: t("Admin Panel"),
-        icon: <UserCircleIcon className="!h-5 !w-5" />,
-        type: "item",
-        action: () => navigate(APP_ROUTES.ADMIN),
-      },
+      // isAdmin && {
+      //   title: t("Admin Panel"),
+      //   icon: <UserCircleIcon className="!h-5 !w-5" />,
+      //   type: "item",
+      //   action: () => navigate(APP_ROUTES.ADMIN),
+      // },
       { type: "separator" },
       {
         title: t("Sign Out"),
@@ -68,7 +62,7 @@ const UserMenu: React.FC = () => {
     ];
 
     return items.filter(Boolean) as DropdownItem[];
-  }, [t, signOut, isAdmin, navigate]);
+  }, [t, signOut, navigate]);
 
   return (
     <>
@@ -77,12 +71,12 @@ const UserMenu: React.FC = () => {
           <>
             <div className="mr-3 self-center">
               <img
-                src={user?.profile_image_url || "/user.png"}
+                src={userData?.user.avatar_url || "/user.png"}
                 alt="User"
                 className="max-w-[30px] rounded-full object-cover"
               />
             </div>
-            <div className="self-center font-medium text-white">{user?.name}</div>
+            <div className="self-center font-medium text-white">{userData?.user.name}</div>
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent
