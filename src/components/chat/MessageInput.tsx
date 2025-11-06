@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { chatClient } from "@/api/chat/client";
 import { useFiles } from "@/api/chat/queries/useFiles";
+import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
@@ -43,6 +44,7 @@ interface MessageInputProps {
   onUpload?: (detail: Record<string, unknown>) => void;
   showUserProfile?: boolean;
   fullWidth?: boolean;
+  toolsDisabled?: boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
@@ -69,6 +71,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   onSubmit,
   showUserProfile = true,
   fullWidth = true,
+  toolsDisabled = false,
 }) => {
   const { user } = useUserStore();
   const { settings } = useSettingsStore();
@@ -544,118 +547,99 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   )}
 
                   <div className="px-2.5">
-                    {(settings.richTextInput ?? true) ? (
-                      <div
-                        className="scrollbar-hidden h-fit max-h-80 w-full resize-none overflow-auto bg-transparent px-1 pt-3 text-left outline-hidden dark:text-gray-100"
-                        id="chat-input-container"
-                      >
-                        <textarea
-                          ref={chatInputRef}
-                          id="chat-input"
-                          className="field-sizing-content relative h-full min-h-fit w-full min-w-full border-none bg-transparent text-base outline-none"
-                          placeholder={placeholder || "Send a Message"}
-                          value={prompt}
-                          onChange={(e) => setPrompt(e.target.value)}
-                          onKeyDown={handleKeyDown}
-                          onPaste={handlePaste}
-                          onCompositionStart={() => setIsComposing(true)}
-                          onCompositionEnd={() => setIsComposing(false)}
-                          // rows={15}
-                          style={{ lineHeight: "1.5" }}
-                        />
-                      </div>
-                    ) : (
+                    <div
+                      className="scrollbar-hidden h-fit max-h-80 w-full resize-none overflow-auto bg-transparent px-1 pt-3 text-left outline-hidden dark:text-gray-100"
+                      id="chat-input-container"
+                    >
                       <textarea
-                        id="chat-input"
-                        dir="auto"
                         ref={chatInputRef}
-                        className="scrollbar-hidden w-full resize-none bg-transparent px-1 pt-3 outline-hidden dark:text-gray-100"
-                        placeholder={placeholder || "Send a Message"}
+                        id="chat-input"
+                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none"
+                        placeholder={placeholder || "How can I help you today?"}
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
-                        rows={1}
+                        // rows={15}
+                        style={{ lineHeight: "1.5" }}
                       />
-                    )}
+                    </div>
                   </div>
 
                   <div className="mx-0.5 mt-1 mb-2.5 flex max-w-full justify-between" dir="ltr">
                     <div className="ml-1 flex max-w-[80%] flex-1 items-center gap-0.5 self-end">
-                      <div className="relative">
-                        <button
-                          className="rounded-full bg-transparent p-1.5 text-gray-800 outline-hidden transition hover:bg-gray-100 focus:outline-hidden dark:text-white dark:hover:bg-gray-800"
-                          type="button"
-                          aria-label="More"
-                          onClick={() => {
-                            filesInputRef.current?.click();
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="size-5"
-                          >
-                            <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                          </svg>
-                        </button>
-                      </div>
-
-                      <div className="scrollbar-none flex flex-1 items-center gap-1 overflow-x-auto">
-                        {toolServers.length + selectedToolIds.length > 0 && (
-                          <button
-                            className="flex translate-y-[0.5px] items-center gap-1 self-center rounded-lg p-1 text-gray-600 transition hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
-                            aria-label="Available Tools"
-                            type="button"
-                            onClick={() => setShowTools(!showTools)}
-                          >
-                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.75}
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.75}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                            <span className="font-medium text-gray-600 text-sm dark:text-gray-300">
-                              {toolServers.length + selectedToolIds.length}
-                            </span>
-                          </button>
-                        )}
-
+                      {!toolsDisabled && (
                         <>
-                          <button
-                            onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                            type="button"
-                            className={`flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-1 py-0.5 font-medium text-xs transition-colors duration-300 focus:outline-hidden ${
-                              webSearchEnabled
-                                ? "border-blue-400/20 bg-blue-100 text-blue-500 dark:bg-blue-500/20"
-                                : "border-transparent bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                            }`}
-                          >
-                            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.75}
-                                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                          <div className="relative">
+                            <button
+                              className="rounded-full bg-transparent p-1.5 text-gray-800 outline-hidden transition hover:bg-gray-100 focus:outline-hidden dark:text-white dark:hover:bg-gray-800"
+                              type="button"
+                              aria-label="More"
+                              onClick={() => {
+                                filesInputRef.current?.click();
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="size-5"
+                              >
+                                <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="scrollbar-none flex flex-1 items-center gap-1 overflow-x-auto">
+                            {toolServers.length + selectedToolIds.length > 0 && (
+                              <button
+                                className="flex translate-y-[0.5px] items-center gap-1 self-center rounded-lg p-1 text-gray-600 transition hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
+                                aria-label="Available Tools"
+                                type="button"
+                                onClick={() => setShowTools(!showTools)}
+                              >
+                                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.75}
+                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.75}
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                </svg>
+                                <span className="font-medium text-gray-600 text-sm dark:text-gray-300">
+                                  {toolServers.length + selectedToolIds.length}
+                                </span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                              type="button"
+                              className={`flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2 py-0.5 font-medium text-xs transition-colors duration-300 focus:outline-hidden ${
+                                webSearchEnabled
+                                  ? "border-nearg-500 bg-nearg-500 text-nearg-400"
+                                  : "border-gray-200 border-transparent bg-transparent text-gray-300 hover:bg-gray-800"
+                              }`}
+                            >
+                              <GlobeIcon
+                                className="size-5"
+                                strokeWidth="1.75"
+                                stroke={webSearchEnabled ? "rgba(0, 236, 151)" : "#fff"}
                               />
-                            </svg>
-                            <span className="hidden translate-y-[0.5px] overflow-hidden text-ellipsis whitespace-nowrap xl:block">
-                              Web Search
-                            </span>
-                          </button>
+                              <span className="translate-y-[0.5px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                Web Search
+                              </span>
+                            </button>
+                          </div>
                         </>
-                      </div>
+                      )}
                     </div>
 
                     <div className="mr-1 flex shrink-0 space-x-1 self-end">
