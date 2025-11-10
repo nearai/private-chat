@@ -33,7 +33,12 @@ class ChatClient extends ApiClient {
     };
   }
 
-  sentPrompt(prompt: string, role: "user" | "assistant" = "user", model: string = "gpt-5-nano", conversation: string) {
+  sentPrompt(
+    prompt: string,
+    role: "user" | "assistant" = "user",
+    model: string = "openai/gpt-oss-120b",
+    conversation: string
+  ) {
     return this.post<Responses.Response>(
       "/responses",
       {
@@ -47,7 +52,7 @@ class ChatClient extends ApiClient {
     );
   }
 
-  generateChatTitle(prompt: string, model: string = "gpt-5-nano") {
+  generateChatTitle(prompt: string, model: string = "openai/gpt-oss-120b") {
     return this.post<Responses.Response>(
       "/responses",
       {

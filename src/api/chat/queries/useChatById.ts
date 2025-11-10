@@ -41,7 +41,7 @@ export const useChatById = ({ id }: ChatIdProps, options?: UseChatByIdOptions) =
       //   ...chat,
       //   ...conversationItems,
       // });
-      // setSelectedModels(["gpt-5-nano"]);
+      // setSelectedModels(["openai/gpt-oss-120b"]);
       return {} as Chat;
     },
     enabled: !!id,
