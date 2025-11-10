@@ -13,7 +13,7 @@ export const useModels = (options?: UseModelsOptions) => {
     queryFn: async () => {
       const models = await modelsClient.getModels();
       if (models.length > 0) {
-        const selectedDefaultModel = models.find((model) => model.id === "gpt-5-nano");
+        const selectedDefaultModel = models.find((model) => model.id === "openai/gpt-oss-120b");
         if (selectedDefaultModel) {
           setSelectedModels([selectedDefaultModel.id]);
         }

@@ -125,7 +125,7 @@ const Home: React.FC = () => {
             await generateChatTitle.mutateAsync(
               {
                 prompt: content,
-                model: "gpt-5-nano",
+                model: "openai/gpt-oss-120b",
               },
               {
                 onSuccess: async (data) => {
