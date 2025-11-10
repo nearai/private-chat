@@ -73,6 +73,7 @@ const WelcomePage: React.FC = () => {
           prompt={inputValue}
           fullWidth={false}
           setPrompt={handleInputChange}
+          toolsDisabled={true}
         />
       </ChatPlaceholder>
 
