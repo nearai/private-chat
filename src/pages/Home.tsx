@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import type { Message as MessageOpenAI } from "openai/resources/conversations/conversations";
 import type React from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { useConversation } from "@/api/chat/queries/useConversation";
@@ -26,7 +26,6 @@ import { type FileContentItem, generateContentFileDataForOpenAI } from "@/types/
 
 const Home: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
-  const [opacity, setOpacity] = useState<number>(0);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState("");
@@ -73,6 +72,23 @@ const Home: React.FC = () => {
       });
     }
   }, [inputValue, sortedPrompts]);
+
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  const scrollToBottom = useCallback(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+
+    const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5;
+
+    setAutoScroll(isAtBottom);
+  }, []);
 
   const handleSendMessage = async (content: string, files: FileContentItem[], webSearchEnabled: boolean = false) => {
     const contentItems = [
@@ -131,7 +147,7 @@ const Home: React.FC = () => {
                 },
               }
             );
-
+            scrollToBottom();
             await startStream.mutateAsync({
               model: selectedModels[0],
               conversation: data.id,
@@ -160,6 +176,7 @@ const Home: React.FC = () => {
           ],
         };
       });
+      scrollToBottom();
       await startStream.mutateAsync({
         model: selectedModels[0],
         conversation: chatId,
@@ -200,7 +217,7 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    setOpacity(0);
+    // setOpacity(0);
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     if (welcomePagePrompt) {
       setInputValue(welcomePagePrompt);
@@ -209,23 +226,44 @@ const Home: React.FC = () => {
   }, []);
 
   useLayoutEffect(() => {
-    if (!conversationData || !scrollContainerRef.current) return;
+    if (!chatId || !scrollContainerRef.current) return;
 
     const frameId = requestAnimationFrame(() => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior: "smooth",
-        });
-        setOpacity(1);
-      }
+      scrollToBottom();
     });
     return () => cancelAnimationFrame(frameId);
-  }, [conversationData]);
+  }, [chatId, scrollToBottom]);
 
   const currentMessages = [...(conversationData?.data ?? [])].reverse();
 
-  if (isConversationsLoading || isConversationsFetching) {
+  console.log("isConversationsLoading", isConversationsLoading);
+  console.log("isConversationsFetching", isConversationsFetching);
+
+  useEffect(() => {
+    if (!conversationData || !scrollContainerRef.current) return;
+
+    // Wait for DOM to update, then check scroll position and scroll if needed
+    // Use double requestAnimationFrame to ensure DOM is fully updated
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!scrollContainerRef.current) return;
+
+        const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
+        const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5;
+
+        // If user is at bottom, enable autoscroll and scroll
+        if (isAtBottom) {
+          setAutoScroll(true);
+          scrollToBottom();
+        } else if (autoScroll) {
+          // If autoscroll is enabled, scroll even if user scrolled up slightly
+          scrollToBottom();
+        }
+      });
+    });
+  }, [scrollToBottom, autoScroll, conversationData]);
+
+  if (isConversationsLoading) {
     return <LoadingScreen />;
   }
 
@@ -306,8 +344,8 @@ const Home: React.FC = () => {
       <Navbar />
       <div
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         className="flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500"
-        style={{ opacity }}
       >
         {currentMessages.map((message, idx) => {
           if (
