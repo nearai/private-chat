@@ -6,8 +6,12 @@ const MODELS_KEY = "models";
 const AUTH_KEY = "auth";
 const CHAT_KEY = "chat";
 const USERS_KEY = "users";
+const CONVERSATION_KEY = "conversation";
 
 export const queryKeys = {
+  conversation: {
+    all: [CONVERSATION_KEY],
+  },
   config: {
     all: [CONFIG_KEY],
   },
