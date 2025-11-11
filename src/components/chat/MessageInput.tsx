@@ -66,7 +66,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolServers = [],
   selectedToolIds: initialSelectedToolIds = [],
   imageGenerationEnabled: initialImageGenerationEnabled = false,
-  webSearchEnabled: initialWebSearchEnabled = false,
+  webSearchEnabled: initialWebSearchEnabled = true,
   placeholder = "",
   onSubmit,
   showUserProfile = true,

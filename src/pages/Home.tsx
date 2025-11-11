@@ -9,10 +9,9 @@ import { useNavigate, useParams } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { useResponse } from "@/api/chat/queries/useResponse";
-
+import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
-
 import MessageInput from "@/components/chat/MessageInput";
 import MessageSkeleton from "@/components/chat/MessageSkeleton";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
@@ -111,17 +110,6 @@ const Home: React.FC = () => {
                 ],
               };
             });
-            await startStream.mutateAsync({
-              model: selectedModels[0],
-              conversation: data.id,
-              role: "user",
-              systemPrompt,
-              content: contentItems,
-              queryClient: queryClient,
-              tools: webSearchEnabled ? [{ type: "web_search" }] : [],
-              include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
-            });
-
             await generateChatTitle.mutateAsync(
               {
                 prompt: content,
@@ -137,9 +125,23 @@ const Home: React.FC = () => {
                       title: messageContent || "",
                     },
                   });
+                  queryClient.invalidateQueries({
+                    queryKey: queryKeys.conversation.all,
+                  });
                 },
               }
             );
+
+            await startStream.mutateAsync({
+              model: selectedModels[0],
+              conversation: data.id,
+              role: "user",
+              systemPrompt,
+              content: contentItems,
+              queryClient: queryClient,
+              tools: webSearchEnabled ? [{ type: "web_search" }] : [],
+              include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
+            });
           },
         }
       );
