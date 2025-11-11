@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { chatClient } from "@/api/chat/client";
-import { useFiles } from "@/api/chat/queries/useFiles";
+
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import { compressImage } from "@/lib/image";
@@ -87,8 +87,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
-  const { data: filesData } = useFiles();
-  console.log("filesData", filesData);
+
   const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : (selectedModels ?? []))].filter(
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
   );
