@@ -1,6 +1,32 @@
 import { sha256 } from "js-sha256";
+import { POSTHOG_HOST, POSTHOG_KEY } from "@/api/constants";
 
 const W: any = window;
+
+export function initPosthog() {
+  if (typeof W.posthog === "undefined") {
+    console.warn("PostHog library is not loaded.");
+    return;
+  }
+  W.posthog.init(POSTHOG_KEY, {
+    api_host: POSTHOG_HOST,
+    person_profiles: "always",
+    autocapture: false,
+    capture_pageview: false,
+    persistence: "localStorage+cookie",
+    cookie_expiration: 90,
+    cross_subdomain_cookie: true,
+    cookie_domain: ".near.ai",
+    respect_dnt: true,
+    opt_out_capturing_by_default: false,
+  });
+
+  // Respect Global Privacy Control (required by our cookie policy)
+  if (W.navigator.globalPrivacyControl === true) {
+    W.posthog.opt_out_capturing();
+    console.log("GPC signal detected - PostHog tracking disabled");
+  }
+}
 
 export function posthogTrack(event: string, properties?: Record<string, any>) {
   try {

@@ -7,7 +7,9 @@ import React from "react";
 // import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import ThemeProvider from "./components/common/ThemeProvider";
 import { initI18n } from "./i18n";
+import { initPosthog } from "./lib/posthog.ts";
 
+initPosthog();
 initI18n(localStorage?.locale);
 
 const queryClient = new QueryClient({
