@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import type { Message as MessageOpenAI } from "openai/resources/conversations/conversations";
 import type React from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { useConversation } from "@/api/chat/queries/useConversation";
@@ -18,6 +18,7 @@ import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import { useScrollHandler } from "@/hooks/useScrollHandler";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { allPrompts } from "@/pages/welcome/data";
 import { useChatStore } from "@/stores/useChatStore";
@@ -26,7 +27,6 @@ import { type FileContentItem, generateContentFileDataForOpenAI } from "@/types/
 
 const Home: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
-  const [opacity, setOpacity] = useState<number>(0);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState("");
@@ -34,13 +34,10 @@ const Home: React.FC = () => {
 
   const { createConversation, updateConversation } = useConversation();
 
-  const {
-    isLoading: isConversationsLoading,
-    isFetching: isConversationsFetching,
-    data: conversationData,
-  } = useGetConversation(chatId);
+  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationData, chatId);
 
   const { generateChatTitle, startStream } = useResponse();
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
@@ -131,7 +128,7 @@ const Home: React.FC = () => {
                 },
               }
             );
-
+            scrollToBottom();
             await startStream.mutateAsync({
               model: selectedModels[0],
               conversation: data.id,
@@ -150,16 +147,17 @@ const Home: React.FC = () => {
         return {
           ...old,
           data: [
+            ...(old.data ?? []),
             {
               id: "empty",
               role: "user",
               type: "message",
               content: contentItems,
             },
-            ...(old.data ?? []),
           ],
         };
       });
+      scrollToBottom();
       await startStream.mutateAsync({
         model: selectedModels[0],
         conversation: chatId,
@@ -200,7 +198,6 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    setOpacity(0);
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     if (welcomePagePrompt) {
       setInputValue(welcomePagePrompt);
@@ -208,24 +205,9 @@ const Home: React.FC = () => {
     }
   }, []);
 
-  useLayoutEffect(() => {
-    if (!conversationData || !scrollContainerRef.current) return;
+  const currentMessages = [...(conversationData?.data ?? [])];
 
-    const frameId = requestAnimationFrame(() => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior: "smooth",
-        });
-        setOpacity(1);
-      }
-    });
-    return () => cancelAnimationFrame(frameId);
-  }, [conversationData]);
-
-  const currentMessages = [...(conversationData?.data ?? [])].reverse();
-
-  if (isConversationsLoading || isConversationsFetching) {
+  if (isConversationsLoading) {
     return <LoadingScreen />;
   }
 
@@ -306,8 +288,8 @@ const Home: React.FC = () => {
       <Navbar />
       <div
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         className="flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500"
-        style={{ opacity }}
       >
         {currentMessages.map((message, idx) => {
           if (
