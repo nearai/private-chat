@@ -229,7 +229,7 @@ const Home: React.FC = () => {
     return () => cancelAnimationFrame(frameId);
   }, [chatId, scrollToBottom]);
 
-  const currentMessages = [...(conversationData?.data ?? [])].reverse();
+  const currentMessages = [...(conversationData?.data ?? [])];
 
   useEffect(() => {
     if (!conversationData || !scrollContainerRef.current) return;
