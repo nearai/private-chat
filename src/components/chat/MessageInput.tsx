@@ -106,7 +106,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const uploadFileHandler = async (file: File): Promise<FileContentItem | undefined> => {
     try {
       const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
-      const maxFileSize = 10 * 1024 * 1024; // 10MB
+      const maxFileSize = 10 * 1024 * 1024;
 
       if (file.size > maxFileSize) {
         toast.error(`File size should not exceed 10 MB.`);
@@ -157,7 +157,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     for (const file of inputFiles) {
       const newFile = await uploadFileHandler(file);
       if (!newFile) continue;
-      console.log("newFile", newFile);
       setFiles((prev) => [...prev, newFile]);
     }
   };

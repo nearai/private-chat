@@ -33,11 +33,7 @@ const Home: React.FC = () => {
 
   const { createConversation, updateConversation } = useConversation();
 
-  const {
-    isLoading: isConversationsLoading,
-    isFetching: isConversationsFetching,
-    data: conversationData,
-  } = useGetConversation(chatId);
+  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -217,7 +213,6 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    // setOpacity(0);
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     if (welcomePagePrompt) {
       setInputValue(welcomePagePrompt);
@@ -236,30 +231,21 @@ const Home: React.FC = () => {
 
   const currentMessages = [...(conversationData?.data ?? [])].reverse();
 
-  console.log("isConversationsLoading", isConversationsLoading);
-  console.log("isConversationsFetching", isConversationsFetching);
-
   useEffect(() => {
     if (!conversationData || !scrollContainerRef.current) return;
 
-    // Wait for DOM to update, then check scroll position and scroll if needed
-    // Use double requestAnimationFrame to ensure DOM is fully updated
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!scrollContainerRef.current) return;
+      if (!scrollContainerRef.current) return;
 
-        const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
-        const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5;
+      const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5;
 
-        // If user is at bottom, enable autoscroll and scroll
-        if (isAtBottom) {
-          setAutoScroll(true);
-          scrollToBottom();
-        } else if (autoScroll) {
-          // If autoscroll is enabled, scroll even if user scrolled up slightly
-          scrollToBottom();
-        }
-      });
+      if (isAtBottom) {
+        setAutoScroll(true);
+        scrollToBottom();
+      } else if (autoScroll) {
+        scrollToBottom();
+      }
     });
   }, [scrollToBottom, autoScroll, conversationData]);
 

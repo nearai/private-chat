@@ -10,7 +10,6 @@ import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
-// import AdminUsersPage from "@/pages/admin/User";
 import Home from "@/pages/Home";
 import { APP_ROUTES } from "@/pages/routes";
 import WelcomePage from "@/pages/WelcomePage";
