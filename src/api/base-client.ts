@@ -246,12 +246,12 @@ export class ApiClient {
                     ...old,
                     last_id: data.item.id,
                     data: [
+                      ...(old.data ?? []),
                       {
                         id: data.item.id,
                         type: "reasoning",
                         summary: data.item.summary,
                       },
-                      ...(old.data ?? []),
                     ],
                     lastUpdatedAt: Date.now(),
                   };
@@ -260,11 +260,11 @@ export class ApiClient {
                     ...old,
                     last_id: data.item.id,
                     data: [
+                      ...(old.data ?? []),
                       {
                         id: data.item.id,
                         type: "web_search_call",
                       },
-                      ...(old.data ?? []),
                     ],
                     lastUpdatedAt: Date.now(),
                   };
@@ -272,6 +272,7 @@ export class ApiClient {
                   return {
                     ...old,
                     data: [
+                      ...(old?.data ?? []),
                       {
                         id: data.item.id,
                         type: "message",
@@ -284,7 +285,6 @@ export class ApiClient {
                           },
                         ],
                       },
-                      ...(old?.data ?? []),
                     ],
                     last_id: data.item.id,
                   };

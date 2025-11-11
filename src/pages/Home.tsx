@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
 import type { Message as MessageOpenAI } from "openai/resources/conversations/conversations";
 import type React from "react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { useConversation } from "@/api/chat/queries/useConversation";
@@ -18,6 +18,7 @@ import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import { useScrollHandler } from "@/hooks/useScrollHandler";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { allPrompts } from "@/pages/welcome/data";
 import { useChatStore } from "@/stores/useChatStore";
@@ -36,6 +37,7 @@ const Home: React.FC = () => {
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationData, chatId);
 
   const { generateChatTitle, startStream } = useResponse();
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
@@ -68,23 +70,6 @@ const Home: React.FC = () => {
       });
     }
   }, [inputValue, sortedPrompts]);
-
-  const [autoScroll, setAutoScroll] = useState(true);
-
-  const scrollToBottom = useCallback(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-    }
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    if (!scrollContainerRef.current) return;
-
-    const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5;
-
-    setAutoScroll(isAtBottom);
-  }, []);
 
   const handleSendMessage = async (content: string, files: FileContentItem[], webSearchEnabled: boolean = false) => {
     const contentItems = [
@@ -162,13 +147,13 @@ const Home: React.FC = () => {
         return {
           ...old,
           data: [
+            ...(old.data ?? []),
             {
               id: "empty",
               role: "user",
               type: "message",
               content: contentItems,
             },
-            ...(old.data ?? []),
           ],
         };
       });
@@ -220,34 +205,7 @@ const Home: React.FC = () => {
     }
   }, []);
 
-  useLayoutEffect(() => {
-    if (!chatId || !scrollContainerRef.current) return;
-
-    const frameId = requestAnimationFrame(() => {
-      scrollToBottom();
-    });
-    return () => cancelAnimationFrame(frameId);
-  }, [chatId, scrollToBottom]);
-
   const currentMessages = [...(conversationData?.data ?? [])];
-
-  useEffect(() => {
-    if (!conversationData || !scrollContainerRef.current) return;
-
-    requestAnimationFrame(() => {
-      if (!scrollContainerRef.current) return;
-
-      const { scrollHeight, scrollTop, clientHeight } = scrollContainerRef.current;
-      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5;
-
-      if (isAtBottom) {
-        setAutoScroll(true);
-        scrollToBottom();
-      } else if (autoScroll) {
-        scrollToBottom();
-      }
-    });
-  }, [scrollToBottom, autoScroll, conversationData]);
 
   if (isConversationsLoading) {
     return <LoadingScreen />;
