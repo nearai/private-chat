@@ -28,7 +28,7 @@ const LeftSidebar: React.FC = () => {
       Object.entries(
         conversations?.reduce(
           (acc, chat) => {
-            const timeRange = getTimeRange(chat.updated_at);
+            const timeRange = getTimeRange(chat.created_at);
             acc[timeRange] = [...(acc[timeRange] || []), chat];
             return acc;
           },
