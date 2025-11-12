@@ -1,5 +1,5 @@
-import { Suspense, useMemo } from "react";
-import { Route, Routes } from "react-router";
+import { Suspense, useEffect, useMemo } from "react";
+import { Route, Routes, useLocation } from "react-router";
 import { Toaster } from "sonner";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
@@ -16,9 +16,11 @@ import WelcomePage from "@/pages/WelcomePage";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
+import { posthogPageView } from "./lib/posthog";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
+  const location = useLocation();
 
   const { settings } = useSettingsStore();
 
@@ -35,6 +37,10 @@ function App() {
     }
     return "light";
   }, [settings.theme]);
+
+  useEffect(() => {
+    posthogPageView();
+  }, [location.pathname]);
 
   if (!isInitialized || isAppLoading || isLoading) {
     return <LoadingScreen />;

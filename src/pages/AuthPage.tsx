@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
 import { useConfig } from "@/api/config/queries";
 import { queryKeys } from "@/api/query-keys";
+import { usersClient } from "@/api/users/client";
 import CheckIcon from "@/assets/icons/check-icon.svg?react";
 import GitHubIcon from "@/assets/icons/github-icon.svg?react";
 import GoogleIcon from "@/assets/icons/google-icon.svg?react";
 import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
@@ -41,10 +43,21 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const isNewUser = searchParams.get("is_new_user") === "true";
     if (token) {
       localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
       queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+      usersClient.getUserData().then((u) => {
+        if (!u) return;
+        const provider = u.linked_accounts[0]?.provider || "unknown";
+        if (isNewUser) {
+          posthogOauthSignup(u.user.id, provider);
+        } else {
+          posthogOauthLogin(u.user.id, provider);
+        }
+      });
       navigate(APP_ROUTES.HOME, { replace: true });
     }
   }, [searchParams, navigate, queryClient]);
