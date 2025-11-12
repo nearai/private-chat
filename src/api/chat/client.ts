@@ -137,6 +137,12 @@ class ChatClient extends ApiClient {
     });
   }
 
+  async deleteConversation(id: string) {
+    return this.delete<void>(`/conversations/${id}`, {
+      apiVersion: "v2",
+    });
+  }
+
   async getChatList(page: number | null = null) {
     const searchParams = new URLSearchParams();
     if (page !== null) {

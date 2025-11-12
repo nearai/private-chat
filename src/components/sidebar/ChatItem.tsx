@@ -1,7 +1,7 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { useRenameChat } from "@/api/chat/queries";
+import { useConversation } from "@/api/chat/queries/useConversation";
 import { cn } from "@/lib/time";
 import { toChatRoute } from "@/pages/routes";
 import type { ChatInfo, ConversationInfo } from "@/types";
@@ -21,10 +21,10 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   const renameRef = useRef<HTMLInputElement>(null);
 
   const [renameInput, setRenameInput] = useState(chat.title ?? BASIC_PLACEHOLDER);
-  const { mutate: renameChat } = useRenameChat();
+  const { updateConversation } = useConversation();
 
   const confirmRename = () => {
-    renameChat({ id: chat.id, title: renameInput });
+    updateConversation.mutate({ conversationId: chat.id, metadata: { title: renameInput } });
     setShowRename(false);
   };
 

@@ -2,8 +2,8 @@
 
 export { useArchiveChat } from "./useArchiveChat";
 export { useCloneChat } from "./useCloneChat";
-export { useDeleteChat } from "./useDeleteChat";
-export { useRenameChat } from "./useRenameChat";
+export { useDeleteChat } from "./useDeleteConversation";
+
 // Mutation
 
 export { useTogglePinnedStatus } from "./useTogglePinnedStatus";
