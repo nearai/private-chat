@@ -15,17 +15,21 @@ import { extractCitations, extractMessageContent } from "@/types/openai";
 import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
 
+interface MessageItem extends ResponseOutputMessage {
+  created_at?: number;
+}
+
 interface ResponseMessageProps {
-  message: ResponseOutputMessage;
+  message: MessageItem;
   siblings: string[];
   isLastMessage: boolean;
   readOnly: boolean;
   webSearchEnabled: boolean;
   saveMessage: (messageId: string, content: string) => void;
   deleteMessage: (messageId: string) => void;
-  regenerateResponse: (message: ResponseOutputMessage) => Promise<void>;
-  showPreviousMessage: (message: ResponseOutputMessage) => void;
-  showNextMessage: (message: ResponseOutputMessage) => void;
+  regenerateResponse: (message: MessageItem) => Promise<void>;
+  showPreviousMessage: (message: MessageItem) => void;
+  showNextMessage: (message: MessageItem) => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -58,7 +62,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const extendedMessageResponse = {
     ...message,
     modelName: "",
-    timestamp: Date.now(),
+    timestamp: message.created_at ? message.created_at * 1000 : Date.now(),
     files: [],
     content: messageContent,
   };
@@ -128,7 +132,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
           {extendedMessageResponse.timestamp && (
             <div className="invisible ml-0.5 translate-y-[1px] self-center font-medium text-gray-400 text-xs first-letter:capitalize group-hover:visible">
-              <span className="line-clamp-1">{formatDate(extendedMessageResponse.timestamp * 1000)}</span>
+              <span className="line-clamp-1">{formatDate(extendedMessageResponse.timestamp)}</span>
             </div>
           )}
         </div>
