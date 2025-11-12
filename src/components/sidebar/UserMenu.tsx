@@ -21,7 +21,7 @@ interface DropdownItem {
   action?: () => void | Promise<void>;
 }
 
-const UserMenu: React.FC = () => {
+const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
   const navigate = useNavigate();
   const { t } = useTranslation("translation", { useSuspense: false });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -67,16 +67,16 @@ const UserMenu: React.FC = () => {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex w-full items-center rounded-xl px-2.5 py-2.5 outline-none ring-none transition">
+        <DropdownMenuTrigger className="flex w-full items-center rounded-xl p-1.5 outline-none ring-none transition">
           <>
-            <div className="mr-3 self-center">
+            <div className="self-center">
               <img
                 src={userData?.user.avatar_url || "/user.png"}
                 alt="User"
                 className="max-w-[30px] rounded-full object-cover"
               />
             </div>
-            <div className="self-center font-medium text-white">{userData?.user.name}</div>
+            {!collapsed && <div className="ml-3 self-center font-medium text-white">{userData?.user.name}</div>}
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent
