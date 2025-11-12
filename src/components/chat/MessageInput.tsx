@@ -8,11 +8,12 @@ import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
+import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { useUserStore } from "@/stores/useUserStore";
 import { useViewStore } from "@/stores/useViewStore";
 import type { History, Message, Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
+import UserMenu from "../sidebar/UserMenu";
 
 interface MessageInputProps {
   messages?: Message[];
@@ -66,24 +67,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolServers = [],
   selectedToolIds: initialSelectedToolIds = [],
   imageGenerationEnabled: initialImageGenerationEnabled = false,
-  webSearchEnabled: initialWebSearchEnabled = true,
   placeholder = "",
   onSubmit,
   showUserProfile = true,
   fullWidth = true,
   toolsDisabled = false,
 }) => {
-  const { user } = useUserStore();
   const { settings } = useSettingsStore();
   const [loaded, setLoaded] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-
+  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled);
+
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -431,20 +430,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
           )}
         >
           {!isMobile && !isLeftSidebarOpen && showUserProfile && (
-            <div>
-              <button
-                className="flex select-none rounded-xl p-1.5 transition hover:bg-gray-50 dark:hover:bg-gray-850"
-                aria-label="User Menu"
-              >
-                <div className="self-center">
-                  <img
-                    src={user?.profile_image_url || "/user.png"}
-                    className="size-7.5 rounded-full object-cover"
-                    alt="User profile"
-                    draggable="false"
-                  />
-                </div>
-              </button>
+            <div className="flex select-none rounded-xl transition hover:bg-gray-50 dark:hover:bg-gray-850">
+              <UserMenu collapsed={true} />
             </div>
           )}
           <div className={`inset-x-0 mx-auto w-full max-w-full flex-1 grow px-2.5 md:max-w-3xl`}>

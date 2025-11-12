@@ -1,7 +1,6 @@
-import { useNavigate } from "react-router";
-import { useCreateChat } from "@/api/chat/queries";
+import { useNavigate, useParams } from "react-router";
 import SafeLogo from "@/assets/images/safe.svg";
-import { useChatStore } from "@/stores/useChatStore";
+
 import { useViewStore } from "@/stores/useViewStore";
 import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
@@ -10,13 +9,11 @@ export default function Navbar() {
   const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
 
   const navigate = useNavigate();
-  const createChat = useCreateChat();
-  const currentChat = useChatStore((state) => state.currentChat);
+  const { chatId } = useParams();
 
   const handleNewChat = async () => {
     try {
-      const newChat = createChat("New Chat");
-      navigate(`/c/${newChat.id}`);
+      navigate("/");
     } catch (error) {
       console.error("Failed to create new chat:", error);
     }
@@ -69,7 +66,7 @@ export default function Navbar() {
             </div>
 
             <div className="flex flex-none items-center gap-2 self-start text-gray-600 dark:text-gray-400">
-              {currentChat && <ChatOptions chat={currentChat} />}
+              {chatId && <ChatOptions chatId={chatId} />}
               {!isRightSidebarOpen && (
                 <button
                   onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}

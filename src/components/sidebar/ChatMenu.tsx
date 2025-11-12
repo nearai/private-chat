@@ -16,12 +16,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import type { ChatInfo, ConversationInfo } from "@/types";
+import type { ConversationInfo } from "@/types";
 
 import ConfirmDialog from "../common/dialogs/ConfirmDialog";
 
 type ChatMenuProps = {
-  chat: ChatInfo | ConversationInfo;
+  chat: ConversationInfo;
   handleRename: () => void;
   isPinned?: boolean;
 };
@@ -56,7 +56,7 @@ export default function ChatMenu({ chat, handleRename, isPinned }: ChatMenuProps
         title={t("Delete chat?")}
         description={
           <>
-            {t("This will delete")} <span className="font-semibold">{chat.title}</span>
+            {t("This will delete")} <span className="font-semibold">{chat.metadata.title}</span>
           </>
         }
         onConfirm={() => deleteChatById({ id: chat.id })}
