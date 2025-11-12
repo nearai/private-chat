@@ -16,6 +16,12 @@ type ChatItemProps = {
   isPinned?: boolean;
 };
 
+function getChatTitle(chat: ChatInfo | ConversationInfo) {
+  if (chat.title) return chat.title;
+  const conv = chat as ConversationInfo;
+  return conv.title || conv.metadata?.title || BASIC_PLACEHOLDER;
+}
+
 const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
@@ -76,7 +82,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
           <>
             <div className="flex w-full flex-1 self-center">
               <div dir="auto" className="h-[20px] w-full self-center overflow-hidden text-left text-white">
-                {chat.title ?? BASIC_PLACEHOLDER}
+                {getChatTitle(chat)}
               </div>
             </div>
             <ChatMenu chat={chat} handleRename={handleRename} isPinned={isPinned} />
