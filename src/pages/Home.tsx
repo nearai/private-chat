@@ -30,7 +30,7 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState("");
-  const { updateMessage, currentChat, selectedModels } = useChatStore();
+  const { selectedModels } = useChatStore();
 
   const { createConversation, updateConversation } = useConversation();
 
@@ -173,12 +173,10 @@ const Home: React.FC = () => {
 
   const handleEditMessage = (messageId: string, content: string) => {
     console.log("Edit message:", messageId, content);
-    updateMessage(messageId, { content });
   };
 
   const handleSaveMessage = (messageId: string, content: string) => {
     console.log("Save message:", messageId, content);
-    updateMessage(messageId, { content });
   };
 
   const handleDeleteMessage = (messageId: string) => {
@@ -226,7 +224,7 @@ const Home: React.FC = () => {
               </p>
             </div>
             <MessageInput
-              messages={currentChat?.chat.messages}
+              messages={[]}
               onSubmit={handleSendMessage}
               selectedModels={selectedModels}
               showUserProfile={false}
@@ -339,7 +337,6 @@ const Home: React.FC = () => {
       </div>
 
       <MessageInput
-        messages={currentChat?.chat.messages}
         onSubmit={handleSendMessage}
         prompt={inputValue}
         setPrompt={setInputValue}

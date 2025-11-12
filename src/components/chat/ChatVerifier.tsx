@@ -3,6 +3,7 @@ import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useParams } from "react-router";
 import IntelLogo from "@/assets/images/intel-2.svg";
 import NvidiaLogo from "@/assets/images/nvidia-2.svg";
 import SafeLogo from "@/assets/images/safe.svg";
@@ -16,8 +17,8 @@ import type { VerificationStatus } from "./types";
 const ChatVerifier: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   //TODO: Use the chatId from the useLocation hook
-
-  const { currentChat, selectedModels } = useChatStore();
+  const { chatId } = useParams();
+  const { selectedModels } = useChatStore();
 
   const { isRightSidebarOpen, setIsRightSidebarOpen } = useViewStore();
   // const [showModelVerifier, setShowModelVerifier] = useState(false);
@@ -153,7 +154,7 @@ const ChatVerifier: React.FC = () => {
             </div>
           </div>
 
-          {currentChat && (
+          {chatId && (
             <div className="flex-1 overflow-hidden">
               <div className="flex h-full flex-col">
                 <div className="flex-shrink-0">
@@ -163,13 +164,11 @@ const ChatVerifier: React.FC = () => {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   <MessagesVerifier
-                    history={
-                      currentChat.chat.history || {
-                        messages: {},
-                        currentId: null,
-                      }
-                    }
-                    chatId={currentChat.id}
+                    history={{
+                      messages: {},
+                      currentId: null,
+                    }}
+                    chatId={chatId}
                   />
                 </div>
               </div>

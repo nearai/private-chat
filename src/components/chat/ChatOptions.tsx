@@ -1,6 +1,7 @@
 import { ChatBubbleLeftEllipsisIcon, ClipboardIcon, CubeIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { chatClient } from "@/api/chat/client";
 import EllipsisHorizontal from "@/assets/icons/ellipsis-horizontal.svg?react";
 import {
   DropdownMenu,
@@ -8,23 +9,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { copyToClipboard, createMessagesList } from "@/lib";
-import type { Chat } from "@/types";
+import { copyToClipboard } from "@/lib";
 import DownloadDropdown from "./DownloadDropdown";
 
 type ChatOptionsProps = {
-  chat: Chat;
+  chatId: string;
 };
 
-const ChatOptions = ({ chat }: ChatOptionsProps) => {
+const ChatOptions = ({ chatId }: ChatOptionsProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const copyChatAsText = async () => {
-    const history = chat.chat.history;
-    const messages = createMessagesList(history, history.currentId);
-    const chatText = messages
-      .reduce((a, message) => `${a}### ${message.role.toUpperCase()}\n${message.content}\n\n`, "")
-      .trim();
+    const chat = await chatClient.getConversation(chatId);
+
+    const chatText =
+      chat?.data?.reduce(
+        (a, message) =>
+          `${a}### ${message.type === "message" ? message.role.toUpperCase() : message.type}\n${message.type === "message" ? message.content : message.id}\n\n`,
+        ""
+      ) ?? "";
 
     const res = await copyToClipboard(chatText).catch((e) => {
       console.error(e);
@@ -67,7 +70,7 @@ const ChatOptions = ({ chat }: ChatOptionsProps) => {
           <CubeIcon className="h-4 w-4" strokeWidth={2} />
           <span>{t("Artifacts")}</span>
         </DropdownMenuItem>
-        <DownloadDropdown chatId={chat.id} />
+        <DownloadDropdown chatId={chatId} />
         <DropdownMenuItem
           className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
           onClick={copyChatAsText}

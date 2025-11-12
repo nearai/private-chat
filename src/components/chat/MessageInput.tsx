@@ -8,8 +8,8 @@ import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
+import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-
 import { useViewStore } from "@/stores/useViewStore";
 import type { History, Message, Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
@@ -67,7 +67,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolServers = [],
   selectedToolIds: initialSelectedToolIds = [],
   imageGenerationEnabled: initialImageGenerationEnabled = false,
-  webSearchEnabled: initialWebSearchEnabled = true,
   placeholder = "",
   onSubmit,
   showUserProfile = true,
@@ -79,11 +78,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-
+  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled);
+
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
