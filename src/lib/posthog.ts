@@ -46,14 +46,13 @@ export function posthogIdentify(userId: string, properties?: Record<string, any>
       console.warn("PostHog is not initialized.");
       return;
     }
-    W.posthog.identify(userId, properties);
+    W.posthog.identify(sha256(userId), properties);
   } catch (error) {
     console.error("PostHog identify error:", error);
   }
 }
 
 export function posthogPageView() {
-  // console.log('PostHog page view tracked', window.location.href);
   posthogTrack("page_view", {
     page_url: window.location.href,
     page_path: window.location.pathname,
@@ -63,7 +62,6 @@ export function posthogPageView() {
 }
 
 export function posthogSignupStarted(authUrl: string) {
-  // console.log('PostHog signup started tracked', window.location.href);
   posthogTrack("signup_started", {
     entry_point: "anonymous_message_attempt",
     page_url: authUrl,
@@ -71,9 +69,8 @@ export function posthogSignupStarted(authUrl: string) {
 }
 
 export function posthogOauthSignup(userId: string, provider: string) {
-  console.log("PostHog oauth signup tracked", userId, provider);
   posthogTrack("signup_completed", {
-    user_id: userId,
+    user_id: sha256(userId),
     method: "oauth",
     oauth_provider: provider,
     plan: "free",
@@ -87,21 +84,20 @@ export function posthogOauthSignup(userId: string, provider: string) {
 }
 
 export function posthogOauthLogin(userId: string, provider: string) {
-  // console.log('PostHog oauth login tracked', userId, provider);
+  const userIdHash = sha256(userId);
   posthogTrack("login_completed", {
-    user_id: userId,
+    user_id: userIdHash,
     method: "oauth",
     plan: "free",
     oauth_provider: provider,
   });
 
-  posthogIdentify(userId);
+  posthogIdentify(userIdHash);
 }
 
 export function posthogEmailSignup(userId: string, email: string) {
-  // console.log('PostHog email signup tracked', userId, email);
   posthogTrack("signup_completed", {
-    user_id: userId,
+    user_id: sha256(userId),
     method: "email",
     plan: "free",
   });
@@ -114,12 +110,12 @@ export function posthogEmailSignup(userId: string, email: string) {
 }
 
 export function posthogEmailLogin(userId: string) {
-  // console.log('PostHog email login tracked', userId);
+  const userIdHash = sha256(userId);
   posthogTrack("login_completed", {
-    user_id: userId,
+    user_id: userIdHash,
     method: "email",
     plan: "free",
   });
 
-  posthogIdentify(userId);
+  posthogIdentify(userIdHash);
 }
