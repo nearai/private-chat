@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 
 import { chatClient } from "@/api/chat/client";
+import { DEFAULT_MODEL } from "@/api/constants";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -20,7 +21,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { settings } = useSettingsStore();
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
 
-  console.log("ChatController rerender");
   const initializeCache = useCallback(
     (conversationId: string, contentItems: ContentItem[]): Conversation => {
       const existingData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
@@ -69,7 +69,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
 
-      const model = selectedModels[0] || "openai/gpt-oss-120b";
+      const model = selectedModels[0] || DEFAULT_MODEL;
 
       const initialData = initializeCache(conversationId, contentItems);
 

@@ -1,4 +1,5 @@
 import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
+import { DEFAULT_MODEL } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Model } from "@/types";
@@ -13,7 +14,8 @@ export const useModels = (options?: UseModelsOptions) => {
     queryFn: async () => {
       const models = await modelsClient.getModels();
       if (models.length > 0) {
-        const selectedDefaultModel = models.find((model) => model.id === "openai/gpt-oss-120b");
+        console.log("models", models);
+        const selectedDefaultModel = models.find((model) => model.id === DEFAULT_MODEL);
         if (selectedDefaultModel) {
           setSelectedModels([selectedDefaultModel.id]);
         }
