@@ -3,16 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { chatClient } from "@/api/chat/client";
-import { useFiles } from "@/api/chat/queries/useFiles";
+
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
+import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { useUserStore } from "@/stores/useUserStore";
 import { useViewStore } from "@/stores/useViewStore";
 import type { History, Message, Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
+import UserMenu from "../sidebar/UserMenu";
 
 interface MessageInputProps {
   messages?: Message[];
@@ -66,29 +67,26 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolServers = [],
   selectedToolIds: initialSelectedToolIds = [],
   imageGenerationEnabled: initialImageGenerationEnabled = false,
-  webSearchEnabled: initialWebSearchEnabled = true,
   placeholder = "",
   onSubmit,
   showUserProfile = true,
   fullWidth = true,
   toolsDisabled = false,
 }) => {
-  const { user } = useUserStore();
   const { settings } = useSettingsStore();
   const [loaded, setLoaded] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-
+  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled);
+
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
-  const { data: filesData } = useFiles();
-  console.log("filesData", filesData);
+
   const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : (selectedModels ?? []))].filter(
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
   );
@@ -106,7 +104,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const uploadFileHandler = async (file: File): Promise<FileContentItem | undefined> => {
     try {
       const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
-      const maxFileSize = 10 * 1024 * 1024; // 10MB
+      const maxFileSize = 10 * 1024 * 1024;
 
       if (file.size > maxFileSize) {
         toast.error(`File size should not exceed 10 MB.`);
@@ -157,7 +155,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     for (const file of inputFiles) {
       const newFile = await uploadFileHandler(file);
       if (!newFile) continue;
-      console.log("newFile", newFile);
       setFiles((prev) => [...prev, newFile]);
     }
   };
@@ -433,20 +430,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
           )}
         >
           {!isMobile && !isLeftSidebarOpen && showUserProfile && (
-            <div>
-              <button
-                className="flex select-none rounded-xl p-1.5 transition hover:bg-gray-50 dark:hover:bg-gray-850"
-                aria-label="User Menu"
-              >
-                <div className="self-center">
-                  <img
-                    src={user?.profile_image_url || "/user.png"}
-                    className="size-7.5 rounded-full object-cover"
-                    alt="User profile"
-                    draggable="false"
-                  />
-                </div>
-              </button>
+            <div className="flex select-none rounded-xl transition hover:bg-gray-50 dark:hover:bg-gray-850">
+              <UserMenu collapsed={true} />
             </div>
           )}
           <div className={`inset-x-0 mx-auto w-full max-w-full flex-1 grow px-2.5 md:max-w-3xl`}>

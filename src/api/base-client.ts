@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createParser, type EventSourceMessage } from "eventsource-parser";
+import { produce } from "immer";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
@@ -179,16 +180,29 @@ export class ApiClient {
       });
 
       function onParse(event: EventSourceMessage) {
+        if (!options.queryClient) return;
         const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
+        const conversationId = (body as { conversation?: string })?.conversation || "";
+
+        function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
+          options.queryClient?.setQueryData(
+            ["conversation", conversationId],
+            (old: Conversation) =>
+              produce(old, (draft) => {
+                updater(draft);
+                (draft as Conversation & { lastUpdatedAt?: number }).lastUpdatedAt = Date.now();
+              }),
+            setOptions
+          );
+        }
+
         switch (data.type) {
           case "response.output_text.delta":
-            options.queryClient?.setQueryData(
-              ["conversation", (body as { conversation?: string })?.conversation || ""],
-              (old: Conversation) => {
-                const newData = { ...old };
-                const currentConversationData = newData.data?.find((item) => item.id === data.item_id);
+            updateConversationData(
+              (draft) => {
+                const currentConversationData = draft.data?.find((item) => item.id === data.item_id);
                 if (currentConversationData?.type === "message") {
-                  if (currentConversationData && !currentConversationData?.content?.length) {
+                  if (!currentConversationData.content?.length) {
                     currentConversationData.content = [
                       {
                         type: "output_text",
@@ -197,16 +211,11 @@ export class ApiClient {
                       },
                     ];
                   } else {
-                    if (currentConversationData!.content[0].type === "output_text") {
-                      currentConversationData!.content[0].text += data.delta;
+                    if (currentConversationData.content[0].type === "output_text") {
+                      currentConversationData.content[0].text += data.delta;
                     }
                   }
                 }
-                return {
-                  data: [...(newData.data ?? [])],
-                  ...old,
-                  lastUpdatedAt: Date.now(),
-                };
               },
               {
                 updatedAt: Date.now(),
@@ -214,83 +223,79 @@ export class ApiClient {
             );
             break;
           case "response.output_item.done":
-            options.queryClient?.setQueryData(
-              ["conversation", (body as { conversation?: string })?.conversation || ""],
-              (old: Conversation) => {
-                const newData: Conversation = { ...old };
-                const currentConversationData = newData.data?.find((item) => item.id === data.item.id);
-                if (data.item.type === "message" && currentConversationData) {
-                  currentConversationData.status = data.item.status;
-                }
-                if (currentConversationData?.type === "message" && data.item.type === "message") {
-                  currentConversationData.content = data.item.content;
-                }
-                if (data.item.type === "reasoning" || data.item.type === "web_search_call") {
-                  newData.data = newData.data?.filter((item) => item.id === data.item.id);
-                }
-
-                return {
-                  data: [...(newData.data ?? [])],
-                  ...old,
-                  lastUpdatedAt: Date.now(),
-                };
+            updateConversationData((draft) => {
+              const currentConversationData = draft.data?.find((item) => item.id === data.item.id);
+              switch (data.item.type) {
+                case "message":
+                  if (currentConversationData) {
+                    currentConversationData.status = data.item.status;
+                  }
+                  if (currentConversationData?.type === "message") {
+                    currentConversationData.content = data.item.content;
+                  }
+                  break;
+                case "reasoning":
+                case "web_search_call":
+                  draft.data = draft.data?.filter((item) => item.id !== data.item.id);
+                  break;
+                default:
+                  break;
               }
-            );
+            });
             break;
           case "response.output_item.added":
-            options.queryClient?.setQueryData(
-              ["conversation", (body as { conversation?: string })?.conversation || ""],
-              (old: Conversation) => {
-                if (data.item.type === "reasoning") {
-                  return {
-                    ...old,
-                    last_id: data.item.id,
-                    data: [
-                      {
-                        id: data.item.id,
-                        type: "reasoning",
-                        summary: data.item.summary,
-                      },
-                      ...(old.data ?? []),
-                    ],
-                    lastUpdatedAt: Date.now(),
-                  };
-                } else if (data.item.type === "web_search_call") {
-                  return {
-                    ...old,
-                    last_id: data.item.id,
-                    data: [
-                      {
-                        id: data.item.id,
-                        type: "web_search_call",
-                      },
-                      ...(old.data ?? []),
-                    ],
-                    lastUpdatedAt: Date.now(),
-                  };
-                } else if (data.item.type === "message") {
-                  return {
-                    ...old,
-                    data: [
-                      {
-                        id: data.item.id,
-                        type: "message",
-                        role: "assistant",
-                        content: [
-                          {
-                            type: "output_text",
-                            text: "",
-                            annotations: [],
-                          },
-                        ],
-                      },
-                      ...(old?.data ?? []),
-                    ],
-                    last_id: data.item.id,
-                  };
-                }
+            updateConversationData((draft) => {
+              const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
+
+              switch (data.item.type) {
+                case "reasoning":
+                  draft.last_id = data.item.id;
+                  draft.data = [
+                    ...(draft.data ?? []),
+                    {
+                      id: data.item.id,
+                      type: "reasoning",
+                      summary: data.item.summary,
+                    },
+                  ];
+                  break;
+                case "web_search_call":
+                  draft.last_id = data.item.id;
+                  draft.data = [
+                    ...(draft.data ?? []),
+                    {
+                      id: data.item.id,
+                      type: "web_search_call",
+                      status: "completed",
+                    } as typeof data.item,
+                  ];
+                  break;
+                case "message":
+                  if (prevMessage?.status === "in_progress") {
+                    break;
+                  }
+                  draft.data = [
+                    ...(draft.data ?? []),
+                    {
+                      id: data.item.id,
+                      type: "message",
+                      role: "assistant",
+                      status: "in_progress",
+                      content: [
+                        {
+                          type: "output_text",
+                          text: "",
+                          annotations: [],
+                        },
+                      ],
+                    } as typeof data.item,
+                  ];
+                  draft.last_id = data.item.id;
+                  break;
+                default:
+                  break;
               }
-            );
+            });
             break;
         }
       }

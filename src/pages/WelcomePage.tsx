@@ -6,6 +6,7 @@ import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
 import ChatPlaceholder from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { posthogSignupStarted } from "@/lib/posthog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { APP_ROUTES } from "./routes";
 
@@ -22,6 +23,7 @@ const WelcomePage: React.FC = () => {
     if (token) {
       navigate(APP_ROUTES.HOME);
     } else {
+      posthogSignupStarted(APP_ROUTES.AUTH);
       navigate(APP_ROUTES.AUTH);
     }
   };

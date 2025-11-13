@@ -1,30 +1,36 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { useRenameChat } from "@/api/chat/queries";
+import { useConversation } from "@/api/chat/queries/useConversation";
 import { cn } from "@/lib/time";
 import { toChatRoute } from "@/pages/routes";
-import type { ChatInfo, ConversationInfo } from "@/types";
+import type { ConversationInfo } from "@/types";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
 
 const BASIC_PLACEHOLDER = "TEMP CHAT";
 
 type ChatItemProps = {
-  chat: ChatInfo | ConversationInfo;
+  chat: ConversationInfo;
   isCurrentChat: boolean;
   isPinned?: boolean;
 };
+
+function getChatTitle(chat: ConversationInfo) {
+  if (chat.title) return chat.title;
+  const conv = chat as ConversationInfo;
+  return conv.title || conv.metadata?.title || BASIC_PLACEHOLDER;
+}
 
 const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
-  const [renameInput, setRenameInput] = useState(chat.title ?? BASIC_PLACEHOLDER);
-  const { mutate: renameChat } = useRenameChat();
+  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? BASIC_PLACEHOLDER);
+  const { updateConversation } = useConversation();
 
   const confirmRename = () => {
-    renameChat({ id: chat.id, title: renameInput });
+    updateConversation.mutate({ conversationId: chat.id, metadata: { title: renameInput } });
     setShowRename(false);
   };
 
@@ -36,7 +42,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
 
   const handleCancelRename = () => {
     setShowRename(false);
-    setRenameInput(chat.title);
+    setRenameInput(chat.metadata.title);
   };
 
   return (
@@ -76,7 +82,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
           <>
             <div className="flex w-full flex-1 self-center">
               <div dir="auto" className="h-[20px] w-full self-center overflow-hidden text-left text-white">
-                {chat.title ?? BASIC_PLACEHOLDER}
+                {getChatTitle(chat)}
               </div>
             </div>
             <ChatMenu chat={chat} handleRename={handleRename} isPinned={isPinned} />

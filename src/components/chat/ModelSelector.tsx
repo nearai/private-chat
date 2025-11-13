@@ -145,7 +145,7 @@ export default function ModelSelector() {
   };
 
   const disabledAdd = selectedModels.length >= models.length;
-  console.log("models", models, selectedModels);
+
   return (
     <div className="flex w-full flex-col items-start">
       {selectedModels.map((selectedModel, selectedModelIdx) => (

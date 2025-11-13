@@ -388,25 +388,13 @@ export interface ViewStore {
 }
 
 export interface ChatStore {
-  chats: ChatInfo[];
-  currentChat: Chat | null;
-  isLoading: boolean;
+  webSearchEnabled: boolean;
+  setWebSearchEnabled: (webSearchEnabled: boolean) => void;
   models: Model[];
   selectedModels: string[];
 
-  setChats: (chats: ChatInfo[]) => void;
-  setCurrentChat: (chat: Chat | null) => void;
   setModels: (models: Model[]) => void;
-
-  addChat: (chat: ChatInfo) => void;
-  updateChat: (id: string, chat: Partial<ChatInfo>) => void;
-  deleteChat: (id: string) => void;
-  setLoading: (loading: boolean) => void;
   setSelectedModels: (models: string[]) => void;
-
-  addMessage: (message: Message) => void;
-  updateMessage: (messageId: string, update: Partial<Message>) => void;
-  appendToMessage: (messageId: string, content: string) => void;
 }
 
 export interface SettingsStore {
