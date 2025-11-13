@@ -10,13 +10,13 @@ import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
-import Home from "@/pages/Home";
 import { APP_ROUTES } from "@/pages/routes";
 import WelcomePage from "@/pages/WelcomePage";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
 import { posthogPageView } from "./lib/posthog";
+import ChatController from "./pages/ChatController";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -58,8 +58,8 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route path={APP_ROUTES.HOME} element={<Home />} />
-            <Route path={APP_ROUTES.CHAT} element={<Home />} />
+            <Route index element={<ChatController />} />
+            <Route path="c/:chatId" element={<ChatController />} />
 
             <Route
               element={

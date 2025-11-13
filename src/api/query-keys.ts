@@ -7,10 +7,12 @@ const AUTH_KEY = "auth";
 const CHAT_KEY = "chat";
 const USERS_KEY = "users";
 const CONVERSATION_KEY = "conversation";
+const CONVERSATIONS_KEY = "conversations";
 
 export const queryKeys = {
   conversation: {
-    all: [CONVERSATION_KEY],
+    all: [CONVERSATIONS_KEY],
+    byId: (id: string | undefined) => [CONVERSATION_KEY, id ?? ""],
   },
   config: {
     all: [CONFIG_KEY],

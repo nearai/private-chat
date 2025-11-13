@@ -17,9 +17,9 @@ type ChatItemProps = {
 };
 
 function getChatTitle(chat: ConversationInfo) {
-  if (chat.title) return chat.title;
+  if (chat.metadata.title) return chat.metadata.title;
   const conv = chat as ConversationInfo;
-  return conv.title || conv.metadata?.title || BASIC_PLACEHOLDER;
+  return conv.metadata?.title || BASIC_PLACEHOLDER;
 }
 
 const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {

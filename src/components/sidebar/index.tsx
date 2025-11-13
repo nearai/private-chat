@@ -19,7 +19,7 @@ const LeftSidebar: React.FC = () => {
   const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
   const { chatId } = useParams();
 
-  const { data: conversations } = useGetConversations();
+  const { data: conversations, isFetched, isFetching } = useGetConversations();
 
   const [isChatsOpen, setIsChatsOpen] = useState(true);
 
@@ -78,23 +78,34 @@ const LeftSidebar: React.FC = () => {
               </Link>
             </div>
           </div>
-          <div className="w-full cursor-pointer" onClick={() => setIsChatsOpen(!isChatsOpen)}>
-            <div>
-              <div className="flex items-start justify-between">
-                <div className="group relative flex w-full items-center justify-between rounded-md text-gray-500 transition">
-                  <button className="flex w-full items-center gap-1.5 py-1.5 pl-2 font-medium text-xs">
-                    <div className="size-3 text-gray-300 dark:text-gray-600">
-                      <ChatArrowDown stroke="#676767" className={!isChatsOpen ? "rotate-270" : ""} />
-                    </div>
-                    <div className="translate-y-[0.5px]">Chats</div>
-                  </button>
+          {isFetched && (
+            <div className="w-full cursor-pointer" onClick={() => setIsChatsOpen(!isChatsOpen)}>
+              <div>
+                <div className="flex items-start justify-between">
+                  <div className="group relative flex w-full items-center justify-between rounded-md text-gray-500 transition">
+                    <button className="flex w-full items-center gap-1.5 py-1.5 pl-2 font-medium text-xs">
+                      <div className="size-3 text-gray-300 dark:text-gray-600">
+                        <ChatArrowDown stroke="#676767" className={!isChatsOpen ? "rotate-270" : ""} />
+                      </div>
+                      <div className="translate-y-[0.5px]">Chats</div>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
-
-        {isChatsOpen && (
+        {isFetching && (
+          <div className="flex-1 overflow-hidden px-2">
+            <div className="h-full overflow-y-auto overflow-x-hidden">
+              <div className="flex items-center justify-center">
+                Loading chats{" "}
+                <div className="ml-2 size-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+              </div>
+            </div>
+          </div>
+        )}
+        {isChatsOpen && isFetched && (
           <div className="flex-1 overflow-hidden px-2">
             <div className="h-full overflow-y-auto overflow-x-hidden">
               {chatsGroupedByFolder.map(([timeRange, chats], index) => (
