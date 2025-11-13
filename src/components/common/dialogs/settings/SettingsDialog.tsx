@@ -28,7 +28,13 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           id: "chats",
           label: t("Chats"),
           icon: ChatBubbleOvalLeftEllipsisIcon,
-          content: <ChatsSettings />,
+          content: (
+            <ChatsSettings
+              onImportFinish={() => {
+                onOpenChange(false);
+              }}
+            />
+          ),
         },
         {
           id: "about",
