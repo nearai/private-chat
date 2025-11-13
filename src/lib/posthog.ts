@@ -19,6 +19,12 @@ export function initPosthog() {
     cookie_domain: ".near.ai",
     respect_dnt: true,
     opt_out_capturing_by_default: false,
+    disable_session_recording: true,
+    session_recording: {
+      recordCanvas: false,
+      recordCrossOriginIframes: false,
+      maskAllInputs: true,
+    },
   });
 
   // Respect Global Privacy Control (required by our cookie policy)
