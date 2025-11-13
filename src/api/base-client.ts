@@ -3,9 +3,11 @@ import { createParser, type EventSourceMessage } from "eventsource-parser";
 import { produce } from "immer";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
+import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import type { Conversation } from "@/types";
+import type { Conversation, ConversationInfo } from "@/types";
 import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK } from "./constants";
+import { queryKeys } from "./query-keys";
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -308,7 +310,18 @@ export class ApiClient {
         parser.feed(chunk);
       }
 
-      console.log("✅ Stream finished");
+      const currentChatIdFromLocation = location.pathname.split("/").pop();
+
+      const bodyConversationId = (body as { conversation?: string })?.conversation ?? "";
+      if (currentChatIdFromLocation !== bodyConversationId) {
+        const conversationsData = options.queryClient?.getQueryData<ConversationInfo[]>(queryKeys.conversation.all);
+        const conversationData = conversationsData?.find((conversation) => conversation.id === bodyConversationId);
+        if (conversationData) {
+          toast.success(`Response completed for ${conversationData.metadata.title}`);
+        } else {
+          toast.success(`Response completed for ${currentChatIdFromLocation}`);
+        }
+      }
     } catch (err) {
       console.error(err);
       // biome-ignore lint/suspicious/noExplicitAny: explanation

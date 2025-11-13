@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
-import { toast } from "sonner";
+
 import { chatClient } from "@/api/chat/client";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
@@ -24,14 +24,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const initializeCache = useCallback(
     (conversationId: string, contentItems: ContentItem[]): Conversation => {
       const existingData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
-      // Check if user message already exists (e.g., added by Home component or NewChat)
       const hasUserMessage = existingData?.data?.some(
         (item) =>
           item.type === "message" &&
           item.role === "user" &&
           JSON.stringify(item.content) === JSON.stringify(contentItems)
       );
-      // Only add user message if it doesn't already exist
       const userMessage = hasUserMessage
         ? undefined
         : {
@@ -64,7 +62,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
     [queryClient]
   );
 
-  // Main startStream function - accepts conversationId as third parameter
   const startStream = useCallback(
     async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId: string) => {
       if (!conversationId) {
@@ -72,13 +69,10 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
 
-      // Get model - use first selected model or default
       const model = selectedModels[0] || "openai/gpt-oss-120b";
 
-      // CRITICAL: Initialize cache BEFORE starting stream to prevent race conditions
       const initialData = initializeCache(conversationId, contentItems);
 
-      // Start the stream
       const streamPromise = chatClient.startStream({
         model,
         role: "user",
@@ -88,26 +82,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
         include: webSearchEnabled ? ["web_search"] : undefined,
       });
 
-      // Register stream in store with initial data
       addStream(conversationId, streamPromise, initialData);
 
-      // Track completion
       streamPromise
         .then(() => {
           markStreamComplete(conversationId);
           removeStream(conversationId);
-
-          // Show notification if user is not viewing this chat and notifications are enabled
-          const currentChatIdFromLocation = location.pathname.startsWith("/c/") ? params.chatId : null;
-
-          if (currentChatIdFromLocation !== conversationId && settings.notificationEnabled) {
-            // Get chat title from cache
-            const conversationData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
-            const chatTitle =
-              (conversationData?.metadata as { title?: string })?.title || conversationData?.title || "Chat";
-
-            toast.success(`Response completed for ${chatTitle}`);
-          }
         })
         .catch((error) => {
           console.error("Stream error:", error);
