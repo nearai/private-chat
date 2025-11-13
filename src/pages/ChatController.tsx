@@ -79,7 +79,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
         content: contentItems,
         conversation: conversationId,
         queryClient,
-        include: webSearchEnabled ? ["web_search"] : undefined,
+        include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
+        tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
       });
 
       addStream(conversationId, streamPromise, initialData);
