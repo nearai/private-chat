@@ -19,7 +19,7 @@ const LeftSidebar: React.FC = () => {
   const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
   const { chatId } = useParams();
 
-  const { data: conversations } = useGetConversations();
+  const { data: conversations, isLoading } = useGetConversations();
 
   const [isChatsOpen, setIsChatsOpen] = useState(true);
 
@@ -78,6 +78,7 @@ const LeftSidebar: React.FC = () => {
               </Link>
             </div>
           </div>
+
           <div className="w-full cursor-pointer" onClick={() => setIsChatsOpen(!isChatsOpen)}>
             <div>
               <div className="flex items-start justify-between">
@@ -93,8 +94,17 @@ const LeftSidebar: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {isChatsOpen && (
+        {isLoading && (
+          <div className="flex-1 overflow-hidden px-2">
+            <div className="h-full overflow-y-auto overflow-x-hidden">
+              <div className="flex items-center justify-center">
+                Loading chats{" "}
+                <div className="ml-2 size-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+              </div>
+            </div>
+          </div>
+        )}
+        {isChatsOpen && !isLoading && (
           <div className="flex-1 overflow-hidden px-2">
             <div className="h-full overflow-y-auto overflow-x-hidden">
               {chatsGroupedByFolder.map(([timeRange, chats], index) => (

@@ -31,8 +31,6 @@ export interface User {
 export interface ConversationInfo {
   id: string;
   created_at: number;
-  updated_at: number;
-  title: string;
   metadata: {
     title: string;
   };

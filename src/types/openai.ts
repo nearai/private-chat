@@ -49,8 +49,16 @@ export const extractFiles = (message: ResponseInputMessageItem, type: "input_fil
   return message.content.filter((content) => content.type === type) as ResponseInputFile[];
 };
 
-export const generateContentFileDataForOpenAI = (file: FileContentItem) => {
+export const generateContentFileDataForOpenAI = (file: FileContentItem): ContentItem => {
   if (file.type === "input_audio") return { type: file.type, audio_file_id: file.id };
   if (file.type === "input_image") return { type: file.type, image_url: file.image_url };
   return { type: file.type, file_id: file.id };
+};
+
+export type ContentItem = {
+  type: "input_text" | "input_file" | "input_audio" | "input_image";
+  text?: string;
+  file_id?: string;
+  audio_file_id?: string;
+  image_url?: string;
 };

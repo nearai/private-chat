@@ -14,5 +14,7 @@ export const useGetConversations = () => {
       return conversations as unknown as ConversationInfo[];
     },
     enabled: !!token,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
 };
