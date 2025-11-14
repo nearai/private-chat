@@ -40,44 +40,21 @@ const ChatVerifier: React.FC = () => {
     let currentId: string | null = null;
 
     conversationData.data.forEach((item) => {
-      if (item.type === "message") {
-        // Only process assistant messages
-        if (item.role !== "assistant") {
-          return;
-        }
-
-        const messageId = item.id;
-        const isCompleted = item.status === "completed";
-        const content = extractMessageContent(item, "output_text");
-
-        // Get response_id for assistant messages (this is the chatCompletionId)
-        // response_id is available on ResponseOutputMessage (assistant messages)
-        const responseId =
-          "response_id" in item ? String((item as { response_id?: unknown }).response_id || "") : undefined;
-        const id = "id" in item ? String((item as { id?: unknown }).id || "") : undefined;
-
-        // Get model from the message
-        const model = "model" in item ? String((item as { model?: unknown }).model || "") : undefined;
-
-        // Get created_at timestamp
-        const timestamp = (item as { created_at?: number }).created_at || Date.now();
-
-        messages[messageId] = {
-          id: messageId,
+      if (item.type === "message" && item.role === "assistant" && item.status === "completed") {
+        messages[item.id] = {
+          id: item.id,
           parentId: null,
           childrenIds: [],
           role: "assistant",
-          content,
-          timestamp,
+          content: extractMessageContent(item, "output_text"),
+          timestamp: item.created_at ?? Date.now(),
           models: [],
-          model,
-          chatCompletionId: responseId ?? id ?? undefined, // Map response_id to chatCompletionId
-          done: isCompleted,
+          model: item.model,
+          chatCompletionId: item.response_id ?? item.id, // Map response_id to chatCompletionId
+          done: true,
         };
 
-        if (isCompleted) {
-          currentId = messageId;
-        }
+        currentId = item.id;
       }
     });
 

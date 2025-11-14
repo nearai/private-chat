@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import type { Conversation, ConversationInfo } from "@/types";
+import type { Conversation, ConversationInfo, ResponseOutputMessageItem } from "@/types";
 import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK } from "./constants";
 import { queryKeys } from "./query-keys";
 
@@ -227,27 +227,22 @@ export class ApiClient {
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
-              const currentConversationData = draft.data?.find((item) => item.id === data.item.id);
               switch (data.item.type) {
-                case "message":
+                case "message": {
+                  const currentConversationData = draft.data?.find(
+                    (item) => item.id === data.item.id
+                  ) as ResponseOutputMessageItem;
                   if (currentConversationData) {
                     currentConversationData.status = data.item.status;
                   }
                   if (currentConversationData?.type === "message") {
-                    currentConversationData.content = data.item.content;
-                    // Copy model field if available in the completed item, otherwise use stream body model as fallback
-                    if ("model" in data.item && data.item.model) {
-                      (currentConversationData as { model?: string }).model = data.item.model as string;
-                    } else if (streamModel && !("model" in currentConversationData && currentConversationData.model)) {
-                      (currentConversationData as { model?: string }).model = streamModel;
-                    }
-                    // Copy response_id field if available (for assistant messages)
-                    if ("response_id" in data.item && data.item.response_id) {
-                      (currentConversationData as { response_id?: string }).response_id = data.item
-                        .response_id as string;
-                    }
+                    const item = data.item as ResponseOutputMessageItem;
+                    currentConversationData.content = item.content;
+                    currentConversationData.model = item.model ?? streamModel;
+                    currentConversationData.response_id = item.response_id;
                   }
                   break;
+                }
                 case "reasoning":
                 case "web_search_call":
                   draft.data = draft.data?.filter((item) => item.id !== data.item.id);
@@ -288,12 +283,7 @@ export class ApiClient {
                   if (prevMessage?.status === "in_progress") {
                     break;
                   }
-                  // Set model from stream body if available, or from data.item if present
-                  const model = streamModel
-                    ? streamModel
-                    : "model" in data.item && data.item.model
-                      ? data.item.model
-                      : undefined;
+
                   draft.data = [
                     ...(draft.data ?? []),
                     {
@@ -308,7 +298,6 @@ export class ApiClient {
                           annotations: [],
                         },
                       ],
-                      model,
                     } as typeof data.item,
                   ];
                   draft.last_id = data.item.id;

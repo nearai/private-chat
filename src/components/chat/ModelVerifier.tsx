@@ -62,6 +62,10 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
       const attestations = data.model_attestations ?? data.all_attestations;
       const attestation = attestations[0];
 
+      if (!attestation) {
+        setError("No attestation data found for this model");
+        return;
+      }
       setAttestationData(data);
       setNvidiaPayload(JSON.parse(attestation?.nvidia_payload || "{}"));
       setIntelQuote(attestation?.intel_quote || null);
