@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { type MessageSignature, nearAIClient } from "@/api/nearai/client";
 import VerifiedLogo from "@/assets/images/verified.svg";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import type { Message } from "@/types";
 import VerifySignatureDialog from "./VerifySignatureDialog";
@@ -23,6 +24,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
 
   const [loadingSignatures, setLoadingSignatures] = useState<Set<string>>(new Set());
   const [errorSignatures, setErrorSignatures] = useState<Record<string, string>>({});
+  const [verificationStatus, setVerificationStatus] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string>("");
   const [lastCurrentId, setLastCurrentId] = useState<string>("");
@@ -76,6 +78,15 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
           delete newErrors[msg.chatCompletionId!];
           return newErrors;
         });
+
+        // Verify the signature
+        if (data.signature && data.signing_address && data.text) {
+          const isValid = verifySignature(data.signing_address, data.text, data.signature);
+          setVerificationStatus((prev) => ({
+            ...prev,
+            [msg.chatCompletionId!]: isValid,
+          }));
+        }
       } catch (err) {
         console.error("Error fetching message signature:", err);
         const errorMsg = err instanceof Error ? err.message : "Failed to fetch message signature";
@@ -149,9 +160,47 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
     setSelectedMessageId("");
   }, [chatId]);
 
+  // Function to verify a signature if it's already loaded
+  const verifyLoadedSignature = useCallback(
+    (msgId: string) => {
+      const signature = messagesSignatures[msgId];
+      if (signature && signature.signature && signature.signing_address && signature.text) {
+        if (verificationStatus[msgId] === undefined) {
+          const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
+          setVerificationStatus((prev) => ({
+            ...prev,
+            [msgId]: isValid,
+          }));
+        }
+      }
+    },
+    [messagesSignatures, verificationStatus]
+  );
+
+  // Verify all messages - both fetch signatures and verify already loaded ones
+  useEffect(() => {
+    if (chatCompletions.length === 0) return;
+
+    // Verify signatures that are already loaded
+    chatCompletions.forEach((message) => {
+      if (message.chatCompletionId) {
+        verifyLoadedSignature(message.chatCompletionId);
+      }
+    });
+
+    // Fetch signatures for messages that don't have them yet
+    chatCompletions.forEach((message) => {
+      if (message.chatCompletionId && !messagesSignatures[message.chatCompletionId]) {
+        fetchMessageSignature(message.chatCompletionId);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatCompletions, messagesSignatures]);
+
   useEffect(() => {
     if (selectedMessageId) {
       fetchMessageSignature(selectedMessageId);
+      verifyLoadedSignature(selectedMessageId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMessageId]);
@@ -171,40 +220,56 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
             {t("Verifiable Messages")} ({chatCompletions.length})
           </p>
 
-          {messageList.map((message, index) => (
-            <div
-              key={message.chatCompletionId}
-              className={`relative my-2 cursor-pointer rounded-lg border border-green-200 bg-green-50 p-2 text-xs transition-colors hover:bg-green-100 dark:border-[rgba(0,236,151,0.16)] dark:bg-[rgba(0,236,151,0.08)] dark:hover:bg-green-900/30 ${
-                selectedMessageId === message.chatCompletionId
-                  ? "ring-1 ring-green-700 dark:bg-[rgba(0,236,151,0.15)]"
-                  : ""
-              }`}
-              onClick={() => message.chatCompletionId && setSelectedMessageId(message.chatCompletionId)}
-              title="Click to view signature details"
-              data-message-id={message.chatCompletionId}
-            >
-              <div className="mb-3">
-                <h4 className="mb-3 flex items-center justify-between font-medium text-gray-900 text-sm dark:text-white">
-                  <span>
-                    {t("Message")} {index + 1}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    <img src={VerifiedLogo} alt="Verified" />
-                  </div>
-                </h4>
-                <p
-                  className={`mb-2 line-clamp-2 text-gray-700 text-xs dark:text-[rgba(248,248,248,0.88)] ${
-                    selectedMessageId === message.chatCompletionId ? "dark:text-white" : ""
-                  }`}
-                >
-                  {message.content}
-                </p>
-                <p className="text-gray-500 text-xs dark:text-[rgba(248,248,248,0.64)]">
-                  {t("ID")}: {message.chatCompletionId}
-                </p>
+          {messageList.map((message, index) => {
+            const isNotVerified = verificationStatus[message.chatCompletionId!] === false;
+            return (
+              <div
+                key={message.chatCompletionId}
+                className={`relative my-2 cursor-pointer rounded-lg border p-2 text-xs transition-colors ${
+                  isNotVerified
+                    ? `border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30 ${
+                        selectedMessageId === message.chatCompletionId ? "ring-1 ring-red-700 dark:bg-red-900/30" : ""
+                      }`
+                    : `border-green-200 bg-green-50 hover:bg-green-100 dark:border-[rgba(0,236,151,0.16)] dark:bg-[rgba(0,236,151,0.08)] dark:hover:bg-green-900/30 ${
+                        selectedMessageId === message.chatCompletionId
+                          ? "ring-1 ring-green-700 dark:bg-[rgba(0,236,151,0.15)]"
+                          : ""
+                      }`
+                }`}
+                onClick={() => message.chatCompletionId && setSelectedMessageId(message.chatCompletionId)}
+                title="Click to view signature details"
+                data-message-id={message.chatCompletionId}
+              >
+                <div className="mb-3">
+                  <h4 className="mb-3 flex items-center justify-between font-medium text-gray-900 text-sm dark:text-white">
+                    <span>
+                      {t("Message")} {index + 1}
+                    </span>
+                    <div className="flex items-center space-x-1">
+                      {verificationStatus[message.chatCompletionId!] === false ? (
+                        <span className="flex items-center gap-1 rounded border border-red-500 bg-red-50 px-2 py-0.5 text-red-700 text-xs dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+                          <XCircleIcon className="h-3 w-3" />
+                          Not Verified
+                        </span>
+                      ) : (
+                        <img src={VerifiedLogo} alt="Verified" />
+                      )}
+                    </div>
+                  </h4>
+                  <p
+                    className={`mb-2 line-clamp-2 text-gray-700 text-xs dark:text-[rgba(248,248,248,0.88)] ${
+                      selectedMessageId === message.chatCompletionId ? "dark:text-white" : ""
+                    }`}
+                  >
+                    {message.content}
+                  </p>
+                  <p className="text-gray-500 text-xs dark:text-[rgba(248,248,248,0.64)]">
+                    {t("ID")}: {message.chatCompletionId}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {chatCompletions.length > 2 && (
             <button
@@ -227,7 +292,11 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
               <>
                 {messagesSignatures[selectedMessageId].signature && (
                   <button
-                    className="mb-4 flex items-center text-green-500 text-xs transition-colors hover:text-green-700"
+                    className={`mb-4 flex items-center text-xs transition-colors ${
+                      verificationStatus[selectedMessageId] === false
+                        ? "text-red-500 hover:text-red-700"
+                        : "text-green-500 hover:text-green-700"
+                    }`}
                     onClick={openVerifySignatureDialog}
                   >
                     <ArrowTopRightOnSquareIcon className="mr-1 h-3 w-3" />
