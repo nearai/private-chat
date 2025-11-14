@@ -14,7 +14,6 @@ export const useModels = (options?: UseModelsOptions) => {
     queryFn: async () => {
       const models = await modelsClient.getModels();
       if (models.length > 0) {
-        console.log("models", models);
         const selectedDefaultModel = models.find((model) => model.id === DEFAULT_MODEL);
         if (selectedDefaultModel) {
           setSelectedModels([selectedDefaultModel.id]);

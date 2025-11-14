@@ -164,7 +164,6 @@ const Home = ({
   }
 
   const currentMessages = combineMessages(conversationData?.data ?? []);
-  console.log("currentMessages", conversationData?.data, currentMessages);
   if (isConversationsLoading) {
     return <LoadingScreen />;
   }
@@ -197,7 +196,6 @@ const Home = ({
 
             if (message.currentStatus === MessageStatus.WEB_SEARCH) {
               const latestWebSearch = message.webSearchMessages[message.webSearchMessages.length - 1];
-              console.log("Latest web search", latestWebSearch);
               const searchQuery =
                 latestWebSearch.type === "web_search_call" && latestWebSearch.action.query
                   ? `Searching for: ${latestWebSearch.action.query}`

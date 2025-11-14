@@ -14,7 +14,6 @@ class ModelsClient extends ApiClient {
   }
 
   async getModels(): Promise<Model[]> {
-    console.log("getModels");
     const response = await this.get<ModelsPage>("/models", {
       apiVersion: "v2",
     });
