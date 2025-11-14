@@ -7,8 +7,6 @@ import { formatFileSize, getLineCount } from "@/lib/index";
 import { decodeString } from "@/lib/time";
 import type { ContentItem } from "@/types/openai";
 
-type FileItem = Extract<ContentItem, { type: "input_file" | "input_audio" | "input_image" }>;
-
 export default function FileDialog({
   file,
   smallView = false,
@@ -16,7 +14,7 @@ export default function FileDialog({
   dismissible = false,
   onDismiss = () => {},
 }: {
-  file: FileItem;
+  file: ContentItem;
   smallView?: boolean;
   loading?: boolean;
   dismissible?: boolean;

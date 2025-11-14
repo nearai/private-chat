@@ -57,7 +57,15 @@ export const generateContentFileDataForOpenAI = (file: FileContentItem): Content
 };
 
 export type ContentItem = {
-  type: "input_text" | "output_text" | "input_file" | "input_audio" | "input_image";
+  type:
+    | "input_text"
+    | "output_text"
+    | "input_file"
+    | "output_file"
+    | "input_audio"
+    | "input_image"
+    | "doc"
+    | "collection";
   text?: string;
   file_id?: string;
   audio_file_id?: string;
