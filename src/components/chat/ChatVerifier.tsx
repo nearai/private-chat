@@ -52,7 +52,7 @@ const ChatVerifier: React.FC = () => {
           parentId: null,
           childrenIds: [],
           role: "assistant",
-          content: extractMessageContent(item, "output_text"),
+          content: extractMessageContent(item.content, "output_text"),
           timestamp: item.created_at ?? Date.now(),
           models: [],
           model: item.model,

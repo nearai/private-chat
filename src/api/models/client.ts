@@ -16,7 +16,6 @@ class ModelsClient extends ApiClient {
     const response = await this.get<ModelsResponse>("/model/list", {
       apiVersion: "v2",
     });
-    console.log("response", response);
     return response.models as unknown as ModelV1[];
   }
 }
