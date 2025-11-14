@@ -236,10 +236,18 @@ export class ApiClient {
                     currentConversationData.status = data.item.status;
                   }
                   if (currentConversationData?.type === "message") {
-                    const item = data.item as ResponseOutputMessageItem;
-                    currentConversationData.content = item.content;
-                    currentConversationData.model = item.model ?? streamModel;
-                    currentConversationData.response_id = item.response_id;
+                    const message = data.item as ResponseOutputMessageItem;
+                    currentConversationData.model = message.model ?? streamModel;
+                    currentConversationData.response_id = message.response_id;
+
+                    currentConversationData.content = message.content || [];
+                    // filter empty response messages
+                    if (
+                      currentConversationData.content[0].type === "output_text" &&
+                      currentConversationData.content[0].text === ""
+                    ) {
+                      draft.data = draft.data?.filter((item) => item.id !== message.id);
+                    }
                   }
                   break;
                 }
@@ -255,7 +263,6 @@ export class ApiClient {
           case "response.output_item.added":
             updateConversationData((draft) => {
               const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
-
               switch (data.item.type) {
                 case "reasoning":
                   draft.last_id = data.item.id;

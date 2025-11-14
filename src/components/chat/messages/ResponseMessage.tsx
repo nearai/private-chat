@@ -274,7 +274,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
             ) : (
               <div className="relative flex w-full flex-col" id="response-content-container">
                 {messageContent === "" ? (
-                  <div className="text-gray-500 dark:text-gray-400">
+                  <div className="text-gray-500 dark:text-gray-400" id={`empty-message-${message.id}`}>
                     {webSearchEnabled ? "Generating search query..." : "Generating response..."}
                   </div>
                 ) : messageContent ? (
