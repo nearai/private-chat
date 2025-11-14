@@ -436,7 +436,9 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
                     onClick={openVerifySignatureDialog}
                   >
                     <ArrowTopRightOnSquareIcon className="mr-1 h-3 w-3" />
-                    {t("Verify the ECDSA Signature")}
+                    {verificationStatus[selectedMessageId] === false
+                      ? t("Invalid ECDSA Signature")
+                      : t("Verified ECDSA Signature")}
                   </button>
                 )}
 
