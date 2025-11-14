@@ -8,12 +8,24 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { Message } from "@/types";
+import {
+  type ConversationModelOutput,
+  ConversationTypes,
+  type ConversationUserInput,
+  type ConversationWebSearchCall,
+} from "@/types";
+import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
 
 interface MessagesVerifierProps {
   history: {
-    messages: Record<string, Message>;
+    messages: Record<
+      string,
+      {
+        content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+        chatCompletionId: string;
+      }
+    >;
     currentId: string | null;
   };
   chatId?: string | null;
@@ -41,7 +53,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
-    return Object.values(history.messages).filter((message) => message.role === "assistant" && message.done === true);
+    return Object.values(history.messages);
   }, [history]);
 
   useEffect(() => {
@@ -92,7 +104,6 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
 
   const messageList = viewMore ? chatCompletions : chatCompletions.slice(0, 2);
 
-  // Function to fetch message signature
   const fetchMessageSignature = useCallback(
     async (msgId: string) => {
       const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -104,7 +115,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
       setLoadingSignatures((prev) => new Set(prev).add(msg.chatCompletionId!));
 
       try {
-        const data = await nearAIClient.getMessageSignature(msg.model || "gpt-3.5-turbo", msg.chatCompletionId);
+        const model = msg.content[0].model;
+        const data = await nearAIClient.getMessageSignature(model || "gpt-3.5-turbo", msg.chatCompletionId);
         if (!data || !data.signature) {
           const errorMsg = data?.detail || data?.message || "No signature data found for this message";
           setErrorSignatures((prev) => ({
@@ -297,6 +309,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
     // Fetch signatures for messages that don't have them yet
     chatCompletions.forEach((message) => {
       if (message.chatCompletionId && !messagesSignatures[message.chatCompletionId]) {
+        console.log(message);
         fetchMessageSignature(message.chatCompletionId);
       }
     });
@@ -305,6 +318,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
 
   useEffect(() => {
     if (selectedMessageId) {
+      console.log(selectedMessageId);
       fetchMessageSignature(selectedMessageId);
       verifyLoadedSignature(selectedMessageId);
     }
@@ -327,13 +341,17 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
           </p>
 
           {messageList.map((message, index) => {
+            const content = message.content
+              .filter((item) => item.type === ConversationTypes.MESSAGE)
+              .map((item) => extractMessageContent(item.content, "output_text"))
+              .join("\n");
             const messageId = message.chatCompletionId!;
             const isNotVerified = verificationStatus[messageId] === false;
             const isVerifying =
               verificationStatus[messageId] === undefined &&
               (loadingSignatures.has(messageId) || !messagesSignatures[messageId]);
             const isVerified = verificationStatus[messageId] === true;
-
+            console.log(content);
             return (
               <div
                 key={`message-verification-${message.chatCompletionId}-${index}`}
@@ -395,7 +413,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
                       selectedMessageId === message.chatCompletionId ? "dark:text-white" : ""
                     }`}
                   >
-                    {message.content}
+                    {content}
                   </p>
                   <p className="text-gray-500 text-xs dark:text-[rgba(248,248,248,0.64)]">
                     {t("ID")}: {message.chatCompletionId}

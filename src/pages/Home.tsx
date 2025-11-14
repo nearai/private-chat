@@ -177,7 +177,6 @@ const Home = ({
         className="flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500"
       >
         {currentMessages.map((message, idx) => {
-          // Handle user messages
           if (message.type === "message" && message.role === "user") {
             return (
               <UserMessage

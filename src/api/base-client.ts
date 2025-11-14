@@ -299,11 +299,12 @@ export class ApiClient {
                   const extendedData = data.item as Responses.ResponseFunctionWebSearch & {
                     action: SearchAction;
                     created_at: number;
+                    response_id: string;
                   };
                   const webSearchItem: ConversationWebSearchCall = {
                     id: data.item.id,
                     type: ConversationTypes.WEB_SEARCH_CALL,
-                    response_id: data.item.id,
+                    response_id: extendedData.response_id,
                     next_response_ids: [],
                     created_at: extendedData.created_at,
                     status: "pending",
@@ -318,11 +319,14 @@ export class ApiClient {
                   if (prevMessage?.status === "pending") {
                     break;
                   }
-                  const extendedData = data.item as Responses.ResponseOutputMessage & { created_at: number };
+                  const extendedData = data.item as Responses.ResponseOutputMessage & {
+                    created_at: number;
+                    response_id: string;
+                  };
                   const messageItem: ConversationModelOutput = {
                     id: data.item.id,
                     type: ConversationTypes.MESSAGE,
-                    response_id: data.item.id,
+                    response_id: extendedData.response_id,
                     next_response_ids: [],
                     created_at: extendedData.created_at,
                     status: "pending",

@@ -11,8 +11,7 @@ import SafeLogo from "@/assets/images/safe.svg";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { Message } from "@/types";
-import { extractMessageContent } from "@/types/openai";
+import type { ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
 import MessagesVerifier from "./MessagesVerifier";
 import ModelVerifier from "./ModelVerifier";
 import type { VerificationStatus } from "./types";
@@ -42,30 +41,46 @@ const ChatVerifier: React.FC = () => {
       };
     }
 
-    const messages: Record<string, Message> = {};
+    const messages = [];
     let currentId: string | null = null;
+    const responseItems = conversationData.data.reduce(
+      (acc, item) => {
+        if (acc[item.response_id]) {
+          acc[item.response_id].content.push(item);
+        } else {
+          acc[item.response_id] = { content: [item] };
+        }
 
-    conversationData.data.forEach((item) => {
-      if (item.type === "message" && item.role === "assistant" && item.status === "completed") {
-        messages[item.id] = {
-          id: item.id,
-          parentId: null,
-          childrenIds: [],
-          role: "assistant",
-          content: extractMessageContent(item.content, "output_text"),
-          timestamp: item.created_at ?? Date.now(),
-          models: [],
-          model: item.model,
-          chatCompletionId: item.response_id ?? item.id, // Map response_id to chatCompletionId
-          done: true,
-        };
+        return acc;
+      },
+      {} as Record<string, { content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[] }>
+    );
 
-        currentId = item.id;
+    for (const responseId in responseItems) {
+      const response = responseItems[responseId];
+      if (response.content.every((item) => item.status === "completed")) {
+        messages.push({
+          content: response.content,
+          chatCompletionId: responseId,
+        });
+        currentId = responseId;
       }
-    });
+    }
 
     return {
-      messages,
+      messages: messages.reduce(
+        (acc, item) => {
+          acc[item.chatCompletionId] = item;
+          return acc;
+        },
+        {} as Record<
+          string,
+          {
+            content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+            chatCompletionId: string;
+          }
+        >
+      ),
       currentId,
     };
   }, [conversationData]);
