@@ -76,20 +76,16 @@ class ChatClient extends ApiClient {
     });
   }
 
-  // unnecessary since we add conversation id to the response request
-  // addItemsToConversation(
-  //   conversationId: string,
-  //   items: Responses.ResponseInputItem[]
-  // ) {
-  //   console.log("addItemsToConversation", conversationId, items);
-  //   return this.post<Responses.ResponseInputItem[]>(
-  //     `/conversations/${conversationId}/items`,
-  //     { items },
-  //     {
-  //       apiVersion: "v2",
-  //     }
-  //   );
-  // }
+  addItemsToConversation(conversationId: string, items: Responses.ResponseInputItem[]) {
+    console.log("addItemsToConversation", conversationId, items);
+    return this.post<Responses.ResponseInputItem[]>(
+      `/conversations/${conversationId}/items`,
+      { items },
+      {
+        apiVersion: "v2",
+      }
+    );
+  }
 
   getConversation(id: string) {
     return this.get<Conversation>(`/conversations/${id}`, {
