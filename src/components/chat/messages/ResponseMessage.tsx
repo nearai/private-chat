@@ -59,11 +59,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const messageId = message.response_id || message.id;
 
   const handleVerificationBadgeClick = () => {
+    // Set flag to scroll to signature details
+    setShouldScrollToSignatureDetails(true);
     // Set the message ID to be selected in the verifier
     setSelectedMessageIdForVerifier(messageId);
     // Open the verification sidebar
     setIsRightSidebarOpen(true);
   };
+
   const signature = messagesSignatures[messageId];
   const isMessageCompleted = message.status === "completed";
   const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
@@ -169,14 +172,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           <div className="ml-3 flex items-center">
             {verificationStatus === "failed" ? (
               <button
-                onClick={() => {
-                  // Set flag to scroll to signature details
-                  setShouldScrollToSignatureDetails(true);
-                  // Set the message ID to be selected in the verifier
-                  setSelectedMessageIdForVerifier(messageId);
-                  // Open the verification sidebar
-                  setIsRightSidebarOpen(true);
-                }}
+                onClick={handleVerificationBadgeClick}
                 className="flex items-center gap-1 rounded border border-red-500 bg-red-50 px-1.5 py-0.5 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30"
                 title="Click to view verification details"
               >
