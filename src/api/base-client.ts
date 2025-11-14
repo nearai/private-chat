@@ -291,7 +291,6 @@ export class ApiClient {
           case "response.output_item.added":
             updateConversationData((draft) => {
               const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
-
               switch (data.item.type) {
                 case "reasoning":
                   // Reasoning items are not in the new interfaces, skip them

@@ -3,6 +3,7 @@ import type {
   ConversationCreateParams,
   ConversationUpdateParams,
 } from "openai/resources/conversations/conversations.mjs";
+import type { Responses } from "openai/resources/index.mjs";
 import { chatClient } from "../client";
 
 export const useConversation = () => {
@@ -20,8 +21,14 @@ export const useConversation = () => {
     }) => chatClient.updateConversation(conversationId, metadata),
   });
 
+  const addItemsToConversation = useMutation({
+    mutationFn: ({ conversationId, items }: { conversationId: string; items: Responses.ResponseInputItem[] }) =>
+      chatClient.addItemsToConversation(conversationId, items),
+  });
+
   return {
     createConversation,
     updateConversation,
+    addItemsToConversation,
   };
 };
