@@ -378,12 +378,12 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
                       {isNotVerified ? (
                         <span className="flex items-center gap-1 rounded border border-red-500 bg-red-50 px-2 py-0.5 text-red-700 text-xs dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
                           <XCircleIcon className="h-3 w-3" />
-                          Not Verified
+                          {t("Not Verified")}
                         </span>
                       ) : isVerifying ? (
                         <span className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-2 py-0.5 text-gray-600 text-xs dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
                           <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
-                          Verifying
+                          {t("Verifying")}
                         </span>
                       ) : isVerified ? (
                         <img src={VerifiedLogo} alt="Verified" />

@@ -43,6 +43,8 @@ export const newTranslationKeys = {
   "Verify TDX quote at TEE Explorer": "",
   "Verified ECDSA Signature": "",
   "Invalid ECDSA Signature": "",
+  "Not Verified": "",
+  Verifying: "",
   "Verifying attestation...": "",
   "Verifying confidentiality...": "",
   "View Less": "",

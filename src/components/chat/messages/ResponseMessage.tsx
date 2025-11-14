@@ -3,6 +3,7 @@ import { marked } from "marked";
 import type { ResponseOutputMessage } from "openai/resources/responses/responses.mjs";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
@@ -48,6 +49,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   showNextMessage,
   siblings,
 }) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const { settings } = useSettingsStore();
   const { messagesSignatures } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
@@ -177,12 +179,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 title="Click to view verification details"
               >
                 <XCircleIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <span className="font-medium text-red-700 text-xs dark:text-red-200">Not Verified</span>
+                <span className="font-medium text-red-700 text-xs dark:text-red-200">{t("Not Verified")}</span>
               </button>
             ) : verificationStatus === "verifying" ? (
               <div className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 dark:border-gray-700 dark:bg-gray-800/50">
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
-                <span className="font-medium text-gray-600 text-xs dark:text-gray-400">Verifying</span>
+                <span className="font-medium text-gray-600 text-xs dark:text-gray-400">{t("Verifying")}</span>
               </div>
             ) : verificationStatus === "verified" ? (
               <button
