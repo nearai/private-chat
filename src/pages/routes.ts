@@ -13,6 +13,8 @@ export const APP_ROUTES = {
   HOME: "/",
   CHAT: `/c/${CHAT_ID}`,
   WELCOME: "/welcome",
+  TERMS: "/terms",
+  PRIVACY: "/privacy",
   AUTH: "/auth/*",
   PLAYGROUND: "/playground",
   ADMIN: ADMIN_PREFIX,
