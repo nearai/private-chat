@@ -1,28 +1,105 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import IntelLogo from "@/assets/images/intel-2.svg";
 import NvidiaLogo from "@/assets/images/nvidia-2.svg";
 import SafeLogo from "@/assets/images/safe.svg";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
+import type { Message } from "@/types";
+import { extractMessageContent } from "@/types/openai";
 import MessagesVerifier from "./MessagesVerifier";
 import ModelVerifier from "./ModelVerifier";
 import type { VerificationStatus } from "./types";
 
 const ChatVerifier: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  //TODO: Use the chatId from the useLocation hook
   const { chatId } = useParams();
   const { selectedModels } = useChatStore();
+  const { data: conversationData } = useGetConversation(chatId);
 
   const { isRightSidebarOpen, setIsRightSidebarOpen } = useViewStore();
   const [showModelVerifier, setShowModelVerifier] = useState(false);
   const [modelVerificationStatus, setModelVerificationStatus] = useState<VerificationStatus | null>(null);
+
+  // Transform conversation data into history format for MessagesVerifier
+  const history = useMemo(() => {
+    if (!conversationData?.data) {
+      return {
+        messages: {},
+        currentId: null,
+      };
+    }
+
+    const messages: Record<string, Message> = {};
+    let currentId: string | null = null;
+    let lastTimestamp = 0;
+
+    conversationData.data.forEach((item) => {
+      if (item.type === "message") {
+        // Only process user and assistant messages (skip developer/system if not supported)
+        if (item.role !== "user" && item.role !== "assistant") {
+          return;
+        }
+
+        const messageId = item.id;
+        const isAssistant = item.role === "assistant";
+        const isCompleted = item.status === "completed";
+
+        // Extract text content based on role
+        const content = isAssistant
+          ? extractMessageContent(item, "output_text")
+          : extractMessageContent(item, "input_text");
+
+        // Get response_id for assistant messages (this is the chatCompletionId)
+        // response_id is available on ResponseOutputMessage (assistant messages)
+        const responseId =
+          isAssistant && "response_id" in item
+            ? String((item as { response_id?: unknown }).response_id || "")
+            : undefined;
+        const id = isAssistant && "id" in item ? String((item as { id?: unknown }).id || "") : undefined;
+
+        // Get model from the message
+        const model = "model" in item ? String((item as { model?: unknown }).model || "") : undefined;
+
+        // Get created_at timestamp (may not exist on all message types, cast to any to access)
+        const itemAny = item as { created_at?: number };
+        const timestamp = itemAny.created_at || Date.now();
+
+        // Type assertion for role since we've already filtered
+        const role = item.role === "user" ? "user" : item.role === "assistant" ? "assistant" : "system";
+
+        messages[messageId] = {
+          id: messageId,
+          parentId: null,
+          childrenIds: [],
+          role,
+          content,
+          timestamp,
+          models: [],
+          model,
+          chatCompletionId: responseId ?? id ?? undefined, // Map response_id to chatCompletionId
+          done: isCompleted,
+        };
+
+        // Set currentId to the last message (by timestamp)
+        if (timestamp > lastTimestamp) {
+          lastTimestamp = timestamp;
+          currentId = messageId;
+        }
+      }
+    });
+
+    return {
+      messages,
+      currentId,
+    };
+  }, [conversationData]);
 
   const toggleVerifier = () => {
     setIsRightSidebarOpen(!isRightSidebarOpen);
@@ -163,13 +240,7 @@ const ChatVerifier: React.FC = () => {
                   </h2>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <MessagesVerifier
-                    history={{
-                      messages: {},
-                      currentId: null,
-                    }}
-                    chatId={chatId}
-                  />
+                  <MessagesVerifier history={history} chatId={chatId} />
                 </div>
               </div>
             </div>

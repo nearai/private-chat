@@ -23,7 +23,10 @@ class NearAIClient extends ApiClient {
     signingAlgorithm: SigningAlgorithm = "ecdsa"
   ): Promise<MessageSignature> {
     return this.get<MessageSignature>(
-      `/signature/${encodeURIComponent(chatCompletionId)}?model=${encodeURIComponent(model)}&signing_algo=${encodeURIComponent(signingAlgorithm)}`
+      `/signature/${encodeURIComponent(chatCompletionId)}?model=${encodeURIComponent(model)}&signing_algo=${encodeURIComponent(signingAlgorithm)}`,
+      {
+        apiVersion: "v2",
+      }
     );
   }
 }

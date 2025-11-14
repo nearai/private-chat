@@ -17,7 +17,7 @@ interface MessagesVerifierProps {
   chatId?: string | null;
 }
 
-const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
+const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures, setMessageSignature } = useMessagesSignaturesStore();
 
@@ -47,6 +47,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
   }, [history, lastCurrentId, selectedMessageId]);
 
   const messageList = viewMore ? chatCompletions : chatCompletions.slice(0, 2);
+
+  console.log("messageList", messageList);
 
   // Function to fetch message signature
   const fetchMessageSignature = useCallback(
@@ -145,16 +147,16 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
     setSelectedSignature(null);
   };
 
-  // useEffect(() => {
-  //   setSelectedMessageId("");
-  // }, [chatId]);
+  useEffect(() => {
+    setSelectedMessageId("");
+  }, [chatId]);
 
-  // useEffect(() => {
-  //   if (selectedMessageId) {
-  //     fetchMessageSignature(selectedMessageId);
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [selectedMessageId]);
+  useEffect(() => {
+    if (selectedMessageId) {
+      fetchMessageSignature(selectedMessageId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMessageId]);
 
   return (
     <div className="h-full space-y-4 overflow-y-auto px-4 pb-4" ref={containerRef}>
