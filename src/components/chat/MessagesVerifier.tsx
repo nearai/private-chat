@@ -38,9 +38,16 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
   }, [history]);
 
   useEffect(() => {
+    console.log("select message", history?.currentId, history?.currentId && history.messages[history?.currentId]);
+    console.log("current ID", {
+      lastCurrentId,
+      historyCurrentId: history?.currentId,
+      selectedMessageId,
+    });
     if (history?.currentId && history.messages[history.currentId]?.chatCompletionId) {
       if (history.currentId !== lastCurrentId || !selectedMessageId) {
         setSelectedMessageId(history.messages[history.currentId].chatCompletionId!);
+        console.log("set selected message", history.messages[history.currentId].chatCompletionId);
       }
       setLastCurrentId(history.currentId);
     }
@@ -54,10 +61,20 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
   const fetchMessageSignature = useCallback(
     async (msgId: string) => {
       const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+      console.log("fetching 1", !token || !history || !chatCompletions.length || !msgId, {
+        token,
+        history,
+        chatCompletionsLength: chatCompletions.length,
+        msgId,
+      });
       if (!token || !history || !chatCompletions.length || !msgId) return;
       const msg = chatCompletions.find((message) => message.chatCompletionId === msgId);
+      console.log("fetching 2", !msg || !msg.chatCompletionId || messagesSignatures[msg.chatCompletionId]);
       if (!msg || !msg.chatCompletionId || messagesSignatures[msg.chatCompletionId]) return;
+      console.log("fetching 3", loadingSignatures.has(msg.chatCompletionId));
       if (loadingSignatures.has(msg.chatCompletionId)) return;
+
+      console.log("fetching message signature 2", msg.chatCompletionId);
 
       setLoadingSignatures((prev) => new Set(prev).add(msg.chatCompletionId!));
 
@@ -153,6 +170,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
 
   useEffect(() => {
     if (selectedMessageId) {
+      console.log("fetching message signature 1", selectedMessageId);
       fetchMessageSignature(selectedMessageId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

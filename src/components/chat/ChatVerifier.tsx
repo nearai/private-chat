@@ -38,49 +38,35 @@ const ChatVerifier: React.FC = () => {
 
     const messages: Record<string, Message> = {};
     let currentId: string | null = null;
-    let lastTimestamp = 0;
-
-    console.log("getting history", conversationData.data);
 
     conversationData.data.forEach((item) => {
       if (item.type === "message") {
-        // Only process user and assistant messages (skip developer/system if not supported)
-        if (item.role !== "user" && item.role !== "assistant") {
+        // Only process assistant messages
+        if (item.role !== "assistant") {
           return;
         }
 
         const messageId = item.id;
-        const isAssistant = item.role === "assistant";
         const isCompleted = item.status === "completed";
-
-        // Extract text content based on role
-        const content = isAssistant
-          ? extractMessageContent(item, "output_text")
-          : extractMessageContent(item, "input_text");
+        const content = extractMessageContent(item, "output_text");
 
         // Get response_id for assistant messages (this is the chatCompletionId)
         // response_id is available on ResponseOutputMessage (assistant messages)
         const responseId =
-          isAssistant && "response_id" in item
-            ? String((item as { response_id?: unknown }).response_id || "")
-            : undefined;
-        const id = isAssistant && "id" in item ? String((item as { id?: unknown }).id || "") : undefined;
+          "response_id" in item ? String((item as { response_id?: unknown }).response_id || "") : undefined;
+        const id = "id" in item ? String((item as { id?: unknown }).id || "") : undefined;
 
         // Get model from the message
         const model = "model" in item ? String((item as { model?: unknown }).model || "") : undefined;
 
-        // Get created_at timestamp (may not exist on all message types, cast to any to access)
-        const itemAny = item as { created_at?: number };
-        const timestamp = itemAny.created_at || Date.now();
-
-        // Type assertion for role since we've already filtered
-        const role = item.role === "user" ? "user" : item.role === "assistant" ? "assistant" : "system";
+        // Get created_at timestamp
+        const timestamp = (item as { created_at?: number }).created_at || Date.now();
 
         messages[messageId] = {
           id: messageId,
           parentId: null,
           childrenIds: [],
-          role,
+          role: "assistant",
           content,
           timestamp,
           models: [],
@@ -89,9 +75,7 @@ const ChatVerifier: React.FC = () => {
           done: isCompleted,
         };
 
-        // Set currentId to the last message (by timestamp)
-        if (timestamp > lastTimestamp) {
-          lastTimestamp = timestamp;
+        if (isCompleted) {
           currentId = messageId;
         }
       }
