@@ -246,11 +246,6 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
 
     // Only scroll to message if we're not scrolling to signature details
     if (selectedMessageId && !skipScrollToMessageRef.current && !shouldScrollToSignatureDetails) {
-      console.log("Scrolling to selected message", {
-        selectedMessageId,
-        skipScrollToMessageRef: skipScrollToMessageRef.current,
-        shouldScrollToSignatureDetails,
-      });
       scrollToSelectedMessage();
     }
   }, [shouldScrollToSignatureDetails, selectedMessageId, scrollToSignatureDetails, scrollToSelectedMessage]);

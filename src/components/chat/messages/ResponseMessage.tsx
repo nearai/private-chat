@@ -69,7 +69,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const signature = messagesSignatures[messageId];
   const isMessageCompleted = message.status === "completed";
-  const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
 
   const verificationStatus = useMemo(() => {
     // If message is not completed, don't show verification status
@@ -78,6 +77,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     }
 
     // If no signature yet, show "Verifying"
+    const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
     if (!hasSignature) {
       return "verifying";
     }
@@ -89,7 +89,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, isMessageCompleted, hasSignature]);
+  }, [signature, isMessageCompleted]);
 
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
