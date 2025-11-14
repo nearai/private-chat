@@ -259,7 +259,36 @@ export interface ChatCompletionStreamResponse {
   }>;
 }
 
-// Model types
+export interface ModelsResponse {
+  models: ModelV1[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface ModelV1 {
+  modelId: string;
+  inputCostPerToken: {
+    amount: number;
+    scale: number;
+    currency: string;
+  };
+  outputCostPerToken: {
+    amount: number;
+    scale: number;
+    currency: string;
+  };
+  metadata: {
+    verifiable: boolean;
+    contextLength: number;
+    modelDisplayName: string;
+    modelDescription: string;
+    modelIcon: string;
+    aliases: string[];
+  };
+}
+
+// Previous Model type (v0)
 export interface Model {
   id: string;
   object: string;
@@ -419,10 +448,10 @@ export interface ViewStore {
 export interface ChatStore {
   webSearchEnabled: boolean;
   setWebSearchEnabled: (webSearchEnabled: boolean) => void;
-  models: Model[];
+  models: ModelV1[];
   selectedModels: string[];
 
-  setModels: (models: Model[]) => void;
+  setModels: (models: ModelV1[]) => void;
   setSelectedModels: (models: string[]) => void;
 }
 

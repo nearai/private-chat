@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ChatStore, Model } from "../types";
+import type { ChatStore, ModelV1 } from "../types";
 
 export const useChatStore = create<ChatStore>((set) => ({
   webSearchEnabled: true,
@@ -7,6 +7,6 @@ export const useChatStore = create<ChatStore>((set) => ({
   models: [],
   selectedModels: [],
 
-  setModels: (models: Model[]) => set({ models }),
+  setModels: (models: ModelV1[]) => set({ models }),
   setSelectedModels: (models: string[]) => set({ selectedModels: models }),
 }));

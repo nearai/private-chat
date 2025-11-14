@@ -8,19 +8,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
-import type { Model } from "@/types";
+import type { ModelV1 } from "@/types";
 
 interface ModelSelectorItemProps {
   value: string;
   index: number;
-  availableModels: Model[];
+  availableModels: ModelV1[];
   onChange: (index: number, modelId: string) => void;
   onRemove: (index: number) => void;
   showRemove: boolean;
 }
 
 function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, showRemove }: ModelSelectorItemProps) {
-  const selectedModelObj = value ? availableModels.find((m) => m.id === value) : null;
+  const selectedModelObj = value ? availableModels.find((m) => m.modelId === value) : null;
 
   return (
     <div className="flex w-full max-w-fit">
@@ -34,7 +34,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                 aria-label="Select a model"
               >
                 <span className="self-end pb-[1px] font-normal text-xs opacity-50">Model</span>
-                {selectedModelObj ? selectedModelObj.id : "Select a model"}
+                {selectedModelObj ? selectedModelObj.modelId : "Select a model"}
                 <ChevronDown className="ml-2 size-3 self-center" strokeWidth={2.5} />
               </button>
             </DropdownMenuTrigger>
@@ -47,12 +47,12 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                   <div className="block px-3 py-2 text-gray-700 text-sm dark:text-gray-100">No results found</div>
                 ) : (
                   availableModels.map((model) => {
-                    const isSelected = value === model.id;
+                    const isSelected = value === model.modelId;
 
                     return (
                       <DropdownMenuItem
-                        key={model.id}
-                        onClick={() => onChange(index, model.id)}
+                        key={model.modelId}
+                        onClick={() => onChange(index, model.modelId)}
                         className={cn(
                           "mb-1 flex w-full cursor-pointer select-none flex-row items-center rounded-button rounded-lg py-2 pr-1.5 pl-3 text-left font-medium text-gray-700 text-sm outline-hidden transition-all duration-75 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800",
                           isSelected && "bg-gray-100 dark:bg-gray-800"
@@ -62,13 +62,9 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                           <div className="flex items-center gap-2">
                             <div className="flex min-w-fit items-center">
                               <div className="mr-2 flex size-5 items-center justify-center">
-                                <img
-                                  src={model.info?.meta?.profile_image_url ?? OpenAIIcon}
-                                  alt="Model"
-                                  className="size-3.5"
-                                />
+                                <img src={model.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-3.5" />
                               </div>
-                              <div className="line-clamp-1">{model.id}</div>
+                              <div className="line-clamp-1">{model.modelId}</div>
                             </div>
                           </div>
                         </div>
@@ -141,7 +137,7 @@ export default function ModelSelector() {
   const getAvailableModelsForIndex = (currentIndex: number) => {
     const otherSelectedModels = selectedModels.filter((_, idx) => idx !== currentIndex);
 
-    return models.filter((modelId) => !otherSelectedModels.includes(modelId.id));
+    return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
   const disabledAdd = selectedModels.length >= models.length;

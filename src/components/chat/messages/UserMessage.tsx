@@ -2,8 +2,6 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileDialog from "@/components/common/dialogs/FileDialog";
-// import FileItem from "@/components/FileItem";
-// import FileItem from "@/components/FileItem";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationUserInput } from "@/types";
 import { extractFiles, extractMessageContent } from "@/types/openai";
