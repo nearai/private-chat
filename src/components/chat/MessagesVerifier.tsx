@@ -380,15 +380,13 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
                           <XCircleIcon className="h-3 w-3" />
                           {t("Not Verified")}
                         </span>
-                      ) : isVerifying ? (
+                      ) : isVerified ? (
+                        <img src={VerifiedLogo} alt="Verified" />
+                      ) : (
                         <span className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-2 py-0.5 text-gray-600 text-xs dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
                           <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
                           {t("Verifying")}
                         </span>
-                      ) : isVerified ? (
-                        <img src={VerifiedLogo} alt="Verified" />
-                      ) : (
-                        <img src={VerifiedLogo} alt="Verified" />
                       )}
                     </div>
                   </h4>

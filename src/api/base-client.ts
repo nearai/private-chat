@@ -243,6 +243,7 @@ export class ApiClient {
                     currentConversationData.content = message.content || [];
                     // filter empty response messages
                     if (
+                      currentConversationData.content.length > 0 &&
                       currentConversationData.content[0].type === "output_text" &&
                       currentConversationData.content[0].text === ""
                     ) {
