@@ -395,6 +395,10 @@ export interface ViewStore {
   setIsLeftSidebarOpen: (isOpen: boolean) => void;
   isRightSidebarOpen: boolean;
   setIsRightSidebarOpen: (isOpen: boolean) => void;
+  selectedMessageIdForVerifier: string | null;
+  setSelectedMessageIdForVerifier: (messageId: string | null) => void;
+  shouldScrollToSignatureDetails: boolean;
+  setShouldScrollToSignatureDetails: (should: boolean) => void;
 }
 
 export interface ChatStore {

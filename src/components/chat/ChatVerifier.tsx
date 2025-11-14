@@ -23,7 +23,13 @@ const ChatVerifier: React.FC = () => {
   const { selectedModels } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
 
-  const { isRightSidebarOpen, setIsRightSidebarOpen } = useViewStore();
+  const {
+    isRightSidebarOpen,
+    setIsRightSidebarOpen,
+    selectedMessageIdForVerifier,
+    setSelectedMessageIdForVerifier,
+    setShouldScrollToSignatureDetails,
+  } = useViewStore();
   const [showModelVerifier, setShowModelVerifier] = useState(false);
   const [modelVerificationStatus, setModelVerificationStatus] = useState<VerificationStatus | null>(null);
 
@@ -83,8 +89,23 @@ const ChatVerifier: React.FC = () => {
   useEffect(() => {
     if (!isRightSidebarOpen) {
       setModelVerificationStatus(null);
+      // Clear the selected message ID when sidebar closes
+      setSelectedMessageIdForVerifier(null);
+      // Clear the scroll flag when sidebar closes
+      setShouldScrollToSignatureDetails(false);
     }
-  }, [isRightSidebarOpen]);
+  }, [isRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails]);
+
+  // Clear the selected message ID after it's been used
+  useEffect(() => {
+    if (selectedMessageIdForVerifier && isRightSidebarOpen) {
+      // Clear it after a short delay to allow MessagesVerifier to pick it up
+      const timer = setTimeout(() => {
+        setSelectedMessageIdForVerifier(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedMessageIdForVerifier, isRightSidebarOpen, setSelectedMessageIdForVerifier]);
 
   return (
     <div className="relative z-50">
@@ -203,7 +224,11 @@ const ChatVerifier: React.FC = () => {
                   </h2>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <MessagesVerifier history={history} chatId={chatId} />
+                  <MessagesVerifier
+                    history={history}
+                    chatId={chatId}
+                    initialSelectedMessageId={selectedMessageIdForVerifier || undefined}
+                  />
                 </div>
               </div>
             </div>

@@ -7,6 +7,7 @@ import VerifiedLogo from "@/assets/images/verified.svg";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
+import { useViewStore } from "@/stores/useViewStore";
 import type { Message } from "@/types";
 import VerifySignatureDialog from "./VerifySignatureDialog";
 
@@ -16,11 +17,13 @@ interface MessagesVerifierProps {
     currentId: string | null;
   };
   chatId?: string | null;
+  initialSelectedMessageId?: string;
 }
 
-const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) => {
+const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, initialSelectedMessageId }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures, setMessageSignature } = useMessagesSignaturesStore();
+  const { shouldScrollToSignatureDetails } = useViewStore();
 
   const [loadingSignatures, setLoadingSignatures] = useState<Set<string>>(new Set());
   const [errorSignatures, setErrorSignatures] = useState<Record<string, string>>({});
@@ -33,6 +36,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
   const [viewMore, setViewMore] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const signatureDetailsRef = useRef<HTMLDivElement>(null);
+  const skipScrollToMessageRef = useRef(false);
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
@@ -40,13 +45,50 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
   }, [history]);
 
   useEffect(() => {
-    if (history?.currentId && history.messages[history.currentId]?.chatCompletionId) {
-      if (history.currentId !== lastCurrentId || !selectedMessageId) {
-        setSelectedMessageId(history.messages[history.currentId].chatCompletionId!);
+    // If initialSelectedMessageId is provided, use it (this happens when user clicks a badge)
+    if (initialSelectedMessageId) {
+      // Check if we should skip scrolling to message (when clicking "Not Verified")
+      if (shouldScrollToSignatureDetails) {
+        skipScrollToMessageRef.current = true;
       }
-      setLastCurrentId(history.currentId);
+      setSelectedMessageId(initialSelectedMessageId);
+      // If the selected message is not in the first 2 messages, expand "View More"
+      const messageIndex = chatCompletions.findIndex((msg) => msg.chatCompletionId === initialSelectedMessageId);
+      if (messageIndex >= 2) {
+        setViewMore(true);
+      }
+      // Don't return early - we need to check shouldScrollToSignatureDetails below
+    } else {
+      // Otherwise, use currentId from history
+      if (history?.currentId && history.messages[history.currentId]?.chatCompletionId) {
+        if (history.currentId !== lastCurrentId || !selectedMessageId) {
+          const newSelectedId = history.messages[history.currentId].chatCompletionId!;
+          setSelectedMessageId(newSelectedId);
+          // If the selected message is not in the first 2 messages, expand "View More"
+          const messageIndex = chatCompletions.findIndex((msg) => msg.chatCompletionId === newSelectedId);
+          if (messageIndex >= 2) {
+            setViewMore(true);
+          }
+        }
+        setLastCurrentId(history.currentId);
+      }
     }
-  }, [history, lastCurrentId, selectedMessageId]);
+  }, [
+    history,
+    lastCurrentId,
+    selectedMessageId,
+    initialSelectedMessageId,
+    chatCompletions,
+    shouldScrollToSignatureDetails,
+  ]);
+
+  // Clear the initialSelectedMessageId after it's been used
+  useEffect(() => {
+    if (initialSelectedMessageId && selectedMessageId === initialSelectedMessageId) {
+      // Message has been selected, we can clear the initial value
+      // This will be handled by the parent component
+    }
+  }, [initialSelectedMessageId, selectedMessageId]);
 
   const messageList = viewMore ? chatCompletions : chatCompletions.slice(0, 2);
 
@@ -138,11 +180,80 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
     }, 300);
   }, [selectedMessageId]);
 
+  const scrollToSignatureDetails = useCallback(() => {
+    if (!signatureDetailsRef.current || !containerRef.current) return;
+
+    setTimeout(() => {
+      const scrollContainer = containerRef.current?.closest(".overflow-y-auto") as HTMLElement;
+      if (scrollContainer && signatureDetailsRef.current) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elementRect = signatureDetailsRef.current.getBoundingClientRect();
+
+        // Check if the element is already visible in the viewport
+        const isVisible =
+          elementRect.top >= containerRect.top &&
+          elementRect.bottom <= containerRect.bottom &&
+          elementRect.left >= containerRect.left &&
+          elementRect.right <= containerRect.right;
+
+        // Only scroll if the element is not fully visible
+        if (!isVisible) {
+          const scrollTop =
+            signatureDetailsRef.current.offsetTop -
+            scrollContainer.offsetTop -
+            containerRect.height / 2 +
+            elementRect.height / 2;
+
+          scrollContainer.scrollTo({
+            top: scrollTop,
+            behavior: "smooth",
+          });
+        }
+      } else if (signatureDetailsRef.current) {
+        // Check if element is already in viewport before scrolling
+        const rect = signatureDetailsRef.current.getBoundingClientRect();
+        const isVisible =
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+          rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+        if (!isVisible) {
+          signatureDetailsRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest",
+          });
+        }
+      }
+    }, 400); // Slightly longer delay to ensure message is selected first
+  }, []);
+
+  // Scroll to signature details when flag is set (priority over scrolling to message)
   useEffect(() => {
-    if (selectedMessageId) {
+    if (shouldScrollToSignatureDetails && selectedMessageId) {
+      // Set ref to skip scrolling to message
+      skipScrollToMessageRef.current = true;
+      scrollToSignatureDetails();
+      // Reset ref after a delay
+      setTimeout(() => {
+        skipScrollToMessageRef.current = false;
+      }, 500);
+      return;
+    } else {
+      skipScrollToMessageRef.current = shouldScrollToSignatureDetails;
+    }
+
+    // Only scroll to message if we're not scrolling to signature details
+    if (selectedMessageId && !skipScrollToMessageRef.current && !shouldScrollToSignatureDetails) {
+      console.log("Scrolling to selected message", {
+        selectedMessageId,
+        skipScrollToMessageRef: skipScrollToMessageRef.current,
+        shouldScrollToSignatureDetails,
+      });
       scrollToSelectedMessage();
     }
-  }, [selectedMessageId, scrollToSelectedMessage]);
+  }, [shouldScrollToSignatureDetails, selectedMessageId, scrollToSignatureDetails, scrollToSelectedMessage]);
 
   const openVerifySignatureDialog = () => {
     if (!messagesSignatures[selectedMessageId]) return;
@@ -221,7 +332,13 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
           </p>
 
           {messageList.map((message, index) => {
-            const isNotVerified = verificationStatus[message.chatCompletionId!] === false;
+            const messageId = message.chatCompletionId!;
+            const isNotVerified = verificationStatus[messageId] === false;
+            const isVerifying =
+              verificationStatus[messageId] === undefined &&
+              (loadingSignatures.has(messageId) || !messagesSignatures[messageId]);
+            const isVerified = verificationStatus[messageId] === true;
+
             return (
               <div
                 key={message.chatCompletionId}
@@ -230,13 +347,30 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
                     ? `border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30 ${
                         selectedMessageId === message.chatCompletionId ? "ring-1 ring-red-700 dark:bg-red-900/30" : ""
                       }`
-                    : `border-green-200 bg-green-50 hover:bg-green-100 dark:border-[rgba(0,236,151,0.16)] dark:bg-[rgba(0,236,151,0.08)] dark:hover:bg-green-900/30 ${
-                        selectedMessageId === message.chatCompletionId
-                          ? "ring-1 ring-green-700 dark:bg-[rgba(0,236,151,0.15)]"
-                          : ""
-                      }`
+                    : isVerifying
+                      ? `border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-gray-800/70 ${
+                          selectedMessageId === message.chatCompletionId
+                            ? "ring-1 ring-gray-700 dark:bg-gray-800/70"
+                            : ""
+                        }`
+                      : `border-green-200 bg-green-50 hover:bg-green-100 dark:border-[rgba(0,236,151,0.16)] dark:bg-[rgba(0,236,151,0.08)] dark:hover:bg-green-900/30 ${
+                          selectedMessageId === message.chatCompletionId
+                            ? "ring-1 ring-green-700 dark:bg-[rgba(0,236,151,0.15)]"
+                            : ""
+                        }`
                 }`}
-                onClick={() => message.chatCompletionId && setSelectedMessageId(message.chatCompletionId)}
+                onClick={() => {
+                  if (message.chatCompletionId) {
+                    setSelectedMessageId(message.chatCompletionId);
+                    // If the selected message is not in the first 2 messages, expand "View More"
+                    const messageIndex = chatCompletions.findIndex(
+                      (msg) => msg.chatCompletionId === message.chatCompletionId
+                    );
+                    if (messageIndex >= 2) {
+                      setViewMore(true);
+                    }
+                  }
+                }}
                 title="Click to view signature details"
                 data-message-id={message.chatCompletionId}
               >
@@ -246,11 +380,18 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
                       {t("Message")} {index + 1}
                     </span>
                     <div className="flex items-center space-x-1">
-                      {verificationStatus[message.chatCompletionId!] === false ? (
+                      {isNotVerified ? (
                         <span className="flex items-center gap-1 rounded border border-red-500 bg-red-50 px-2 py-0.5 text-red-700 text-xs dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
                           <XCircleIcon className="h-3 w-3" />
                           Not Verified
                         </span>
+                      ) : isVerifying ? (
+                        <span className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-2 py-0.5 text-gray-600 text-xs dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
+                          <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
+                          Verifying
+                        </span>
+                      ) : isVerified ? (
+                        <img src={VerifiedLogo} alt="Verified" />
                       ) : (
                         <img src={VerifiedLogo} alt="Verified" />
                       )}
@@ -281,7 +422,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId }) 
             </button>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-3" ref={signatureDetailsRef}>
             <div className="flex items-center justify-between">
               <p className="mt-4 text-gray-900 text-xs uppercase dark:text-[rgba(161,161,161,1)]">
                 {t("Signature Details")}
