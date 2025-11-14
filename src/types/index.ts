@@ -36,8 +36,20 @@ export interface ConversationInfo {
   };
 }
 
+export type ResponseOutputMessageItem = ResponseOutputMessage & {
+  model?: string;
+  response_id?: string;
+  created_at?: number;
+};
+
+export type ConversationItem =
+  | ResponseInputMessageItem
+  | ResponseFunctionWebSearch
+  | ResponseReasoningItem
+  | ResponseOutputMessageItem;
+
 export interface ConversationItemsResponse {
-  data: (ResponseInputMessageItem | ResponseFunctionWebSearch | ResponseReasoningItem | ResponseOutputMessage)[];
+  data: ConversationItem[];
   first_id: string;
   has_more: boolean;
   last_id: string;
@@ -46,7 +58,7 @@ export interface ConversationItemsResponse {
 
 export interface Conversation extends OpenAIConversation {
   // ConversationItemsPage properties
-  data?: (ResponseInputMessageItem | ResponseFunctionWebSearch | ResponseReasoningItem | ResponseOutputMessage)[];
+  data?: ConversationItem[];
   has_more?: boolean;
   last_id?: string;
 
@@ -383,6 +395,10 @@ export interface ViewStore {
   setIsLeftSidebarOpen: (isOpen: boolean) => void;
   isRightSidebarOpen: boolean;
   setIsRightSidebarOpen: (isOpen: boolean) => void;
+  selectedMessageIdForVerifier: string | null;
+  setSelectedMessageIdForVerifier: (messageId: string | null) => void;
+  shouldScrollToSignatureDetails: boolean;
+  setShouldScrollToSignatureDetails: (should: boolean) => void;
 }
 
 export interface ChatStore {

@@ -1,3 +1,4 @@
+import { DEFAULT_SIGNING_ALGO } from "@/lib/constants";
 import { ApiClient } from "../base-client";
 
 class NearAIClient extends ApiClient {
@@ -12,16 +13,21 @@ class NearAIClient extends ApiClient {
   }
 
   async getModelAttestationReport(model: string): Promise<ModelAttestationReport> {
-    return this.get<ModelAttestationReport>(`/attestation/report?model=${encodeURIComponent(model)}`);
+    return this.get<ModelAttestationReport>(`/attestation/report?model=${encodeURIComponent(model)}`, {
+      apiVersion: "v2",
+    });
   }
 
   async getMessageSignature(
     model: string,
     chatCompletionId: string,
-    signingAlgorithm: SigningAlgorithm = "ecdsa"
+    signingAlgorithm: SigningAlgorithm = DEFAULT_SIGNING_ALGO
   ): Promise<MessageSignature> {
     return this.get<MessageSignature>(
-      `/signature/${encodeURIComponent(chatCompletionId)}?model=${encodeURIComponent(model)}&signing_algo=${encodeURIComponent(signingAlgorithm)}`
+      `/signature/${encodeURIComponent(chatCompletionId)}?model=${encodeURIComponent(model)}&signing_algo=${encodeURIComponent(signingAlgorithm)}`,
+      {
+        apiVersion: "v2",
+      }
     );
   }
 }
@@ -33,15 +39,15 @@ export type Address = `0x${string}`;
 
 export type SigningAlgorithm = "ecdsa";
 
-export type ModelAttestationReport = {
+export type ModelAttestation = {
   signing_address: Address;
   nvidia_payload: string;
   intel_quote: string;
-  all_attestations: Array<{
-    signing_address: Address;
-    nvidia_payload: string;
-    intel_quote: string;
-  }>;
+};
+
+export type ModelAttestationReport = {
+  model_attestations: Array<ModelAttestation>;
+  all_attestations?: Array<ModelAttestation>;
 };
 
 export type MessageSignature = {

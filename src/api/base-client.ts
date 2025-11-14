@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import type { Conversation, ConversationInfo } from "@/types";
+import type { Conversation, ConversationInfo, ResponseOutputMessageItem } from "@/types";
 import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK } from "./constants";
 import { queryKeys } from "./query-keys";
 
@@ -185,6 +185,7 @@ export class ApiClient {
         if (!options.queryClient) return;
         const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
         const conversationId = (body as { conversation?: string })?.conversation || "";
+        const streamModel = (body as { model?: string })?.model;
 
         function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
           options.queryClient?.setQueryData(
@@ -226,23 +227,31 @@ export class ApiClient {
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
-              const currentConversationData = draft.data?.find((item) => item.id === data.item.id);
               switch (data.item.type) {
-                case "message":
+                case "message": {
+                  const currentConversationData = draft.data?.find(
+                    (item) => item.id === data.item.id
+                  ) as ResponseOutputMessageItem;
                   if (currentConversationData) {
                     currentConversationData.status = data.item.status;
                   }
                   if (currentConversationData?.type === "message") {
-                    currentConversationData.content = data.item.content || [];
+                    const message = data.item as ResponseOutputMessageItem;
+                    currentConversationData.model = message.model ?? streamModel;
+                    currentConversationData.response_id = message.response_id;
+
+                    currentConversationData.content = message.content || [];
                     // filter empty response messages
                     if (
+                      currentConversationData.content.length > 0 &&
                       currentConversationData.content[0].type === "output_text" &&
                       currentConversationData.content[0].text === ""
                     ) {
-                      draft.data = draft.data?.filter((item) => item.id !== data.item.id);
+                      draft.data = draft.data?.filter((item) => item.id !== message.id);
                     }
                   }
                   break;
+                }
                 case "reasoning":
                 case "web_search_call":
                   draft.data = draft.data?.filter((item) => item.id !== data.item.id);
@@ -278,10 +287,11 @@ export class ApiClient {
                     } as typeof data.item,
                   ];
                   break;
-                case "message":
+                case "message": {
                   if (prevMessage?.status === "in_progress") {
                     break;
                   }
+
                   draft.data = [
                     ...(draft.data ?? []),
                     {
@@ -300,6 +310,7 @@ export class ApiClient {
                   ];
                   draft.last_id = data.item.id;
                   break;
+                }
                 default:
                   break;
               }

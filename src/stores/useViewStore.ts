@@ -11,6 +11,10 @@ export const useViewStore = create<ViewStore>()(
       setIsLeftSidebarOpen: (isOpen: boolean) => set({ isLeftSidebarOpen: isOpen }),
       isRightSidebarOpen: false,
       setIsRightSidebarOpen: (isOpen: boolean) => set({ isRightSidebarOpen: isOpen }),
+      selectedMessageIdForVerifier: null,
+      setSelectedMessageIdForVerifier: (messageId: string | null) => set({ selectedMessageIdForVerifier: messageId }),
+      shouldScrollToSignatureDetails: false,
+      setShouldScrollToSignatureDetails: (should: boolean) => set({ shouldScrollToSignatureDetails: should }),
     }),
     {
       name: "view-storage",

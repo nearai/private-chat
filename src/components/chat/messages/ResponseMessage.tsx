@@ -1,22 +1,28 @@
+import { XCircleIcon } from "@heroicons/react/24/outline";
 import { marked } from "marked";
 import type { ResponseOutputMessage } from "openai/resources/responses/responses.mjs";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
+import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import markedExtension from "@/lib/utils/extension";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
+import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useViewStore } from "@/stores/useViewStore";
 import { extractCitations, extractMessageContent } from "@/types/openai";
 import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
 
 interface MessageItem extends ResponseOutputMessage {
   created_at?: number;
+  response_id?: string;
 }
 
 interface ResponseMessageProps {
@@ -43,10 +49,49 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   showNextMessage,
   siblings,
 }) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const { settings } = useSettingsStore();
+  const { messagesSignatures } = useMessagesSignaturesStore();
+  const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
 
   const [edit, setEdit] = useState(false);
   const [editedContent, setEditedContent] = useState("");
+
+  // Get message ID for verification
+  const messageId = message.response_id || message.id;
+
+  const handleVerificationBadgeClick = () => {
+    // Set flag to scroll to signature details
+    setShouldScrollToSignatureDetails(true);
+    // Set the message ID to be selected in the verifier
+    setSelectedMessageIdForVerifier(messageId);
+    // Open the verification sidebar
+    setIsRightSidebarOpen(true);
+  };
+
+  const signature = messagesSignatures[messageId];
+  const isMessageCompleted = message.status === "completed";
+
+  const verificationStatus = useMemo(() => {
+    // If message is not completed, don't show verification status
+    if (!isMessageCompleted) {
+      return null;
+    }
+
+    // If no signature yet, show "Verifying"
+    const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
+    if (!hasSignature) {
+      return "verifying";
+    }
+
+    // Verify the signature
+    try {
+      const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
+      return isValid ? "verified" : "failed";
+    } catch {
+      return "failed";
+    }
+  }, [signature, isMessageCompleted]);
 
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -127,7 +172,29 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
           {/* Verification Badge */}
           <div className="ml-3 flex items-center">
-            <VerifiedIcon className="h-6" />
+            {verificationStatus === "failed" ? (
+              <button
+                onClick={handleVerificationBadgeClick}
+                className="flex items-center gap-1 rounded border border-red-500 bg-red-50 px-1.5 py-0.5 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30"
+                title="Click to view verification details"
+              >
+                <XCircleIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <span className="font-medium text-red-700 text-xs dark:text-red-200">{t("Not Verified")}</span>
+              </button>
+            ) : verificationStatus === "verifying" ? (
+              <div className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 dark:border-gray-700 dark:bg-gray-800/50">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
+                <span className="font-medium text-gray-600 text-xs dark:text-gray-400">{t("Verifying")}</span>
+              </div>
+            ) : verificationStatus === "verified" ? (
+              <button
+                onClick={handleVerificationBadgeClick}
+                className="transition-opacity hover:opacity-80"
+                title="Click to view verification details"
+              >
+                <VerifiedIcon className="h-6" />
+              </button>
+            ) : null}
           </div>
 
           {extendedMessageResponse.timestamp && (

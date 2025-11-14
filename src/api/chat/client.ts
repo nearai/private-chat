@@ -5,7 +5,7 @@ import type {
 } from "openai/resources/conversations/conversations.mjs";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { DEFAULT_SIGNING_ALGO, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { getTimeRange } from "@/lib/time";
 import type { Chat, ChatInfo, Conversation, ConversationItemsResponse, StartStreamProps, Tag } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
@@ -45,6 +45,7 @@ class ChatClient extends ApiClient {
         model: model,
         input: [{ role, content: prompt }],
         conversation,
+        signing_algo: DEFAULT_SIGNING_ALGO,
       },
       {
         apiVersion: "v2",
@@ -327,6 +328,7 @@ class ChatClient extends ApiClient {
         tools,
         include,
         instructions: systemPrompt,
+        signing_algo: DEFAULT_SIGNING_ALGO,
       },
       { apiVersion: "v2", queryClient }
     );
