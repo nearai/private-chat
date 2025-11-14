@@ -99,6 +99,30 @@ export interface ConversationItemsResponse {
 
 export type Conversation = ConversationInfo & ConversationItemsResponse;
 
+// export interface Conversation extends OpenAIConversation {
+//   // ConversationItemsPage properties
+//   data?: ConversationItem[];
+//   has_more?: boolean;
+//   last_id?: string;
+
+//   // Chat-specific properties
+//   user_id?: string;
+//   title?: string;
+//   chat?: {
+//     id: string;
+//     title: string;
+//     models: string[];
+//     params: object;
+//     history: {
+//       messages: Record<string, Message>;
+//       currentId: string | null;
+//     };
+//     files?: unknown[];
+//     messages: Message[];
+//     timestamp: number;
+//   };
+// }
+
 export interface SessionUser {
   id: string;
   name: string;
@@ -443,6 +467,10 @@ export interface ViewStore {
   setIsLeftSidebarOpen: (isOpen: boolean) => void;
   isRightSidebarOpen: boolean;
   setIsRightSidebarOpen: (isOpen: boolean) => void;
+  selectedMessageIdForVerifier: string | null;
+  setSelectedMessageIdForVerifier: (messageId: string | null) => void;
+  shouldScrollToSignatureDetails: boolean;
+  setShouldScrollToSignatureDetails: (should: boolean) => void;
 }
 
 export interface ChatStore {

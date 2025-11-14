@@ -59,9 +59,15 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
     try {
       const data = await nearAIClient.getModelAttestationReport(model);
+      const attestations = data.model_attestations ?? data.all_attestations;
+      const attestation = attestations[0];
+
+      if (!attestation) {
+        throw new Error("No attestation data found for this model");
+      }
       setAttestationData(data);
-      setNvidiaPayload(JSON.parse(data?.nvidia_payload || "{}"));
-      setIntelQuote(data?.intel_quote || null);
+      setNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
+      setIntelQuote(attestation.intel_quote || null);
     } catch (err) {
       console.error("Error fetching attestation report:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch attestation report");

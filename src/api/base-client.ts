@@ -178,7 +178,6 @@ export class ApiClient {
         ...requestOptions,
         headers,
       });
-
       if (!response.body) {
         throw new Error("ReadableStream not supported in this browser.");
       }
