@@ -336,7 +336,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history, chatId, in
 
             return (
               <div
-                key={message.chatCompletionId}
+                key={`message-verification-${message.chatCompletionId}-${index}`}
                 className={`relative my-2 cursor-pointer rounded-lg border p-2 text-xs transition-colors ${
                   isNotVerified
                     ? `border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30 ${

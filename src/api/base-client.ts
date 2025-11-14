@@ -5,7 +5,15 @@ import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import type { Conversation, ConversationInfo, ResponseOutputMessageItem } from "@/types";
+import type {
+  Conversation,
+  ConversationInfo,
+  ConversationModelOutput,
+  ConversationWebSearchCall,
+  SearchAction,
+} from "@/types";
+import { ConversationRoles, ConversationTypes } from "@/types";
+import type { ContentItem } from "@/types/openai";
 import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK } from "./constants";
 import { queryKeys } from "./query-keys";
 
@@ -170,7 +178,6 @@ export class ApiClient {
         ...requestOptions,
         headers,
       });
-
       if (!response.body) {
         throw new Error("ReadableStream not supported in this browser.");
       }
@@ -185,7 +192,6 @@ export class ApiClient {
         if (!options.queryClient) return;
         const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
         const conversationId = (body as { conversation?: string })?.conversation || "";
-        const streamModel = (body as { model?: string })?.model;
 
         function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
           options.queryClient?.setQueryData(
@@ -199,12 +205,17 @@ export class ApiClient {
           );
         }
 
+        const model = (body as { model?: string })?.model || "";
+
         switch (data.type) {
           case "response.output_text.delta":
             updateConversationData(
               (draft) => {
                 const currentConversationData = draft.data?.find((item) => item.id === data.item_id);
-                if (currentConversationData?.type === "message") {
+                if (
+                  currentConversationData?.type === ConversationTypes.MESSAGE &&
+                  currentConversationData.role === ConversationRoles.ASSISTANT
+                ) {
                   if (!currentConversationData.content?.length) {
                     currentConversationData.content = [
                       {
@@ -214,8 +225,9 @@ export class ApiClient {
                       },
                     ];
                   } else {
-                    if (currentConversationData.content[0].type === "output_text") {
-                      currentConversationData.content[0].text += data.delta;
+                    const firstItem = currentConversationData.content[0];
+                    if (firstItem.type === "output_text") {
+                      firstItem.text = (firstItem.text || "") + data.delta;
                     }
                   }
                 }
@@ -227,34 +239,48 @@ export class ApiClient {
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
+              const currentConversationData = draft.data?.find((item) => item.id === data.item.id);
               switch (data.item.type) {
-                case "message": {
-                  const currentConversationData = draft.data?.find(
-                    (item) => item.id === data.item.id
-                  ) as ResponseOutputMessageItem;
-                  if (currentConversationData) {
-                    currentConversationData.status = data.item.status;
-                  }
-                  if (currentConversationData?.type === "message") {
-                    const message = data.item as ResponseOutputMessageItem;
-                    currentConversationData.model = message.model ?? streamModel;
-                    currentConversationData.response_id = message.response_id;
+                case "message":
+                  if (currentConversationData && currentConversationData.type === ConversationTypes.MESSAGE) {
+                    const statusMap: Record<string, "completed" | "failed" | "pending"> = {
+                      in_progress: "pending",
+                      completed: "completed",
+                      incomplete: "failed",
+                    };
+                    currentConversationData.status = statusMap[data.item.status] || "pending";
 
-                    currentConversationData.content = message.content || [];
-                    // filter empty response messages
-                    if (
-                      currentConversationData.content.length > 0 &&
-                      currentConversationData.content[0].type === "output_text" &&
-                      currentConversationData.content[0].text === ""
-                    ) {
-                      draft.data = draft.data?.filter((item) => item.id !== message.id);
+                    if (data.item.content && Array.isArray(data.item.content)) {
+                      currentConversationData.content = data.item.content.map((item: unknown): ContentItem => {
+                        if (typeof item === "object" && item !== null && "type" in item) {
+                          if (item.type === "output_text") {
+                            return {
+                              type: "output_text",
+                              text: "text" in item ? String(item.text) : "",
+                              annotations:
+                                "annotations" in item && Array.isArray(item.annotations)
+                                  ? (item.annotations as string[])
+                                  : [],
+                            };
+                          }
+                        }
+                        return { type: "output_text", text: "" };
+                      });
                     }
                   }
                   break;
-                }
                 case "reasoning":
-                case "web_search_call":
                   draft.data = draft.data?.filter((item) => item.id !== data.item.id);
+                  break;
+                case "web_search_call":
+                  if (currentConversationData && currentConversationData.type === ConversationTypes.WEB_SEARCH_CALL) {
+                    const statusMap: Record<string, "completed" | "failed" | "pending"> = {
+                      in_progress: "pending",
+                      completed: "completed",
+                      incomplete: "failed",
+                    };
+                    currentConversationData.status = statusMap[data.item.status] || "pending";
+                  }
                   break;
                 default:
                   break;
@@ -266,48 +292,45 @@ export class ApiClient {
               const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
               switch (data.item.type) {
                 case "reasoning":
-                  draft.last_id = data.item.id;
-                  draft.data = [
-                    ...(draft.data ?? []),
-                    {
-                      id: data.item.id,
-                      type: "reasoning",
-                      summary: data.item.summary,
-                    },
-                  ];
+                  // Reasoning items are not in the new interfaces, skip them
                   break;
-                case "web_search_call":
+                case "web_search_call": {
                   draft.last_id = data.item.id;
-                  draft.data = [
-                    ...(draft.data ?? []),
-                    {
-                      id: data.item.id,
-                      type: "web_search_call",
-                      status: "completed",
-                    } as typeof data.item,
-                  ];
+                  const extendedData = data.item as Responses.ResponseFunctionWebSearch & {
+                    action: SearchAction;
+                    created_at: number;
+                  };
+                  const webSearchItem: ConversationWebSearchCall = {
+                    id: data.item.id,
+                    type: ConversationTypes.WEB_SEARCH_CALL,
+                    response_id: data.item.id,
+                    next_response_ids: [],
+                    created_at: extendedData.created_at,
+                    status: "pending",
+                    role: ConversationRoles.ASSISTANT,
+                    action: extendedData.action,
+                    model,
+                  };
+                  draft.data = [...(draft.data ?? []), webSearchItem];
                   break;
+                }
                 case "message": {
-                  if (prevMessage?.status === "in_progress") {
+                  if (prevMessage?.status === "pending") {
                     break;
                   }
-
-                  draft.data = [
-                    ...(draft.data ?? []),
-                    {
-                      id: data.item.id,
-                      type: "message",
-                      role: "assistant",
-                      status: "in_progress",
-                      content: [
-                        {
-                          type: "output_text",
-                          text: "",
-                          annotations: [],
-                        },
-                      ],
-                    } as typeof data.item,
-                  ];
+                  const extendedData = data.item as Responses.ResponseOutputMessage & { created_at: number };
+                  const messageItem: ConversationModelOutput = {
+                    id: data.item.id,
+                    type: ConversationTypes.MESSAGE,
+                    response_id: data.item.id,
+                    next_response_ids: [],
+                    created_at: extendedData.created_at,
+                    status: "pending",
+                    role: ConversationRoles.ASSISTANT,
+                    content: [],
+                    model,
+                  };
+                  draft.data = [...(draft.data ?? []), messageItem];
                   draft.last_id = data.item.id;
                   break;
                 }

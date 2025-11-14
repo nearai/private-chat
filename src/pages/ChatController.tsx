@@ -22,7 +22,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
 
   const initializeCache = useCallback(
-    (conversationId: string, contentItems: ContentItem[]): Conversation => {
+    (conversationId: string, contentItems: ContentItem[]) => {
       const existingData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
       const hasUserMessage = existingData?.data?.some(
         (item) =>
@@ -34,11 +34,16 @@ export default function ChatController({ children }: { children?: React.ReactNod
         ? undefined
         : {
             id: `temp-${Date.now()}`,
+            response_id: `response-${Date.now()}`,
+            next_response_ids: [],
+            created_at: Date.now(),
+            status: "pending" as const,
             role: "user" as const,
             type: "message" as const,
             content: contentItems,
+            model: selectedModels[0] || "",
           };
-      const initialData: Conversation = existingData
+      const initialData = existingData
         ? userMessage
           ? {
               ...existingData,
@@ -47,19 +52,20 @@ export default function ChatController({ children }: { children?: React.ReactNod
           : existingData
         : {
             id: conversationId,
-            object: "conversation",
             created_at: Date.now(),
             metadata: {
               title: "New Conversation",
             },
             data: userMessage ? ([userMessage] as Conversation["data"]) : [],
             has_more: false,
-            last_id: undefined,
+            first_id: userMessage?.id || "",
+            last_id: userMessage?.id || "",
+            object: "list" as const,
           };
       queryClient.setQueryData(["conversation", conversationId], initialData);
       return initialData;
     },
-    [queryClient]
+    [queryClient, selectedModels]
   );
 
   const startStream = useCallback(

@@ -1,6 +1,5 @@
-import type { ModelsPage } from "openai/resources/models.mjs";
 import { ApiClient } from "@/api/base-client";
-import type { Model } from "@/types";
+import type { ModelsResponse, ModelV1 } from "@/types";
 
 class ModelsClient extends ApiClient {
   constructor() {
@@ -13,12 +12,11 @@ class ModelsClient extends ApiClient {
     });
   }
 
-  async getModels(): Promise<Model[]> {
-    console.log("getModels");
-    const response = await this.get<ModelsPage>("/models", {
+  async getModels(): Promise<ModelV1[]> {
+    const response = await this.get<ModelsResponse>("/model/list", {
       apiVersion: "v2",
     });
-    return response.data as unknown as Model[];
+    return response.models as unknown as ModelV1[];
   }
 }
 

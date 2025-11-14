@@ -1,13 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { Conversation as OpenAIConversation } from "openai/resources/conversations/conversations";
-
-import type {
-  ResponseFunctionWebSearch,
-  ResponseInputMessageItem,
-  ResponseOutputMessage,
-  ResponseReasoningItem,
-  Tool,
-} from "openai/resources/responses/responses.mjs";
+import type { Tool } from "openai/resources/responses/responses.mjs";
+import type { ContentItem } from "./openai";
 
 export type OAuth2Provider = "google" | "github" | "microsoft" | "oidc";
 
@@ -36,49 +29,99 @@ export interface ConversationInfo {
   };
 }
 
-export type ResponseOutputMessageItem = ResponseOutputMessage & {
-  model?: string;
-  response_id?: string;
-  created_at?: number;
-};
+export enum ConversationTypes {
+  MESSAGE = "message",
+  WEB_SEARCH_CALL = "web_search_call",
+  REASONING = "reasoning",
+  OUTPUT = "output",
+}
 
-export type ConversationItem =
-  | ResponseInputMessageItem
-  | ResponseFunctionWebSearch
-  | ResponseReasoningItem
-  | ResponseOutputMessageItem;
+export interface SearchAction {
+  query: string;
+  type: "search";
+  sources?: Array<SearchSource>;
+}
+
+export interface SearchSource {
+  type: "url";
+  url: string;
+}
+
+export enum ConversationRoles {
+  USER = "user",
+  ASSISTANT = "assistant",
+  SYSTEM = "system",
+}
+
+export interface ConversationUserInput {
+  type: ConversationTypes.MESSAGE;
+  id: string;
+  response_id: string;
+  next_response_ids: string[];
+  created_at: number;
+  status: "completed" | "failed" | "pending";
+  role: ConversationRoles.USER;
+  content: ContentItem[];
+  model: string;
+}
+
+export interface ConversationModelOutput {
+  type: ConversationTypes.MESSAGE;
+  id: string;
+  response_id: string;
+  next_response_ids: string[];
+  created_at: number;
+  status: "completed" | "failed" | "pending";
+  role: ConversationRoles.ASSISTANT;
+  content: ContentItem[];
+  model: string;
+}
+
+export interface ConversationWebSearchCall {
+  type: ConversationTypes.WEB_SEARCH_CALL;
+  id: string;
+  response_id: string;
+  next_response_ids: string[];
+  created_at: number;
+  status: "completed" | "failed" | "pending";
+  role: ConversationRoles.ASSISTANT;
+  action: SearchAction;
+  model: string;
+}
 
 export interface ConversationItemsResponse {
-  data: ConversationItem[];
+  data: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
   first_id: string;
   has_more: boolean;
   last_id: string;
   object: "list";
 }
 
-export interface Conversation extends OpenAIConversation {
-  // ConversationItemsPage properties
-  data?: ConversationItem[];
-  has_more?: boolean;
-  last_id?: string;
+export type Conversation = ConversationInfo & ConversationItemsResponse;
 
-  // Chat-specific properties
-  user_id?: string;
-  title?: string;
-  chat?: {
-    id: string;
-    title: string;
-    models: string[];
-    params: object;
-    history: {
-      messages: Record<string, Message>;
-      currentId: string | null;
-    };
-    files?: unknown[];
-    messages: Message[];
-    timestamp: number;
-  };
-}
+// export interface Conversation extends OpenAIConversation {
+//   // ConversationItemsPage properties
+//   data?: ConversationItem[];
+//   has_more?: boolean;
+//   last_id?: string;
+
+//   // Chat-specific properties
+//   user_id?: string;
+//   title?: string;
+//   chat?: {
+//     id: string;
+//     title: string;
+//     models: string[];
+//     params: object;
+//     history: {
+//       messages: Record<string, Message>;
+//       currentId: string | null;
+//     };
+//     files?: unknown[];
+//     messages: Message[];
+//     timestamp: number;
+//   };
+// }
 
 export interface SessionUser {
   id: string;
@@ -240,7 +283,36 @@ export interface ChatCompletionStreamResponse {
   }>;
 }
 
-// Model types
+export interface ModelsResponse {
+  models: ModelV1[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface ModelV1 {
+  modelId: string;
+  inputCostPerToken: {
+    amount: number;
+    scale: number;
+    currency: string;
+  };
+  outputCostPerToken: {
+    amount: number;
+    scale: number;
+    currency: string;
+  };
+  metadata: {
+    verifiable: boolean;
+    contextLength: number;
+    modelDisplayName: string;
+    modelDescription: string;
+    modelIcon: string;
+    aliases: string[];
+  };
+}
+
+// Previous Model type (v0)
 export interface Model {
   id: string;
   object: string;
@@ -404,10 +476,10 @@ export interface ViewStore {
 export interface ChatStore {
   webSearchEnabled: boolean;
   setWebSearchEnabled: (webSearchEnabled: boolean) => void;
-  models: Model[];
+  models: ModelV1[];
   selectedModels: string[];
 
-  setModels: (models: Model[]) => void;
+  setModels: (models: ModelV1[]) => void;
   setSelectedModels: (models: string[]) => void;
 }
 

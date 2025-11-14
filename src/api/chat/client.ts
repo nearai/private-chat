@@ -78,7 +78,6 @@ class ChatClient extends ApiClient {
   }
 
   addItemsToConversation(conversationId: string, items: Responses.ResponseInputItem[]) {
-    console.log("addItemsToConversation", conversationId, items);
     return this.post<Responses.ResponseInputItem[]>(
       `/conversations/${conversationId}/items`,
       { items },

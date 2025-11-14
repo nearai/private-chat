@@ -12,7 +12,6 @@ export const useChats = (options?: UseChatsOptions) => {
     queryKey: queryKeys.chat.all,
     queryFn: async () => {
       const chats = await chatClient.getConversations(); // TODO: add pagination
-      console.log("chats", chats);
 
       return chats as unknown as ChatInfo[];
     },

@@ -1,5 +1,9 @@
 export const allPrompts = [
   {
+    title: ["Could you show me weather for Kyiv?"],
+    content: "Could you show me weather for Kyiv?",
+  },
+  {
     title: ["Help me study", "vocabulary for a college entrance exam"],
     content:
       "Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.",

@@ -1,6 +1,5 @@
 import { XCircleIcon } from "@heroicons/react/24/outline";
 import { marked } from "marked";
-import type { ResponseOutputMessage } from "openai/resources/responses/responses.mjs";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,27 +14,26 @@ import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import type { ConversationModelOutput } from "@/types";
+import { extractMessageContent } from "@/types/openai";
+// import Citations from "./Citations";
+
 import { useViewStore } from "@/stores/useViewStore";
-import { extractCitations, extractMessageContent } from "@/types/openai";
-import Citations from "./Citations";
+
+// import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
 
-interface MessageItem extends ResponseOutputMessage {
-  created_at?: number;
-  response_id?: string;
-}
-
 interface ResponseMessageProps {
-  message: MessageItem;
+  message: ConversationModelOutput;
   siblings: string[];
   isLastMessage: boolean;
   readOnly: boolean;
   webSearchEnabled: boolean;
   saveMessage: (messageId: string, content: string) => void;
   deleteMessage: (messageId: string) => void;
-  regenerateResponse: (message: MessageItem) => Promise<void>;
-  showPreviousMessage: (message: MessageItem) => void;
-  showNextMessage: (message: MessageItem) => void;
+  regenerateResponse: (message: ConversationModelOutput) => Promise<void>;
+  showPreviousMessage: (message: ConversationModelOutput) => void;
+  showNextMessage: (message: ConversationModelOutput) => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -102,15 +100,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     }
   }, [edit]);
 
-  const messageContent = extractMessageContent(message, "output_text");
-  const citations = extractCitations(message);
+  const messageContent = extractMessageContent(message.content, "output_text");
+  // const citations = extractCitations(message.content);
   const extendedMessageResponse = {
     ...message,
-    modelName: "",
+    modelName: message.model || "",
     timestamp: message.created_at ? message.created_at * 1000 : Date.now(),
     files: [],
     content: messageContent,
   };
+
   const handleSave = () => {
     if (editedContent.trim() !== messageContent) {
       saveMessage(message.id, editedContent.trim());
@@ -166,9 +165,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
       <div className="w-0 flex-auto pl-1">
         <div className="flex items-center space-x-2">
-          <span className="line-clamp-1 font-normal text-black dark:text-white">
-            {extendedMessageResponse.modelName || "Assistant"}
-          </span>
+          <span className="line-clamp-1 font-normal text-black dark:text-white">{message.model || "Assistant"}</span>
 
           {/* Verification Badge */}
           <div className="ml-3 flex items-center">
@@ -373,7 +370,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           </div>
         )}
 
-        <Citations citations={citations} />
+        {/* <Citations citations={citations} /> */}
       </div>
     </div>
   );
