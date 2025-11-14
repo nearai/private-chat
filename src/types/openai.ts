@@ -1,9 +1,3 @@
-import type {
-  ResponseInputFile,
-  ResponseInputMessageItem,
-  ResponseOutputMessage,
-} from "openai/resources/responses/responses.mjs";
-
 export type FileContentItem =
   | { type: "input_file" | "input_audio"; id: string; name: string }
   | { type: "input_image"; id: string; name: string; image_url: string };
@@ -35,18 +29,25 @@ export type FilesOpenaiResponse = {
 };
 
 export const extractMessageContent = (
-  message: ResponseInputMessageItem | ResponseOutputMessage,
+  content: ContentItem[],
   type: "input_text" | "output_text" | "reasoning_text" = "input_text"
 ) => {
-  return message.content.map((content) => (content.type === type ? content.text : "")).join("");
+  return content.map((item) => (item.type === type ? item.text || "" : "")).join("");
 };
 
-export const extractCitations = (message: ResponseOutputMessage) => {
-  return message.content.filter((content) => content.type === "output_text").flatMap((content) => content.annotations);
+export const extractCitations = (content: ContentItem[]): string[] => {
+  return content
+    .filter((item) => item.type === "input_text" && item.annotations)
+    .flatMap((item) => item.annotations || []);
 };
 
-export const extractFiles = (message: ResponseInputMessageItem, type: "input_file" | "output_file" = "input_file") => {
-  return message.content.filter((content) => content.type === type) as ResponseInputFile[];
+export const extractFiles = (content: ContentItem[], type: "input_file" | "output_file" = "input_file") => {
+  return content.filter((item) => item.type === type) as Array<{
+    type: "input_file" | "input_audio" | "input_image";
+    file_id?: string;
+    audio_file_id?: string;
+    image_url?: string;
+  }>;
 };
 
 export const generateContentFileDataForOpenAI = (file: FileContentItem): ContentItem => {
@@ -56,9 +57,10 @@ export const generateContentFileDataForOpenAI = (file: FileContentItem): Content
 };
 
 export type ContentItem = {
-  type: "input_text" | "input_file" | "input_audio" | "input_image";
+  type: "input_text" | "output_text" | "input_file" | "input_audio" | "input_image";
   text?: string;
   file_id?: string;
   audio_file_id?: string;
   image_url?: string;
+  annotations?: string[];
 };

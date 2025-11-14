@@ -1,15 +1,46 @@
 import type React from "react";
-import Spinner from "@/components/common/Spinner";
+import NearAIIcon from "@/assets/images/near-icon.svg?react";
+import VerifiedIcon from "@/assets/images/verified-2.svg?react";
+import { formatDate } from "@/lib/time";
 
 interface MessageSkeletonProps {
   message?: string;
+
+  model?: string;
 }
 
-const MessageSkeleton: React.FC<MessageSkeletonProps> = ({ message = "Encrypting & fetching messages ..." }) => {
+const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
+  message = "Encrypting & fetching messages ...",
+  model = "Assistant",
+}) => {
   return (
-    <div className="flex items-center gap-x-2 py-0.5 text-xs">
-      <Spinner className="size-4 text-[#00EC97]" />
-      <span className="shimmer text-base text-gray-500 dark:text-gray-500">{message}</span>
+    <div className="group flex w-full">
+      <div className="shrink-0 ltr:mr-2 rtl:ml-2">
+        <NearAIIcon className="mt-0.5 h-6 w-6" />
+      </div>
+
+      <div className="w-0 flex-auto pl-1">
+        <div className="flex items-center space-x-2">
+          <span className="line-clamp-1 font-normal text-black dark:text-white">{model}</span>
+          <div className="ml-3 flex items-center">
+            <VerifiedIcon className="h-6" />
+          </div>
+
+          <div className="invisible ml-0.5 translate-y-[1px] self-center font-medium text-gray-400 text-xs first-letter:capitalize group-hover:visible">
+            <span className="line-clamp-1">{formatDate(Date.now())}</span>
+          </div>
+        </div>
+
+        <div className={`markdown-prose w-full min-w-full`}>
+          <div>
+            <div className="relative flex w-full flex-col" id="response-content-container">
+              <div className="shimmer text-gray-500 dark:text-gray-400">
+                {message !== undefined ? message : "Processing..."}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

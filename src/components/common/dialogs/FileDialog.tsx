@@ -1,11 +1,13 @@
 import { DialogTrigger } from "@radix-ui/react-dialog";
-import type { ResponseInputFile } from "openai/resources/responses/responses.mjs";
 import { useFile, useFileContent } from "@/api/chat/queries/useFiles";
 import Spinner from "@/components/common/Spinner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatFileSize, getLineCount } from "@/lib/index";
 import { decodeString } from "@/lib/time";
+import type { ContentItem } from "@/types/openai";
+
+type FileItem = Extract<ContentItem, { type: "input_file" | "input_audio" | "input_image" }>;
 
 export default function FileDialog({
   file,
@@ -14,16 +16,18 @@ export default function FileDialog({
   dismissible = false,
   onDismiss = () => {},
 }: {
-  file: ResponseInputFile;
+  file: FileItem;
   smallView?: boolean;
   loading?: boolean;
   dismissible?: boolean;
   onDismiss?: () => void;
 }) {
   // const [showModal, setShowModal] = useState(false);
-  const { data: fileData } = useFile(file?.file_id ?? undefined);
+  const fileId =
+    file.type === "input_file" ? file.file_id : file.type === "input_audio" ? file.audio_file_id : undefined;
+  const { data: fileData } = useFile(fileId);
   console.log("fileData", fileData);
-  const { data: fileContent } = useFileContent(file?.file_id ?? undefined);
+  const { data: fileContent } = useFileContent(fileId);
   console.log("fileContent", fileContent);
 
   const renderContent = () => {

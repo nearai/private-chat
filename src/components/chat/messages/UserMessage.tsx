@@ -1,4 +1,3 @@
-import type { ResponseInputMessageItem } from "openai/resources/responses/responses.mjs";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -6,10 +5,11 @@ import FileDialog from "@/components/common/dialogs/FileDialog";
 // import FileItem from "@/components/FileItem";
 // import FileItem from "@/components/FileItem";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import type { ConversationUserInput } from "@/types";
 import { extractFiles, extractMessageContent } from "@/types/openai";
 
 interface UserMessageProps {
-  message: ResponseInputMessageItem;
+  message: ConversationUserInput;
   isFirstMessage: boolean;
   readOnly: boolean;
   editMessage: (messageId: string, content: string) => void;
@@ -22,8 +22,8 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
 
   const [edit, setEdit] = useState(false);
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
-  const messageContent = extractMessageContent(message);
-  const messageFiles = extractFiles(message);
+  const messageContent = extractMessageContent(message.content);
+  const messageFiles = extractFiles(message.content);
   const [editedContent, setEditedContent] = useState(messageContent || "");
 
   useEffect(() => {
@@ -86,8 +86,8 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
         <div className={`chat-${message.role} markdown-prose w-full min-w-full`}>
           {messageFiles && messageFiles.length > 0 && (
             <div className="mt-2.5 mb-1 flex w-full flex-col flex-wrap justify-end gap-1 overflow-x-auto">
-              {messageFiles.map((file) => (
-                <div key={file.file_id} className={"self-end"}>
+              {messageFiles.map((file, idx) => (
+                <div key={file.file_id || file.audio_file_id || file.image_url || idx} className={"self-end"}>
                   <FileDialog file={file} />
                 </div>
               ))}
