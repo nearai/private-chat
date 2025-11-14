@@ -1,3 +1,4 @@
+import { DEFAULT_SIGNING_ALGO } from "@/lib/constants";
 import { ApiClient } from "../base-client";
 
 class NearAIClient extends ApiClient {
@@ -20,7 +21,7 @@ class NearAIClient extends ApiClient {
   async getMessageSignature(
     model: string,
     chatCompletionId: string,
-    signingAlgorithm: SigningAlgorithm = "ecdsa"
+    signingAlgorithm: SigningAlgorithm = DEFAULT_SIGNING_ALGO
   ): Promise<MessageSignature> {
     return this.get<MessageSignature>(
       `/signature/${encodeURIComponent(chatCompletionId)}?model=${encodeURIComponent(model)}&signing_algo=${encodeURIComponent(signingAlgorithm)}`,
