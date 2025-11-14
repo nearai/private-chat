@@ -40,6 +40,8 @@ const ChatVerifier: React.FC = () => {
     let currentId: string | null = null;
     let lastTimestamp = 0;
 
+    console.log("getting history", conversationData.data);
+
     conversationData.data.forEach((item) => {
       if (item.type === "message") {
         // Only process user and assistant messages (skip developer/system if not supported)

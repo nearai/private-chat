@@ -185,6 +185,7 @@ export class ApiClient {
         if (!options.queryClient) return;
         const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
         const conversationId = (body as { conversation?: string })?.conversation || "";
+        const streamModel = (body as { model?: string })?.model;
 
         function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
           options.queryClient?.setQueryData(
@@ -234,6 +235,17 @@ export class ApiClient {
                   }
                   if (currentConversationData?.type === "message") {
                     currentConversationData.content = data.item.content;
+                    // Copy model field if available in the completed item, otherwise use stream body model as fallback
+                    if ("model" in data.item && data.item.model) {
+                      (currentConversationData as { model?: string }).model = data.item.model as string;
+                    } else if (streamModel && !("model" in currentConversationData && currentConversationData.model)) {
+                      (currentConversationData as { model?: string }).model = streamModel;
+                    }
+                    // Copy response_id field if available (for assistant messages)
+                    if ("response_id" in data.item && data.item.response_id) {
+                      (currentConversationData as { response_id?: string }).response_id = data.item
+                        .response_id as string;
+                    }
                   }
                   break;
                 case "reasoning":
@@ -272,10 +284,16 @@ export class ApiClient {
                     } as typeof data.item,
                   ];
                   break;
-                case "message":
+                case "message": {
                   if (prevMessage?.status === "in_progress") {
                     break;
                   }
+                  // Set model from stream body if available, or from data.item if present
+                  const model = streamModel
+                    ? streamModel
+                    : "model" in data.item && data.item.model
+                      ? data.item.model
+                      : undefined;
                   draft.data = [
                     ...(draft.data ?? []),
                     {
@@ -290,10 +308,12 @@ export class ApiClient {
                           annotations: [],
                         },
                       ],
+                      model,
                     } as typeof data.item,
                   ];
                   draft.last_id = data.item.id;
                   break;
+                }
                 default:
                   break;
               }
