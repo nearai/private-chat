@@ -145,73 +145,75 @@ const ChatVerifier: React.FC = () => {
                 onStatusUpdate={handleModelStatusUpdate}
               />
 
-              {modelVerificationStatus?.loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="h-6 w-6 animate-spin rounded-full border-emerald-300 border-b-2" />
-                  <span className="ml-3 text-gray-600 text-sm dark:text-gray-400">
-                    {t("Verifying confidentiality...")}
-                  </span>
-                </div>
-              ) : modelVerificationStatus?.error ? (
-                <>
-                  <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-                    <div className="flex items-center">
-                      <XCircleIcon className="mr-2 h-4 w-4 text-red-400" />
-                      <span className="text-red-800 text-sm dark:text-red-200">{modelVerificationStatus.error}</span>
-                    </div>
+              <div className="min-h-[230px]">
+                {modelVerificationStatus?.loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="h-6 w-6 animate-spin rounded-full border-emerald-300 border-b-2" />
+                    <span className="ml-3 text-gray-600 text-sm dark:text-gray-400">
+                      {t("Verifying confidentiality...")}
+                    </span>
                   </div>
-                  <button
-                    onClick={() => setModelVerificationStatus(null)}
-                    disabled={!selectedModels[0]}
-                    className="w-full rounded-md bg-green-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                  >
-                    {t("Retry Verification")}
-                  </button>
-                </>
-              ) : modelVerificationStatus?.isVerified ? (
-                <>
-                  <div className="mb-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-emerald-300/10 dark:bg-emerald-300/10">
-                    <div className="mb-2 flex items-center">
-                      <CheckCircleIcon className="mr-2 h-5 w-5 text-green-500" />
-                      <span className="font-medium text-green-700 text-sm dark:text-emerald-300">
-                        {t("Your chat is confidential.")}
-                      </span>
-                    </div>
-                    <div className="mb-2">
-                      <p className="mb-2 text-gray-600 text-xs dark:text-[rgba(248,248,248,0.64)]">
-                        {t("Attested by")}
-                      </p>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex space-x-2">
-                          <img src={NvidiaLogo} alt="NVIDIA" className="h-6 w-16" />
-                        </div>
-                        <span className="text-[rgba(248,248,248,0.64)] text-xs">{t("and")}</span>
-                        <div className="flex space-x-2">
-                          <img src={IntelLogo} alt="Intel" className="h-6 w-12" />
-                        </div>
+                ) : modelVerificationStatus?.error ? (
+                  <>
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+                      <div className="flex items-center">
+                        <XCircleIcon className="mr-2 h-4 w-4 text-red-400" />
+                        <span className="text-red-800 text-sm dark:text-red-200">{modelVerificationStatus.error}</span>
                       </div>
                     </div>
-                    <p style={{ lineHeight: "1.5em" }} className="text-gray-600 text-xs dark:text-gray-400">
-                      {t(
-                        "This automated verification tool lets you independently confirm that the model is running in the TEE (Trusted Execution Environment)."
-                      )}
-                    </p>
+                    <button
+                      onClick={() => setModelVerificationStatus(null)}
+                      disabled={!selectedModels[0]}
+                      className="w-full rounded-md bg-green-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                    >
+                      {t("Retry Verification")}
+                    </button>
+                  </>
+                ) : modelVerificationStatus?.isVerified ? (
+                  <>
+                    <div className="mb-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-emerald-300/10 dark:bg-emerald-300/10">
+                      <div className="mb-2 flex items-center">
+                        <CheckCircleIcon className="mr-2 h-5 w-5 text-green-500" />
+                        <span className="font-medium text-green-700 text-sm dark:text-emerald-300">
+                          {t("Your chat is confidential.")}
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <p className="mb-2 text-gray-600 text-xs dark:text-[rgba(248,248,248,0.64)]">
+                          {t("Attested by")}
+                        </p>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex space-x-2">
+                            <img src={NvidiaLogo} alt="NVIDIA" className="h-6 w-16" />
+                          </div>
+                          <span className="text-[rgba(248,248,248,0.64)] text-xs">{t("and")}</span>
+                          <div className="flex space-x-2">
+                            <img src={IntelLogo} alt="Intel" className="h-6 w-12" />
+                          </div>
+                        </div>
+                      </div>
+                      <p style={{ lineHeight: "1.5em" }} className="text-gray-600 text-xs dark:text-gray-400">
+                        {t(
+                          "This automated verification tool lets you independently confirm that the model is running in the TEE (Trusted Execution Environment)."
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      onClick={openModelVerifier}
+                      className="w-full rounded-md bg-gray-100 px-4 py-2 text-gray-700 text-sm transition-colors hover:bg-gray-200 dark:bg-[rgba(248,248,248,0.08)] dark:text-white"
+                    >
+                      {t("View Verification Details")}
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="h-6 w-6 animate-spin rounded-full border-green-600 border-b-2" />
+                    <span className="ml-3 text-gray-600 text-sm dark:text-gray-400">
+                      {t("Verifying confidentiality...")}
+                    </span>
                   </div>
-                  <button
-                    onClick={openModelVerifier}
-                    className="w-full rounded-md bg-gray-100 px-4 py-2 text-gray-700 text-sm transition-colors hover:bg-gray-200 dark:bg-[rgba(248,248,248,0.08)] dark:text-white"
-                  >
-                    {t("View Verification Details")}
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center justify-center py-4">
-                  <div className="h-6 w-6 animate-spin rounded-full border-green-600 border-b-2" />
-                  <span className="ml-3 text-gray-600 text-sm dark:text-gray-400">
-                    {t("Verifying confidentiality...")}
-                  </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
