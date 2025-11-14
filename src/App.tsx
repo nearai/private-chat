@@ -10,6 +10,7 @@ import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
+import CookiePrivacyPage from "@/pages/CookiePrivacyPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import { APP_ROUTES } from "@/pages/routes";
 import TermsPage from "@/pages/TermsPage";
@@ -84,6 +85,7 @@ function App() {
           <Route path={APP_ROUTES.AUTH} element={<AuthPage />} />
           <Route path={APP_ROUTES.TERMS} element={<TermsPage />} />
           <Route path={APP_ROUTES.PRIVACY} element={<PrivacyPage />} />
+          <Route path={APP_ROUTES.COOKIE} element={<CookiePrivacyPage />} />
         </Routes>
       </div>
     </Suspense>

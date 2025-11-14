@@ -15,6 +15,7 @@ export const APP_ROUTES = {
   WELCOME: "/welcome",
   TERMS: "/terms",
   PRIVACY: "/privacy",
+  COOKIE: "/privacy-cookie",
   AUTH: "/auth/*",
   PLAYGROUND: "/playground",
   ADMIN: ADMIN_PREFIX,
