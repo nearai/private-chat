@@ -11,7 +11,7 @@ import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
 import MessagesVerifier from "./MessagesVerifier";
-// import ModelVerifier from "./ModelVerifier";
+import ModelVerifier from "./ModelVerifier";
 import type { VerificationStatus } from "./types";
 
 const ChatVerifier: React.FC = () => {
@@ -21,7 +21,7 @@ const ChatVerifier: React.FC = () => {
   const { selectedModels } = useChatStore();
 
   const { isRightSidebarOpen, setIsRightSidebarOpen } = useViewStore();
-  // const [showModelVerifier, setShowModelVerifier] = useState(false);
+  const [showModelVerifier, setShowModelVerifier] = useState(false);
   const [modelVerificationStatus, setModelVerificationStatus] = useState<VerificationStatus | null>(null);
 
   const toggleVerifier = () => {
@@ -29,16 +29,16 @@ const ChatVerifier: React.FC = () => {
   };
 
   const openModelVerifier = () => {
-    // setShowModelVerifier(true);
+    setShowModelVerifier(true);
   };
 
-  // const closeModelVerifier = () => {
-  //   setShowModelVerifier(false);
-  // };
+  const closeModelVerifier = () => {
+    setShowModelVerifier(false);
+  };
 
-  // const handleModelStatusUpdate = (status: VerificationStatus) => {
-  //   setModelVerificationStatus(status);
-  // };
+  const handleModelStatusUpdate = (status: VerificationStatus) => {
+    setModelVerificationStatus(status);
+  };
 
   useEffect(() => {
     if (!isRightSidebarOpen) {
@@ -76,13 +76,13 @@ const ChatVerifier: React.FC = () => {
                 {t("Model Verification")}
               </h2>
 
-              {/* <ModelVerifier
+              <ModelVerifier
                 model={selectedModels[0] || ""}
                 show={false}
                 autoVerify={isRightSidebarOpen && !!selectedModels[0]}
                 onClose={() => {}}
                 onStatusUpdate={handleModelStatusUpdate}
-              /> */}
+              />
 
               {modelVerificationStatus?.loading ? (
                 <div className="flex items-center justify-center py-4">
@@ -177,7 +177,7 @@ const ChatVerifier: React.FC = () => {
         </div>
       </div>
 
-      {/* <ModelVerifier model={selectedModels[0] || ""} show={showModelVerifier} onClose={closeModelVerifier} /> */}
+      <ModelVerifier model={selectedModels[0] || ""} show={showModelVerifier} onClose={closeModelVerifier} />
     </div>
   );
 };

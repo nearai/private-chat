@@ -12,7 +12,9 @@ class NearAIClient extends ApiClient {
   }
 
   async getModelAttestationReport(model: string): Promise<ModelAttestationReport> {
-    return this.get<ModelAttestationReport>(`/attestation/report?model=${encodeURIComponent(model)}`);
+    return this.get<ModelAttestationReport>(`/attestation/report?model=${encodeURIComponent(model)}`, {
+      apiVersion: "v2",
+    });
   }
 
   async getMessageSignature(
@@ -33,15 +35,15 @@ export type Address = `0x${string}`;
 
 export type SigningAlgorithm = "ecdsa";
 
-export type ModelAttestationReport = {
+export type ModelAttestation = {
   signing_address: Address;
   nvidia_payload: string;
   intel_quote: string;
-  all_attestations: Array<{
-    signing_address: Address;
-    nvidia_payload: string;
-    intel_quote: string;
-  }>;
+};
+
+export type ModelAttestationReport = {
+  model_attestations: Array<ModelAttestation>;
+  all_attestations?: Array<ModelAttestation>;
 };
 
 export type MessageSignature = {
