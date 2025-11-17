@@ -34,6 +34,18 @@ export function initPosthog() {
   }
 }
 
+export function posthogReset() {
+  try {
+    if (typeof W.posthog === "undefined") {
+      console.warn("PostHog is not initialized.");
+      return;
+    }
+    W.posthog.reset();
+  } catch (error) {
+    console.error("PostHog reset error:", error);
+  }
+}
+
 export function posthogTrack(event: string, properties?: Record<string, any>) {
   try {
     if (typeof W.posthog === "undefined") {
