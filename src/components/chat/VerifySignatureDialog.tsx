@@ -82,7 +82,7 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
               <CheckIcon className="mr-0.5 inline-block h-5 w-5 text-green-500 dark:text-[rgba(0,236,151,1)]" />
               Message Signature Verified. The message signature has been confirmed to be signed by the address using the
               <a
-                className="text-blue-500 underline"
+                className="mx-1 text-blue-500 underline"
                 href="https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm"
                 rel="noopener noreferrer"
                 target="_blank"
