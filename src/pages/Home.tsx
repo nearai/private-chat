@@ -27,6 +27,8 @@ const Home = ({
   const [initModelSelectorFlag, setInitModelSelectorFlag] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const { selectedModels, setSelectedModels } = useChatStore();
+  const selectedModelsRef = useRef(selectedModels);
+  selectedModelsRef.current = selectedModels;
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
@@ -103,10 +105,11 @@ const Home = ({
     if (initModelSelectorFlag) return;
     setInitModelSelectorFlag(true);
 
-    const newModels = [...selectedModels];
-    newModels[0] = conversationData.data[conversationData.data.length - 1]?.model || newModels[0] || "";
+    const newModels = [...selectedModelsRef.current];
+    const conversationModel = conversationData.data[conversationData.data.length - 1]?.model;
+    newModels[0] = conversationModel || newModels[0] || "";
     setSelectedModels(newModels);
-  }, [initModelSelectorFlag, conversationData?.data, selectedModels]);
+  }, [initModelSelectorFlag, conversationData?.data]);
 
   const MessageStatus = {
     CREATED: "created",
