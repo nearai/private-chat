@@ -11,7 +11,9 @@ import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
+import { useViewStore } from "@/stores/useViewStore";
 import type { Conversation, ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
 import { ConversationRoles } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
@@ -22,6 +24,7 @@ const Home = ({
   startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
 }) => {
   const { chatId } = useParams<{ chatId: string }>();
+  const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
 
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState("");
@@ -174,7 +177,9 @@ const Home = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500"
+        className={cn("flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500", {
+          "pl-12.5": !isLeftSidebarOpen,
+        })}
       >
         {currentMessages.map((message, idx) => {
           if (message.type === "message" && message.role === "user") {
