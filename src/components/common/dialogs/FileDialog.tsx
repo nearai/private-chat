@@ -62,7 +62,7 @@ export default function FileDialog({
         // }}
       >
         {!smallView && (
-          <div className="rounded-xl bg-black/20 p-3 text-white dark:bg-white/10">
+          <div className="rounded-xl bg-black/20 p-3 dark:bg-white/10">
             {!loading ? (
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
                 <path

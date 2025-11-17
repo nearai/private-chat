@@ -2,6 +2,8 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileDialog from "@/components/common/dialogs/FileDialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/time";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationUserInput } from "@/types";
 import { extractFiles, extractMessageContent } from "@/types/openai";
@@ -81,11 +83,11 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
   return (
     <div className="user-message group flex w-full" dir={settings.chatDirection || "ltr"} id={`message-${message.id}`}>
       <div className="w-0 max-w-full flex-auto pl-1">
-        <div className={`chat-${message.role} markdown-prose w-full min-w-full`}>
+        <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>
           {messageFiles && messageFiles.length > 0 && (
             <div className="mt-2.5 mb-1 flex w-full flex-col flex-wrap justify-end gap-1 overflow-x-auto">
               {messageFiles.map((file, idx) => (
-                <div key={file.file_id || file.audio_file_id || file.image_url || idx} className={"self-end"}>
+                <div key={file.file_id || file.audio_file_id || file.image_url || idx} className="self-end">
                   <FileDialog file={file} />
                 </div>
               ))}
@@ -95,7 +97,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
           {messageContent !== "" && (
             <>
               {edit ? (
-                <div className="mb-2 w-full rounded-3xl bg-gray-50 px-5 py-3 dark:bg-gray-800">
+                <div className="mb-2 w-full rounded-3xl bg-card px-5 py-3">
                   <div className="max-h-96 overflow-auto">
                     <textarea
                       id={`message-edit-${message.id}`}
@@ -110,36 +112,35 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
 
                   <div className="mt-2 mb-1 flex justify-between font-medium text-sm">
                     <div />
-                    <div className="flex space-x-1.5">
-                      <button
+                    <div className="flex gap-1.5">
+                      <Button
                         id="close-edit-message-button"
-                        className="rounded-3xl bg-white px-4 py-2 text-gray-800 transition hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-100"
                         onClick={handleCancel}
+                        variant="secondary"
+                        className="h-9 rounded-3xl"
                       >
                         Cancel
-                      </button>
-                      <button
-                        id="confirm-edit-message-button"
-                        className="rounded-3xl bg-gray-900 px-4 py-2 text-gray-100 transition hover:bg-gray-850 dark:bg-white dark:text-gray-800"
-                        onClick={handleSave}
-                      >
+                      </Button>
+                      <Button id="confirm-edit-message-button" onClick={handleSave} className="h-9 rounded-3xl">
                         Send
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="w-full">
-                  <div className={`flex justify-end pb-1`}>
-                    <div className={`rounded-xl ${`max-w-[90%] bg-gray-50 px-4 py-2 dark:bg-gray-850`}`}>
+                  <div className="flex w-full justify-end pb-1">
+                    <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">
                       {messageContent && <div className="whitespace-pre-wrap">{messageContent}</div>}
                     </div>
                   </div>
 
-                  <div className={`flex justify-end text-gray-600 dark:text-gray-500`}>
+                  <div className="flex justify-end text-muted-foreground">
                     {!readOnly && (
-                      <button
-                        className="edit-user-message-button invisible rounded-lg p-1.5 transition hover:bg-black/5 hover:text-black group-hover:visible dark:hover:bg-white/5 dark:hover:text-white"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="invisible group-hover:visible"
                         onClick={handleEdit}
                         title="Edit"
                       >
@@ -157,11 +158,13 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
                             d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"
                           />
                         </svg>
-                      </button>
+                      </Button>
                     )}
 
-                    <button
-                      className="invisible rounded-lg p-1.5 transition hover:bg-black/5 hover:text-black group-hover:visible dark:hover:bg-white/5 dark:hover:text-white"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="invisible group-hover:visible"
                       onClick={() => copyToClipboard(messageContent)}
                       title="Copy"
                     >
@@ -179,11 +182,11 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
                           d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
                         />
                       </svg>
-                    </button>
+                    </Button>
 
                     {/* {!readOnly && (!isFirstMessage || siblings.length > 1) && (
                       <button
-                        className="invisible rounded-sm p-1 transition hover:text-black group-hover:visible dark:hover:text-white"
+                        className="invisible rounded-sm p-1 transition hover:text-black group-hover:visible dark:hover:"
                         onClick={() => setShowDeleteConfirm(true)}
                         title="Delete"
                       >
@@ -213,24 +216,22 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 dark:bg-gray-800">
-            <h3 className="mb-4 font-medium text-gray-900 text-lg dark:text-gray-100">Delete Message</h3>
-            <p className="mb-6 text-gray-600 text-sm dark:text-gray-400">
+          <div className="mx-4 w-full max-w-md rounded-lg bg-card p-6">
+            <h3 className="mb-4 font-medium text-foreground text-lg">Delete Message</h3>
+            <p className="mb-6 text-muted-foreground text-sm">
               Are you sure you want to delete this message? This action cannot be undone.
             </p>
-            <div className="flex justify-end space-x-3">
-              <button
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="rounded bg-gray-500 px-4 py-2 text-sm text-white hover:bg-gray-600"
+                className="h-9 rounded px-4 py-2 text-sm"
               >
                 Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="rounded bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
-              >
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} className="h-9 rounded px-4 py-2 text-sm">
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>

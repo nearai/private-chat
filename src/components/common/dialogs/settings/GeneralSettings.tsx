@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Collapsible from "@/components/common/Collapsible";
+import { Button } from "@/components/ui/button";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
@@ -110,7 +111,6 @@ const GeneralSettings = () => {
         logit_bias: settingsParams.logit_bias ?? null,
       }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleNotification = async () => {
@@ -224,7 +224,7 @@ const GeneralSettings = () => {
 
   return (
     <div className="flex h-full flex-col justify-between text-sm">
-      <div className="max-h-[28rem] overflow-y-auto pr-2 lg:max-h-full">
+      <div className="max-h-112 overflow-y-auto pr-2 lg:max-h-full">
         <div>
           <div className="mb-1 font-medium text-sm">{t("WebUI Settings")}</div>
 
@@ -233,7 +233,7 @@ const GeneralSettings = () => {
             <div className="self-center font-medium text-xs">{t("Language")}</div>
             <div className="relative flex items-center">
               <SelectNative
-                className="w-fit rounded-sm bg-gray-900 px-2 py-2 pr-8 text-right text-xs outline-none"
+                className="w-fit rounded-sm bg-secondary/30 px-2 py-2 pr-8 text-right text-xs outline-none"
                 value={lang}
                 onChange={(e) => handleLanguageChange(e.target.value)}
               >
@@ -253,14 +253,14 @@ const GeneralSettings = () => {
             onCycle={toggleNotification}
           />
 
-          <hr className="my-2 border-gray-50 dark:border-gray-700/10" />
+          <hr className="my-2 border-border" />
 
           <Collapsible title={"System Prompt"} className="w-full">
             <div className="mt-2">
               <textarea
                 value={system}
                 onChange={(e) => setSystem(e.target.value)}
-                className="w-full resize-none bg-gray-900 p-1.5 text-xs outline-hidden"
+                className="w-full resize-none rounded-md bg-secondary/30 p-1.5 text-xs outline-hidden"
                 rows={4}
                 placeholder={"Enter system prompt"}
               />
@@ -278,7 +278,7 @@ const GeneralSettings = () => {
               <textarea
                 value={system}
                 onChange={(e) => setSystem(e.target.value)}
-                className="w-full resize-none rounded border border-gray-200 bg-white p-2 text-sm outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                className="w-full resize-none rounded-md border border-border bg-secondary/30 p-2 text-sm outline-none"
                 rows={4}
                 placeholder={t("Enter system prompt here")}
               />
@@ -324,7 +324,7 @@ const GeneralSettings = () => {
                     >
                       <div className="mt-0.5 flex">
                         <textarea
-                          className="w-full rounded border border-gray-200 p-2 text-sm outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                          className="w-full rounded-md border border-border bg-secondary/30 p-2 text-sm outline-none"
                           placeholder={t('e.g. "json" or a JSON schema')}
                           value={requestFormat || ""}
                           onChange={(e) => setRequestFormat(e.target.value)}
@@ -342,12 +342,9 @@ const GeneralSettings = () => {
 
       {/* Save Button */}
       <div className="flex justify-end pt-3 font-medium text-sm">
-        <button
-          className="rounded-full bg-black px-3.5 py-1.5 font-medium text-sm text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
-          onClick={handleSave}
-        >
+        <Button size="small" onClick={handleSave}>
           {saved ? t("Saved") : t("Save")}
-        </button>
+        </Button>
       </div>
     </div>
   );

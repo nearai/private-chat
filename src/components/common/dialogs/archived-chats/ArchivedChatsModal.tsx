@@ -5,7 +5,7 @@ import fileSaver from "file-saver";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CompactTooltip } from "@/components/ui/tooltip";
@@ -186,7 +186,7 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
             <DialogDescription className="sr-only" />
           </DialogHeader>
 
-          <div className="flex w-full flex-col dark:text-gray-200">
+          <div className="flex w-full flex-col">
             {/* Search Input */}
             <div className="mt-2 flex w-full space-x-2">
               <div className="flex flex-1">
@@ -202,16 +202,16 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
               </div>
             </div>
 
-            <hr className="my-2 border-gray-100 dark:border-gray-850" />
+            <hr className="my-2 border-muted/30" />
 
             {/* Table or Empty State */}
             <div className="flex w-full flex-col sm:flex-row sm:justify-center sm:space-x-6">
               {chats.length > 0 ? (
                 <div className="w-full">
-                  <div className="mb-3 max-h-[22rem] w-full overflow-y-scroll text-left text-sm">
+                  <div className="mb-3 max-h-88 w-full overflow-y-scroll text-left text-sm">
                     <Table>
                       <TableHeader>
-                        <TableRow>
+                        <TableRow className="hover:bg-transparent">
                           <TableHead className="px-3 py-2">{t("Name")}</TableHead>
                           <TableHead className="hidden px-3 py-2 md:table-cell">{t("Created At")}</TableHead>
                           <TableHead className="px-3 py-2 text-right" />
@@ -222,7 +222,7 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
                           <TableRow
                             key={chat.id}
                             className={cn(
-                              `border-gray-50 bg-gray-900 text-xs dark:border-gray-850`,
+                              `border-muted/30 text-xs hover:bg-secondary/30`,
                               idx !== chats.length - 1 && "border-b"
                             )}
                           >
@@ -232,7 +232,7 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
                               </a>
                             </TableCell>
 
-                            <TableCell className="hidden h-[2.5rem] px-3 py-1 md:table-cell">
+                            <TableCell className="hidden h-10 px-3 py-1 md:table-cell">
                               <div className="my-auto">{dayjs(chat.created_at * 1000).format("LLL")}</div>
                             </TableCell>
 
@@ -241,7 +241,7 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
                                 {/* Unarchive Button */}
                                 <CompactTooltip content={t("Unarchive Chat")} align="center">
                                   <button
-                                    className="w-fit self-center rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5"
+                                    className="w-fit self-center rounded-xl px-2 py-2 text-sm"
                                     onClick={() => unarchiveChatHandler(chat.id)}
                                   >
                                     <ArrowUpOnSquareIcon className="size-4" />
@@ -251,7 +251,7 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
                                 {/* Delete Button */}
                                 <CompactTooltip content={t("Delete Chat")} align="center">
                                   <button
-                                    className="w-fit self-center rounded-xl px-2 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5"
+                                    className="w-fit self-center rounded-xl px-2 py-2 text-sm"
                                     onClick={() => deleteChatHandler(chat.id)}
                                   >
                                     <TrashIcon className="size-4" />
@@ -267,19 +267,21 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
 
                   {/* Action Buttons */}
                   <div className="m-1 mt-2 flex w-full flex-wrap justify-end gap-1.5 font-medium text-sm">
-                    <button
-                      className="rounded-3xl px-3.5 py-1.5 font-medium outline-1 outline-gray-300 hover:bg-black/5 dark:outline-gray-800 dark:hover:bg-white/5"
+                    <Button
+                      variant="secondary"
+                      className="h-9 rounded-3xl px-3.5 py-1.5 text-sm"
                       onClick={() => setShowUnarchiveAllConfirmDialog(true)}
                     >
                       {t("Unarchive All Archived Chats")}
-                    </button>
+                    </Button>
 
-                    <button
-                      className="rounded-3xl px-3.5 py-1.5 font-medium outline-1 outline-gray-300 hover:bg-black/5 dark:outline-gray-800 dark:hover:bg-white/5"
+                    <Button
+                      variant="secondary"
+                      className="h-9 rounded-3xl px-3.5 py-1.5 text-sm"
                       onClick={exportChatsHandler}
                     >
                       {t("Export All Archived Chats")}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (

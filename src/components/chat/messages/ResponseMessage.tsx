@@ -8,7 +8,7 @@ import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { verifySignature } from "@/lib/signature";
-import { formatDate } from "@/lib/time";
+import { cn, formatDate } from "@/lib/time";
 import markedExtension from "@/lib/utils/extension";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
@@ -19,6 +19,7 @@ import { extractMessageContent } from "@/types/openai";
 
 // import Citations from "./Citations";
 
+import { Button } from "@/components/ui/button";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
 // import Citations from "./Citations";
@@ -175,28 +176,28 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
       <div className="w-0 flex-auto pl-1">
         <div className="flex items-center space-x-2">
-          <span className="line-clamp-1 font-normal text-black dark:text-white">{message.model || "Assistant"}</span>
+          <span className="line-clamp-1 font-normal text-muted-foreground">{message.model || "Assistant"}</span>
 
           {/* Verification Badge */}
           <div className="ml-3 flex items-center">
             {verificationStatus === "failed" ? (
               <button
                 onClick={handleVerificationBadgeClick}
-                className="flex items-center gap-1 rounded border border-red-500 bg-red-50 px-1.5 py-0.5 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30"
+                className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"
                 title="Click to view verification details"
               >
-                <XCircleIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <span className="font-medium text-red-700 text-xs dark:text-red-200">{t("Not Verified")}</span>
+                <XCircleIcon className="h-4 w-4 text-destructive-foreground" />
+                <span className="font-medium text-destructive-foreground text-xs">{t("Not Verified")}</span>
               </button>
             ) : verificationStatus === "verifying" ? (
-              <div className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 dark:border-gray-700 dark:bg-gray-800/50">
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
-                <span className="font-medium text-gray-600 text-xs dark:text-gray-400">{t("Verifying")}</span>
+              <div className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                <span className="font-medium text-muted-foreground text-xs">{t("Verifying")}</span>
               </div>
             ) : verificationStatus === "verified" ? (
               <button
                 onClick={handleVerificationBadgeClick}
-                className="transition-opacity hover:opacity-80"
+                className="text-green transition-opacity hover:opacity-80"
                 title="Click to view verification details"
               >
                 <VerifiedIcon className="h-6" />
@@ -205,13 +206,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           </div>
 
           {extendedMessageResponse.timestamp && (
-            <div className="invisible ml-0.5 translate-y-[1px] self-center font-medium text-gray-400 text-xs first-letter:capitalize group-hover:visible">
+            <div className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
               <span className="line-clamp-1">{formatDate(extendedMessageResponse.timestamp)}</span>
             </div>
           )}
         </div>
 
-        <div className={`chat-${message.role} markdown-prose w-full min-w-full`}>
+        <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>
           <div>
             {/* {extendedMessageResponse.files &&
               extendedMessageResponse.files.length > 0 && (
@@ -248,7 +249,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
               )} */}
 
             {edit ? (
-              <div className="my-2 w-full rounded-3xl bg-gray-50 px-5 py-3 dark:bg-gray-800">
+              <div className="my-2 w-full rounded-3xl bg-card px-5 py-3">
                 <textarea
                   id={`message-edit-${message.id}`}
                   ref={messageEditTextAreaRef}
@@ -260,28 +261,18 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 />
 
                 <div className="mt-2 mb-1 flex justify-between font-medium text-sm">
-                  <div className="flex space-x-1.5">
-                    <button
-                      id="close-edit-message-button"
-                      className="rounded-3xl bg-white px-4 py-2 text-gray-800 transition hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-100"
-                      onClick={handleCancel}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      id="confirm-edit-message-button"
-                      className="rounded-3xl bg-gray-900 px-4 py-2 text-gray-100 transition hover:bg-gray-850 dark:bg-white dark:text-gray-800"
-                      onClick={handleSave}
-                    >
-                      Save
-                    </button>
-                  </div>
+                  <Button id="close-edit-message-button" onClick={handleCancel} variant="secondary" className="h-9">
+                    Cancel
+                  </Button>
+                  <Button id="confirm-edit-message-button" onClick={handleSave} className="h-9">
+                    Save
+                  </Button>
                 </div>
               </div>
             ) : (
               <div className="relative flex w-full flex-col" id="response-content-container">
                 {messageContent === "" ? (
-                  <div className="text-gray-500 dark:text-gray-400" id={`empty-message-${message.id}`}>
+                  <div className="text-muted-foreground" id={`empty-message-${message.id}`}>
                     {webSearchEnabled ? "Generating search query..." : "Generating response..."}
                   </div>
                 ) : messageContent ? (
@@ -295,11 +286,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
         </div>
 
         {!edit && (
-          <div className="buttons mt-0.5 flex justify-start overflow-x-auto text-gray-600 dark:text-gray-500">
+          <div className="buttons mt-0.5 flex justify-start overflow-x-auto text-muted-foreground">
             {siblings && siblings.length > 1 && (
               <>
-                <button
-                  className="self-center rounded-md p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5 dark:hover:text-white"
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-muted-foreground"
                   onClick={() => {
                     showPreviousMessage(message);
                   }}
@@ -314,14 +307,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                   </svg>
-                </button>
+                </Button>
 
-                <div className="min-w-fit self-center font-semibold text-sm tracking-widest dark:text-gray-100">
+                <div className="min-w-fit self-center font-semibold text-sm tracking-widest">
                   {siblings.indexOf(message.id) + 1}/{siblings.length}
                 </div>
 
-                <button
-                  className="self-center rounded-md p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5 dark:hover:text-white"
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-muted-foreground"
                   onClick={() => {
                     showNextMessage(message);
                   }}
@@ -336,15 +331,15 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                   </svg>
-                </button>
+                </Button>
               </>
             )}
             {!readOnly && (
               <>
-                <button
-                  className={`${
-                    isLastMessage ? "visible" : "invisible group-hover:visible"
-                  } copy-response-button rounded-lg p-1.5 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5 dark:hover:text-white`}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={cn("text-muted-foreground", isLastMessage ? "visible" : "invisible group-hover:visible")}
                   onClick={() => {
                     copyToClipboard(messageContent);
                   }}
@@ -364,17 +359,17 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                       d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
                     />
                   </svg>
-                </button>
+                </Button>
 
-                <button
-                  className={`${
-                    isLastMessage ? "visible" : "invisible group-hover:visible"
-                  } rounded-lg p-1.5 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5 dark:hover:text-white`}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("text-muted-foreground", isLastMessage ? "visible" : "invisible group-hover:visible")}
                   onClick={() => regenerateResponse(message)}
                   title="Regenerate"
                 >
                   <RegenerateIcon />
-                </button>
+                </Button>
               </>
             )}
           </div>

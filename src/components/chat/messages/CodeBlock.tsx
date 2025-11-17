@@ -146,7 +146,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", o
             />
           </div>
         ) : (
-          <div className="flex flex-col gap-2 rounded-b-lg! bg-gray-50 px-4 pt-2 pb-2 text-xs dark:bg-black dark:text-white">
+          <div className="dark: flex flex-col gap-2 rounded-b-lg! bg-gray-50 px-4 pt-2 pb-2 text-xs dark:bg-black">
             <span className="text-gray-500 italic">{`${lineCount} hidden lines`}</span>
           </div>
         )}

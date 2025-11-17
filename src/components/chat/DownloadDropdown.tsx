@@ -79,7 +79,8 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
         // Render to canvas with predefined width
         const canvas = await html2canvas(clonedElement, {
-          backgroundColor: isDarkMode ? "#000" : "#fff",
+          backgroundColor: "var(--background)",
+          // backgroundColor: isDarkMode ? "black" : "white",
           useCORS: true,
           scale: 2,
           width: virtualWidth,
@@ -133,30 +134,18 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white">
+      <DropdownMenuSubTrigger className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2">
         <ArrowDownTrayIcon className="h-4 w-4" strokeWidth={2} />
         <span>{t("Download")}</span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent
-        className="w-full min-w-[200px] rounded-xl border-none bg-gray-850 px-1 py-1.5"
-        sideOffset={8}
-      >
-        <DropdownMenuItem
-          className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
-          onClick={downloadAsJSON}
-        >
+      <DropdownMenuSubContent className="w-full min-w-[200px] rounded-xl px-1 py-1.5" sideOffset={8}>
+        <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2" onClick={downloadAsJSON}>
           <span className="line-clamp-1">{t("Export chat (.json)")}</span>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
-          onClick={downloadAsTXT}
-        >
+        <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2" onClick={downloadAsTXT}>
           <span className="line-clamp-1">{t("Plain text (.txt)")}</span>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
-          onClick={downloadAsPDF}
-        >
+        <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-2" onClick={downloadAsPDF}>
           <span className="line-clamp-1">{t("PDF document (.pdf)")}</span>
         </DropdownMenuItem>
       </DropdownMenuSubContent>

@@ -277,7 +277,7 @@ const UserList = () => {
     //               <Badge variant={getBadgeVariant(user.role)}>{user.role}</Badge>
     //             </button>
     //           </TableCell>
-    //           <TableCell className="w-max px-3 py-1 font-medium text-gray-900 dark:text-white">
+    //           <TableCell className="w-max px-3 py-1 font-medium text-gray-900 dark:">
     //             <div className="flex w-max flex-row">
     //               <img
     //                 className="mr-2.5 h-6 w-6 rounded-full object-cover"
