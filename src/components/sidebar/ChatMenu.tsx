@@ -23,16 +23,24 @@ import ConfirmDialog from "../common/dialogs/ConfirmDialog";
 type ChatMenuProps = {
   chat: ConversationInfo;
   handleRename: () => void;
+  handleDeleteSuccess?: () => void;
   isPinned?: boolean;
 };
 
-export default function ChatMenu({ chat, handleRename, isPinned }: ChatMenuProps) {
+export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPinned }: ChatMenuProps) {
   const { t } = useTranslation("translation", { useSuspense: false });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { mutate: toggleChatPinnedStatusById } = useTogglePinnedStatus();
   const { mutate: cloneChatById } = useCloneChat();
   const { mutate: archiveChatById } = useArchiveChat();
-  const { mutate: deleteChatById } = useDeleteChat();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { mutate: deleteChatById } = useDeleteChat({
+    onSuccess: () => {
+      setShowDeleteConfirm(false);
+      if (handleDeleteSuccess) {
+        handleDeleteSuccess();
+      }
+    },
+  });
 
   const handlePinToggle = () => {
     toggleChatPinnedStatusById({ id: chat.id });
