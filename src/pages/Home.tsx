@@ -24,8 +24,9 @@ const Home = ({
   const { chatId } = useParams<{ chatId: string }>();
 
   const queryClient = useQueryClient();
+  const [initModelSelectorFlag, setInitModelSelectorFlag] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const { selectedModels } = useChatStore();
+  const { selectedModels, setSelectedModels } = useChatStore();
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
@@ -92,6 +93,20 @@ const Home = ({
       localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     }
   }, []);
+
+  useEffect(() => {
+    setInitModelSelectorFlag(false);
+  }, [conversationData?.id]);
+
+  useEffect(() => {
+    if (!conversationData?.data) return;
+    if (initModelSelectorFlag) return;
+    setInitModelSelectorFlag(true);
+
+    const newModels = [...selectedModels];
+    newModels[0] = conversationData.data[conversationData.data.length - 1]?.model || newModels[0] || "";
+    setSelectedModels(newModels);
+  }, [initModelSelectorFlag, conversationData?.data, selectedModels]);
 
   const MessageStatus = {
     CREATED: "created",
