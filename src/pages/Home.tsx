@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { queryKeys } from "@/api/query-keys";
@@ -166,6 +166,16 @@ const Home = ({
     return combinedMessages;
   }
 
+  const isMessageCompleted = useMemo(() => {
+    if (!conversationData) return true;
+    const lastMessage = conversationData.data?.[conversationData.data.length - 1];
+    if (!lastMessage) return true;
+    if (lastMessage.type === "message" && lastMessage.role === "assistant") {
+      return lastMessage.status === "completed";
+    }
+    return true;
+  }, [conversationData]);
+
   const currentMessages = combineMessages(conversationData?.data ?? []);
   if (isConversationsLoading) {
     return <LoadingScreen />;
@@ -291,6 +301,7 @@ const Home = ({
         prompt={inputValue}
         setPrompt={setInputValue}
         selectedModels={selectedModels}
+        isMessageCompleted={isMessageCompleted}
       />
     </div>
   );
