@@ -6,6 +6,7 @@ import { chatClient } from "@/api/chat/client";
 
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
+import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -46,6 +47,7 @@ interface MessageInputProps {
   showUserProfile?: boolean;
   fullWidth?: boolean;
   toolsDisabled?: boolean;
+  isMessageCompleted?: boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
@@ -72,6 +74,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   showUserProfile = true,
   fullWidth = true,
   toolsDisabled = false,
+  isMessageCompleted = true,
 }) => {
   const { settings } = useSettingsStore();
   const [loaded, setLoaded] = useState(false);
@@ -223,6 +226,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
     e.preventDefault();
     if (prompt.trim() || files.length > 0) {
+      if (!isMessageCompleted) return;
       onSubmit(prompt, files, webSearchEnabled);
       setPrompt("");
       setFiles([]);
@@ -271,6 +275,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       if (enterPressed) {
         e.preventDefault();
         if (prompt !== "" || files.length > 0) {
+          if (!isMessageCompleted) return;
           onSubmit(prompt, files, webSearchEnabled);
           setFiles([]);
           setPrompt("");
@@ -634,31 +639,30 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           className="rounded-full bg-white p-1.5 text-gray-800 transition hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800"
                           onClick={stopResponse}
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="size-5"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 01-1.313-1.313V9.564z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
+                          <StopMessageIcon className="size-5" />
                         </button>
                       ) : (
                         <button
                           id="send-message-button"
-                          className={`${
+                          className={cn(
+                            "self-center rounded-full p-1.5 transition",
                             !(prompt === "" && files.length === 0)
                               ? "bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
-                              : "disabled bg-gray-200 text-white dark:bg-gray-700 dark:text-gray-900"
-                          } self-center rounded-full p-1.5 transition`}
+                              : "disabled bg-gray-200 text-white dark:bg-gray-700 dark:text-gray-900",
+                            {
+                              "!bg-white": !isMessageCompleted,
+                            }
+                          )}
                           type="submit"
-                          disabled={prompt === "" && files.length === 0}
+                          title={isMessageCompleted ? "Send" : "Stop"}
+                          disabled={isMessageCompleted && prompt === "" && files.length === 0}
                         >
-                          <SendMessageIcon className="size-5" />
+                          {isMessageCompleted ? (
+                            <SendMessageIcon className="size-5" />
+                          ) : (
+                            // TODO: stop message
+                            <StopMessageIcon className="size-5" />
+                          )}
                         </button>
                       )}
                     </div>
