@@ -35,13 +35,19 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   const isRenaming = updateConversation.isPending || isReloadingConversations;
 
   const confirmRename = () => {
-    updateConversation.mutate({ conversationId: chat.id, metadata: { title: renameInput } });
+    updateConversation.mutate(
+      { conversationId: chat.id, metadata: { title: renameInput } },
+      {
+        onSuccess: () => {
+          reloadConversations({
+            onSettled: () => {
+              stopEditingChatName();
+            },
+          });
+        },
+      }
+    );
     setShowRename(false);
-    reloadConversations({
-      onSettled: () => {
-        stopEditingChatName();
-      },
-    });
   };
 
   const handleRename = async () => {
