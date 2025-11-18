@@ -650,12 +650,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
                               ? "bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
                               : "disabled bg-gray-200 text-white dark:bg-gray-700 dark:text-gray-900",
                             {
-                              "bg-white!": !isMessageCompleted,
+                              "!bg-white": !isMessageCompleted,
                             }
                           )}
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={prompt === "" && files.length === 0}
+                          disabled={isMessageCompleted && prompt === "" && files.length === 0}
                         >
                           {isMessageCompleted ? (
                             <SendMessageIcon className="size-5" />
