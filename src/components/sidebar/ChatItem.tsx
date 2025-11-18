@@ -16,6 +16,7 @@ type ChatItemProps = {
   chat: ConversationInfo;
   isCurrentChat: boolean;
   isPinned?: boolean;
+  handleDeleteSuccess?: () => void;
 };
 
 function getChatTitle(chat: ConversationInfo) {
@@ -24,7 +25,7 @@ function getChatTitle(chat: ConversationInfo) {
   return conv.metadata?.title || BASIC_PLACEHOLDER;
 }
 
-const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
+const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatItemProps) => {
   const { startEditingChatName, stopEditingChatName, editingChatId } = useChatStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
@@ -108,7 +109,12 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
             {isRenaming && editingChatId === chat.id ? (
               <Spinner className="size-4" />
             ) : (
-              <ChatMenu chat={chat} handleRename={handleRename} isPinned={isPinned} />
+              <ChatMenu
+                chat={chat}
+                isPinned={isPinned}
+                handleRename={handleRename}
+                handleDeleteSuccess={handleDeleteSuccess}
+              />
             )}
           </>
         )}

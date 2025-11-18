@@ -1,7 +1,7 @@
 import type React from "react";
 import { useMemo, useState } from "react";
 
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 
 import ChatArrowDown from "@/assets/icons/chat-arrow-down.svg?react";
@@ -16,6 +16,7 @@ import ChatItem from "./ChatItem";
 import UserMenu from "./UserMenu";
 
 const LeftSidebar: React.FC = () => {
+  const navigate = useNavigate();
   const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
   const { chatId } = useParams();
 
@@ -118,7 +119,15 @@ const LeftSidebar: React.FC = () => {
                     {timeRange}
                   </div>
                   {chats.map((chat) => (
-                    <ChatItem key={chat.id} chat={chat} isCurrentChat={chat.id === chatId} />
+                    <ChatItem
+                      key={chat.id}
+                      chat={chat}
+                      isCurrentChat={chat.id === chatId}
+                      handleDeleteSuccess={() => {
+                        if (chat.id !== chatId) return;
+                        navigate("/");
+                      }}
+                    />
                   ))}
                 </div>
               ))}
