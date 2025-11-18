@@ -4,10 +4,11 @@ import { POSTHOG_HOST, POSTHOG_KEY } from "@/api/constants";
 const W: any = window;
 
 export function initPosthog() {
-  if (typeof W.posthog === "undefined") {
+  if (!W.posthog) {
     console.warn("PostHog library is not loaded.");
     return;
   }
+
   W.posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     person_profiles: "always",
@@ -35,45 +36,39 @@ export function initPosthog() {
 }
 
 export function posthogReset() {
+  if (!W.posthog) return console.warn("PostHog not initialized");
   try {
-    if (typeof W.posthog === "undefined") {
-      console.warn("PostHog is not initialized.");
-      return;
-    }
     W.posthog.reset();
-  } catch (error) {
-    console.error("PostHog reset error:", error);
+  } catch (err) {
+    console.error("PostHog reset error:", err);
   }
 }
 
 export function posthogTrack(event: string, properties?: Record<string, any>) {
+  if (!W.posthog) return;
   try {
-    if (typeof W.posthog === "undefined") {
-      console.warn("PostHog is not initialized.");
-      return;
-    }
     W.posthog.capture(event, properties);
-  } catch (error) {
-    console.error("PostHog tracking error:", error);
+  } catch (err) {
+    console.error("PostHog tracking error:", err);
   }
 }
 
-export function posthogIdentify(userId: string, properties?: Record<string, any>) {
+export function posthogIdentify(rawUserId: string, properties?: Record<string, any>) {
+  if (!W.posthog) return;
+
+  const userIdHash = sha256(rawUserId);
+
   try {
-    if (typeof W.posthog === "undefined") {
-      console.warn("PostHog is not initialized.");
-      return;
-    }
-    W.posthog.identify(sha256(userId), properties);
-  } catch (error) {
-    console.error("PostHog identify error:", error);
+    W.posthog.identify(userIdHash, properties);
+  } catch (err) {
+    console.error("PostHog identify error:", err);
   }
 }
 
 export function posthogPageView() {
   posthogTrack("page_view", {
-    page_url: window.location.href,
-    page_path: window.location.pathname,
+    page_url: location.href,
+    page_path: location.pathname,
     page_title: document.title,
     referrer: document.referrer,
   });
@@ -87,8 +82,10 @@ export function posthogSignupStarted(authUrl: string) {
 }
 
 export function posthogOauthSignup(userId: string, provider: string) {
+  const userIdHash = sha256(userId);
+
   posthogTrack("signup_completed", {
-    user_id: sha256(userId),
+    user_id: userIdHash,
     method: "oauth",
     oauth_provider: provider,
     plan: "free",
@@ -103,37 +100,41 @@ export function posthogOauthSignup(userId: string, provider: string) {
 
 export function posthogOauthLogin(userId: string, provider: string) {
   const userIdHash = sha256(userId);
+
   posthogTrack("login_completed", {
     user_id: userIdHash,
     method: "oauth",
-    plan: "free",
     oauth_provider: provider,
+    plan: "free",
   });
 
-  posthogIdentify(userIdHash);
+  posthogIdentify(userId);
 }
 
 export function posthogEmailSignup(userId: string, email: string) {
+  const userIdHash = sha256(userId);
+
   posthogTrack("signup_completed", {
-    user_id: sha256(userId),
+    user_id: userIdHash,
     method: "email",
     plan: "free",
   });
 
   posthogIdentify(userId, {
-    email_hash: sha256(email.toLowerCase()),
     plan: "free",
     signup_date: new Date().toISOString(),
+    email_hash: sha256(email.toLowerCase()),
   });
 }
 
 export function posthogEmailLogin(userId: string) {
   const userIdHash = sha256(userId);
+
   posthogTrack("login_completed", {
     user_id: userIdHash,
     method: "email",
     plan: "free",
   });
 
-  posthogIdentify(userIdHash);
+  posthogIdentify(userId);
 }
