@@ -6,8 +6,8 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
-import IntelLogo from "@/assets/images/intel-2.svg";
-import NvidiaLogo from "@/assets/images/nvidia-2.svg";
+import IntelLogo from "@/assets/images/intel-2.svg?react";
+import NvidiaLogo from "@/assets/images/nvidia-2.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/time";
@@ -182,12 +182,12 @@ const ChatVerifier: React.FC = () => {
                   <div className="mb-2">
                     <p className="mb-2 text-muted-foreground text-xs">{t("Attested by")}</p>
                     <div className="flex items-center space-x-4">
-                      <div className="flex space-x-2">
-                        <img src={NvidiaLogo} alt="NVIDIA" className="h-6 w-16" />
+                      <div className="flex space-x-2 text-foreground">
+                        <NvidiaLogo className="h-6 w-16" />
                       </div>
                       <span className="text-muted-foreground text-xs">{t("and")}</span>
-                      <div className="flex space-x-2">
-                        <img src={IntelLogo} alt="Intel" className="h-6 w-12" />
+                      <div className="flex space-x-2 text-foreground">
+                        <IntelLogo className="h-6 w-12" />
                       </div>
                     </div>
                   </div>

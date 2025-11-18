@@ -11,8 +11,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { type ModelAttestationReport, nearAIClient } from "@/api/nearai/client";
-import IntelLogo from "@/assets/images/intel-2.svg";
-import NvidiaLogo from "@/assets/images/nvidia-2.svg";
+import IntelLogo from "@/assets/images/intel-2.svg?react";
+import NvidiaLogo from "@/assets/images/nvidia-2.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -158,13 +158,13 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
           <div className="mb-6">
             <p className="mb-3 text-muted-foreground text-sm">{t("Attested by")}</p>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <img src={NvidiaLogo} alt="NVIDIA" className="h-8 w-20" />
+              <div className="flex items-center space-x-2 text-foreground">
+                <NvidiaLogo className="h-8 w-20" />
               </div>
               <p className="text-muted-foreground">{t("and")}</p>
 
-              <div className="flex items-center space-x-2">
-                <img src={IntelLogo} alt="Intel" className="h-8 w-16" />
+              <div className="flex items-center space-x-2 text-foreground">
+                <IntelLogo className="h-8 w-16" />
               </div>
             </div>
           </div>
@@ -195,7 +195,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
           {attestationData && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-border bg-card p-4">
+              <div className="rounded-lg border border-border bg-secondary/10 p-4">
                 <button
                   onClick={() => toggleSection("gpu")}
                   className="flex w-full items-center justify-between text-left"
@@ -218,7 +218,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                     <div className="space-y-4">
                       <div className="rounded-lg border border-green/30 bg-green/10 p-3">
                         <div className="mb-2 flex items-center">
-                          <img src={NvidiaLogo} alt="NVIDIA" className="mr-2 h-8 w-20" />
+                          <NvidiaLogo className="mr-2 h-8 w-20" />
                           <span className="font-medium text-green-dark text-sm">{t("Remote Attestation Service")}</span>
                         </div>
                         <p className="mb-3 text-foreground/80 text-xs">
@@ -254,7 +254,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                           <div className="relative">
                             <textarea
                               readOnly
-                              className="h-16 w-full resize-none rounded-md border border-border bg-card px-3 py-2 font-mono text-sm"
+                              className="h-16 w-full resize-none rounded-md border border-border bg-secondary/10 px-3 py-2 font-mono text-sm"
                               value={nvidiaPayload?.nonce || ""}
                             />
                             <button
@@ -283,7 +283,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                           <div className="relative">
                             <textarea
                               readOnly
-                              className="h-32 w-full resize-none rounded-md border border-border bg-card px-3 py-2 font-mono text-sm"
+                              className="h-32 w-full resize-none rounded-md border border-border bg-secondary/10 px-3 py-2 font-mono text-sm"
                               value={JSON.stringify(nvidiaPayload?.evidence_list || [], null, 2)}
                             />
                             <button
@@ -314,7 +314,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                             type="text"
                             readOnly
                             value={nvidiaPayload?.arch || ""}
-                            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-border bg-secondary/10 px-3 py-2 text-sm"
                           />
                           <button
                             onClick={() => {
@@ -337,7 +337,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-card p-4">
+              <div className="rounded-lg border border-border bg-secondary/10 p-4">
                 <button
                   onClick={() => toggleSection("tdx")}
                   className="flex w-full items-center justify-between text-left"
@@ -361,7 +361,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                       {/* Intel Trust Domain Extensions Info */}
                       <div className="rounded-lg border border-green/30 bg-green/10 p-3">
                         <div className="mb-2 flex items-center">
-                          <img src={IntelLogo} alt="Intel" className="mr-2 h-8 w-16" />
+                          <IntelLogo className="mr-2 h-8 w-16" />
                           <span className="font-medium text-green-dark text-sm">{t("Trust Domain Extensions")}</span>
                         </div>
                         <p className="mb-3 text-foreground/80 text-xs">
@@ -398,7 +398,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                           <div className="relative">
                             <textarea
                               readOnly
-                              className="h-32 w-full resize-none rounded-md border border-border bg-card px-3 py-2 font-mono text-sm"
+                              className="h-32 w-full resize-none rounded-md border border-border bg-secondary/10 px-3 py-2 font-mono text-sm"
                               value={intelQuote}
                             />
                             <button

@@ -1,36 +1,51 @@
-import type React from "react";
-import { useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useViewStore } from "@/stores/useViewStore";
-
-// import { useSettingsStore } from "../../stores/useSettingsStore";
 
 const BREAKPOINT = 768;
 
-interface ThemeProviderProps {
+type Theme = "dark" | "light" | "system";
+
+type ThemeProviderProps = {
   children: React.ReactNode;
-}
+  defaultTheme?: Theme;
+  storageKey?: string;
+};
 
-const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  // const { settings } = useSettingsStore();
+type ThemeProviderState = {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+};
+
+const initialState: ThemeProviderState = {
+  theme: "system",
+  setTheme: () => null,
+};
+
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+
+export const ThemeProvider = ({
+  children,
+  defaultTheme = "light",
+  storageKey = "near-ai-theme",
+  ...props
+}: ThemeProviderProps) => {
   const { setIsMobile, setIsLeftSidebarOpen } = useViewStore();
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(storageKey) as Theme) || defaultTheme);
 
-  //TODO: add toggle theme functionality
-  // useEffect(() => {
-  //   const root = document.documentElement;
+  useEffect(() => {
+    const root = window.document.documentElement;
 
-  //   // Remove existing theme classes
-  //   root.classList.remove("light", "dark");
+    root.classList.remove("light", "dark");
 
-  //   // Add the current theme class
-  //   root.classList.add(settings.theme);
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
-  //   // Force override system dark mode by setting color-scheme
-  //   if (settings.theme === "dark") {
-  //     root.style.colorScheme = "dark";
-  //   } else {
-  //     root.style.colorScheme = "light";
-  //   }
-  // }, [settings.theme]);
+      root.classList.add(systemTheme);
+      return;
+    }
+
+    root.classList.add(theme);
+  }, [theme]);
 
   useEffect(() => {
     setIsMobile(window.innerWidth < BREAKPOINT);
@@ -51,7 +66,25 @@ const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     };
   }, [setIsMobile, setIsLeftSidebarOpen]);
 
-  return <>{children}</>;
+  const value = {
+    theme,
+    setTheme: (theme: Theme) => {
+      localStorage.setItem(storageKey, theme);
+      setTheme(theme);
+    },
+  };
+
+  return (
+    <ThemeProviderContext.Provider {...props} value={value}>
+      {children}
+    </ThemeProviderContext.Provider>
+  );
 };
 
-export default ThemeProvider;
+export const useTheme = () => {
+  const context = useContext(ThemeProviderContext);
+
+  if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider");
+
+  return context;
+};
