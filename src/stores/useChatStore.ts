@@ -9,7 +9,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   setModels: (models: ModelV1[]) => set({ models }),
   setSelectedModels: (models: string[]) => set({ selectedModels: models }),
   isEditingChatName: false,
-  editingChatId: null as string | null,
+  editingChatId: null,
   startEditingChatName: (chatId: string) =>
     set({
       isEditingChatName: true,

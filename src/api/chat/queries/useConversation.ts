@@ -4,6 +4,7 @@ import type {
   ConversationUpdateParams,
 } from "openai/resources/conversations/conversations.mjs";
 import type { Responses } from "openai/resources/index.mjs";
+import { queryKeys } from "@/api/query-keys";
 import { chatClient } from "../client";
 
 export const useConversation = () => {
@@ -38,8 +39,8 @@ export const useConversation = () => {
     onSettled?: () => void;
   } = {}) => {
     try {
-      await queryClient.invalidateQueries({
-        queryKey: ["conversations"],
+      await queryClient.refetchQueries({
+        queryKey: queryKeys.conversation.all,
       });
       onSuccess?.();
     } catch (err) {
@@ -49,7 +50,7 @@ export const useConversation = () => {
     }
   };
 
-  const isReloadingConversations = queryClient.isFetching({ queryKey: ["conversations"] }) > 0;
+  const isReloadingConversations = queryClient.isFetching({ queryKey: queryKeys.conversation.all }) > 0;
 
   return {
     createConversation,
