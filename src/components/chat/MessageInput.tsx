@@ -611,10 +611,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             )}
 
                             <Button
-                              variant={webSearchEnabled ? "ghost" : "secondary"}
+                              variant={webSearchEnabled ? "secondary" : "ghost"}
                               onClick={() => setWebSearchEnabled(!webSearchEnabled)}
                               type="button"
-                              className="flex h-auto max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2 py-0.5 font-medium text-xs transition-colors duration-300"
+                              className="flex h-auto max-w-full items-center gap-1.5 overflow-hidden rounded-full px-2 py-0.5 font-medium text-xs transition-colors duration-300"
                             >
                               <GlobeIcon className="size-5" strokeWidth="1.75" stroke="currentColor" />
                               <span className="translate-y-[0.5px] overflow-hidden text-ellipsis whitespace-nowrap">
