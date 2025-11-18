@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
   ConversationCreateParams,
   ConversationUpdateParams,
@@ -7,6 +7,8 @@ import type { Responses } from "openai/resources/index.mjs";
 import { chatClient } from "../client";
 
 export const useConversation = () => {
+  const queryClient = useQueryClient();
+
   const createConversation = useMutation({
     mutationFn: (conversation: ConversationCreateParams) => chatClient.createConversation(conversation),
   });
@@ -26,9 +28,34 @@ export const useConversation = () => {
       chatClient.addItemsToConversation(conversationId, items),
   });
 
+  const reloadConversations = async ({
+    onSuccess,
+    onError,
+    onSettled,
+  }: {
+    onSuccess?: () => void;
+    onError?: (error: unknown) => void;
+    onSettled?: () => void;
+  } = {}) => {
+    try {
+      await queryClient.invalidateQueries({
+        queryKey: ["conversations"],
+      });
+      onSuccess?.();
+    } catch (err) {
+      onError?.(err);
+    } finally {
+      onSettled?.();
+    }
+  };
+
+  const isReloadingConversations = queryClient.isFetching({ queryKey: ["conversations"] }) > 0;
+
   return {
     createConversation,
     updateConversation,
     addItemsToConversation,
+    isReloadingConversations,
+    reloadConversations,
   };
 };

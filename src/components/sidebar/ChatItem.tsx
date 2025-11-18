@@ -6,6 +6,7 @@ import { cn } from "@/lib/time";
 import { toChatRoute } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";
+import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
 
@@ -24,17 +25,23 @@ function getChatTitle(chat: ConversationInfo) {
 }
 
 const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
-  const { startEditingChatName, stopEditingChatName } = useChatStore();
+  const { startEditingChatName, stopEditingChatName, editingChatId } = useChatStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const [renameInput, setRenameInput] = useState(chat.metadata.title ?? BASIC_PLACEHOLDER);
-  const { updateConversation } = useConversation();
+  const { isReloadingConversations, updateConversation, reloadConversations } = useConversation();
+
+  const isRenaming = updateConversation.isPending || isReloadingConversations;
 
   const confirmRename = () => {
     updateConversation.mutate({ conversationId: chat.id, metadata: { title: renameInput } });
     setShowRename(false);
-    stopEditingChatName();
+    reloadConversations({
+      onSettled: () => {
+        stopEditingChatName();
+      },
+    });
   };
 
   const handleRename = async () => {
@@ -45,6 +52,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   };
 
   const handleCancelRename = () => {
+    if (isRenaming) return;
     setShowRename(false);
     setRenameInput(chat.metadata.title);
     stopEditingChatName();
@@ -91,7 +99,11 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
                 {getChatTitle(chat)}
               </div>
             </div>
-            <ChatMenu chat={chat} handleRename={handleRename} isPinned={isPinned} />
+            {isRenaming && editingChatId === chat.id ? (
+              <Spinner className="size-4" />
+            ) : (
+              <ChatMenu chat={chat} handleRename={handleRename} isPinned={isPinned} />
+            )}
           </>
         )}
       </Link>
