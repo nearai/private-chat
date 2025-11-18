@@ -16,10 +16,11 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationModelOutput } from "@/types";
 import { extractMessageContent } from "@/types/openai";
+
 // import Citations from "./Citations";
 
+import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-
 // import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
 
@@ -51,6 +52,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { settings } = useSettingsStore();
   const { messagesSignatures } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
+  const { models } = useChatStore();
 
   const [edit, setEdit] = useState(false);
   const [editedContent, setEditedContent] = useState("");
@@ -90,6 +92,10 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       return "failed";
     }
   }, [signature, isMessageCompleted]);
+
+  const modelIcon = useMemo(() => {
+    return models.find((m) => m.modelId === message.model)?.metadata?.modelIcon;
+  }, [models, message.model]);
 
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -160,7 +166,11 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   return (
     <div className="group flex w-full" id={`message-${message.id}`} dir={settings.chatDirection || "ltr"}>
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
-        <NearAIIcon className="mt-0.5 h-6 w-6" />
+        {modelIcon ? (
+          <img src={modelIcon} alt="Model Icon" className="mt-0.5 h-6 w-6 rounded" />
+        ) : (
+          <NearAIIcon className="mt-0.5 h-6 w-6 rounded" />
+        )}
       </div>
 
       <div className="w-0 flex-auto pl-1">
