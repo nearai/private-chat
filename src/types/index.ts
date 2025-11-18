@@ -475,6 +475,10 @@ export interface ViewStore {
 
 export interface ChatStore {
   webSearchEnabled: boolean;
+  isEditingChatName: boolean;
+  editingChatId: string | null;
+  startEditingChatName: (chatId: string) => void;
+  stopEditingChatName: () => void;
   setWebSearchEnabled: (webSearchEnabled: boolean) => void;
   models: ModelV1[];
   selectedModels: string[];

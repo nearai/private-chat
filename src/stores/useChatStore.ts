@@ -6,7 +6,19 @@ export const useChatStore = create<ChatStore>((set) => ({
   setWebSearchEnabled: (webSearchEnabled: boolean) => set({ webSearchEnabled }),
   models: [],
   selectedModels: [],
-
   setModels: (models: ModelV1[]) => set({ models }),
   setSelectedModels: (models: string[]) => set({ selectedModels: models }),
+  isEditingChatName: false,
+  editingChatId: null,
+  startEditingChatName: (chatId: string) =>
+    set({
+      isEditingChatName: true,
+      editingChatId: chatId,
+    }),
+
+  stopEditingChatName: () =>
+    set({
+      isEditingChatName: false,
+      editingChatId: null,
+    }),
 }));

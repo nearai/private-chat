@@ -4,7 +4,9 @@ import { Link } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { cn } from "@/lib/time";
 import { toChatRoute } from "@/pages/routes";
+import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";
+import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
 
@@ -24,26 +26,46 @@ function getChatTitle(chat: ConversationInfo) {
 }
 
 const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatItemProps) => {
+  const { startEditingChatName, stopEditingChatName, editingChatId } = useChatStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const [renameInput, setRenameInput] = useState(chat.metadata.title ?? BASIC_PLACEHOLDER);
-  const { updateConversation } = useConversation();
+  const { isReloadingConversations, updateConversation, reloadConversations } = useConversation();
+
+  const isRenaming = updateConversation.isPending || isReloadingConversations;
 
   const confirmRename = () => {
-    updateConversation.mutate({ conversationId: chat.id, metadata: { title: renameInput } });
+    updateConversation.mutate(
+      { conversationId: chat.id, metadata: { title: renameInput } },
+      {
+        onSuccess: () => {
+          reloadConversations({
+            onSettled: () => {
+              stopEditingChatName();
+            },
+          });
+        },
+        onError: () => {
+          setShowRename(true);
+        },
+      }
+    );
     setShowRename(false);
   };
 
   const handleRename = async () => {
     setShowRename(true);
+    startEditingChatName(chat.id);
     await new Promise((resolve) => setTimeout(resolve, 100));
     renameRef.current?.focus();
   };
 
   const handleCancelRename = () => {
+    if (isRenaming) return;
     setShowRename(false);
     setRenameInput(chat.metadata.title);
+    stopEditingChatName();
   };
 
   return (
@@ -63,6 +85,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
                 ref={renameRef}
                 className="h-[20px] w-full self-center border-none bg-transparent text-left text-white outline-none"
                 value={renameInput}
+                onClick={() => startEditingChatName(chat.id)}
                 onChange={(e) => setRenameInput(e.target.value)}
               />
             </div>
@@ -86,12 +109,16 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
                 {getChatTitle(chat)}
               </div>
             </div>
-            <ChatMenu
-              chat={chat}
-              isPinned={isPinned}
-              handleRename={handleRename}
-              handleDeleteSuccess={handleDeleteSuccess}
-            />
+            {isRenaming && editingChatId === chat.id ? (
+              <Spinner className="size-4" />
+            ) : (
+              <ChatMenu
+                chat={chat}
+                isPinned={isPinned}
+                handleRename={handleRename}
+                handleDeleteSuccess={handleDeleteSuccess}
+              />
+            )}
           </>
         )}
       </Link>
