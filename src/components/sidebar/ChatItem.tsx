@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { cn } from "@/lib/time";
 import { toChatRoute } from "@/pages/routes";
+import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
@@ -23,6 +24,7 @@ function getChatTitle(chat: ConversationInfo) {
 }
 
 const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
+  const { startEditingChatName, stopEditingChatName } = useChatStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
@@ -32,10 +34,12 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   const confirmRename = () => {
     updateConversation.mutate({ conversationId: chat.id, metadata: { title: renameInput } });
     setShowRename(false);
+    stopEditingChatName();
   };
 
   const handleRename = async () => {
     setShowRename(true);
+    startEditingChatName(chat.id);
     await new Promise((resolve) => setTimeout(resolve, 100));
     renameRef.current?.focus();
   };
@@ -43,6 +47,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
   const handleCancelRename = () => {
     setShowRename(false);
     setRenameInput(chat.metadata.title);
+    stopEditingChatName();
   };
 
   return (
@@ -62,6 +67,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned }: ChatItemProps) => {
                 ref={renameRef}
                 className="h-[20px] w-full self-center border-none bg-transparent text-left text-white outline-none"
                 value={renameInput}
+                onClick={() => startEditingChatName(chat.id)}
                 onChange={(e) => setRenameInput(e.target.value)}
               />
             </div>

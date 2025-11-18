@@ -78,7 +78,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
+  const { isEditingChatName, webSearchEnabled, setWebSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
@@ -161,6 +161,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   useEffect(() => {
     setLoaded(true);
+    if (isEditingChatName) return;
+
     const chatInput = document.getElementById("chat-input");
     setTimeout(() => chatInput?.focus(), 0);
 
