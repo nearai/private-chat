@@ -46,6 +46,9 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
             },
           });
         },
+        onError: () => {
+          setShowRename(true);
+        },
       }
     );
     setShowRename(false);
