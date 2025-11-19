@@ -195,18 +195,17 @@ const Home = ({
   }, [conversationData]);
 
   const currentMessages = combineMessages(conversationData?.data ?? []);
-  if (isConversationsLoading) {
-    return <LoadingScreen />;
-  }
 
   return (
     <div className="flex h-full flex-col bg-gray-900" id="chat-container">
       <Navbar />
+      {isConversationsLoading && <LoadingScreen />}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={cn("flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500", {
           "pl-12.5": !isLeftSidebarOpen,
+          "hidden opacity-0": isConversationsLoading,
         })}
       >
         {currentMessages.map((message, idx) => {
