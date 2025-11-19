@@ -190,7 +190,7 @@ const ChatVerifier: React.FC = () => {
                   </div>
                 </div>
 
-                <Button onClick={openModelVerifier} className="w-full" variant="secondary">
+                <Button onClick={openModelVerifier} className="w-full" variant="secondary" size="small">
                   Show Verification Details
                 </Button>
               </>
