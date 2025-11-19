@@ -1,7 +1,9 @@
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Collapsible from "@/components/common/Collapsible";
+import { useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
@@ -21,6 +23,7 @@ const GeneralSettings = () => {
   const { t, i18n } = useTranslation("translation", { useSuspense: false });
   const { settings, setSettings } = useSettingsStore();
   const { user } = useUserStore();
+  const { theme, setTheme } = useTheme();
 
   const [saved, setSaved] = useState(false);
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -134,6 +137,11 @@ const GeneralSettings = () => {
     setRequestFormat(newFormat);
   };
 
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+  };
+
   const handleLanguageChange = (newLang: string) => {
     setLang(newLang);
     changeLanguage(newLang);
@@ -227,7 +235,6 @@ const GeneralSettings = () => {
       <div className="max-h-112 overflow-y-auto pr-2 lg:max-h-full">
         <div>
           <div className="mb-1 font-medium text-sm">{t("WebUI Settings")}</div>
-
           {/* Language Selector */}
           <div className="flex w-full justify-between">
             <div className="self-center font-medium text-xs">{t("Language")}</div>
@@ -245,16 +252,20 @@ const GeneralSettings = () => {
               </SelectNative>
             </div>
           </div>
-
           {/* Notifications Toggle */}
           <CycleParam
             label={t("Notifications")}
             value={notificationEnabled ? t("On") : t("Off")}
             onCycle={toggleNotification}
           />
+          {/* Dark Theme Toggle */}
+          <CycleParam
+            label={"Dark Theme"}
+            value={theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+            onCycle={toggleTheme}
+          />
 
           <hr className="my-2 border-border" />
-
           <Collapsible title={"System Prompt"} className="w-full">
             <div className="mt-2">
               <textarea

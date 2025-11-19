@@ -129,7 +129,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index }) => 
     <div
       className={cn(
         "flex cursor-pointer flex-col items-start gap-6 rounded-xl p-2 transition-colors",
-        showDetails && "bg-card/30",
+        showDetails && "bg-card/30 dark:bg-card",
         (!isVerified || error) && "bg-destructive/10"
       )}
       onClick={() => setShowDetails((prev) => !prev)}

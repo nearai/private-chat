@@ -154,7 +154,7 @@
   --muted: #768998;
   --muted-foreground: #768998;
   --destructive: #ff5757;
-  --destructive-foreground: oklch(50.5% 0.213 27.518);
+  --destructive-foreground: #ffffff;
 
   --border: #2c3135;
   --input: #262a2d;

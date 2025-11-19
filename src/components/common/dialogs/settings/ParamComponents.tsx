@@ -1,18 +1,15 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { CompactTooltip } from "@/components/ui/tooltip";
 
 // Button component for toggle
 export const ParamButton = ({ children, onClick }: PropsWithChildren & { onClick: () => void }) => {
   return (
-    <button
-      className="flex rounded-sm p-1 px-3 text-xs transition hover:bg-secondary/30"
-      onClick={onClick}
-      type="button"
-    >
+    <Button variant="ghost" onClick={onClick} type="button" size="small" className="h-auto rounded-sm p-1 text-xs">
       {children}
-    </button>
+    </Button>
   );
 };
 
@@ -169,7 +166,7 @@ export const ToggleSwitch = ({
 interface CycleParamProps {
   label: string;
   tooltip?: string;
-  value: string;
+  value: React.ReactNode;
   onCycle: () => void;
 }
 
@@ -178,7 +175,7 @@ export const CycleParam = ({ label, tooltip, value, onCycle }: CycleParamProps) 
     <div className="flex w-full justify-between py-0.5">
       <div className="self-center font-medium text-xs">{label}</div>
       <ParamButton onClick={onCycle}>
-        <span className="self-center">{value}</span>
+        <div className="self-center">{value}</div>
       </ParamButton>
     </div>
   );
