@@ -1,6 +1,6 @@
 import { ArrowPathIcon, ArrowUpRightIcon, CheckIcon, ChevronRightIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { type ModelAttestationReport, nearAIClient } from "@/api/nearai/client";
@@ -50,6 +50,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
     tdx: false,
   });
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
+  const hasFetchedRef = useRef(false);
+  const prevShowRef = useRef(show);
 
   const fetchAttestationReport = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -79,12 +81,14 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }, [model]);
 
   const verifyAgain = async () => {
+    hasFetchedRef.current = false;
     await fetchAttestationReport();
     setCheckedMap({});
   };
 
   const handleClose = () => {
     onClose();
+    setExpandedSections({ gpu: false, tdx: false });
     setCheckedMap({});
   };
 
@@ -124,25 +128,15 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
   useEffect(() => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const isOpening = show && !prevShowRef.current;
 
-    if ((show || autoVerify) && model && token) {
-      fetchAttestationReport();
+    if (token) {
+      if (isOpening || (autoVerify && !hasFetchedRef.current)) {
+        hasFetchedRef.current = true;
+        fetchAttestationReport();
+      }
     }
-  }, [show, autoVerify, model, fetchAttestationReport]);
-
-  useEffect(() => {
-    if (!show) {
-      setAttestationData(null);
-      setError(null);
-      setExpandedSections({ gpu: false, tdx: false });
-    }
-  }, [show]);
-
-  useEffect(() => {
-    if (show) {
-      setCheckedMap({});
-    }
-  }, [show]);
+  }, [show, autoVerify, fetchAttestationReport]);
 
   return (
     <Dialog open={show} onOpenChange={handleClose}>
