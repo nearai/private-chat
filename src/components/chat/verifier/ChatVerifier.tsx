@@ -1,13 +1,13 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
+import { XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
-import IntelLogo from "@/assets/images/intel-2.svg?react";
-import NvidiaLogo from "@/assets/images/nvidia-2.svg?react";
+import IntelLogo from "@/assets/images/intel.svg?react";
+import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/time";
@@ -103,6 +103,7 @@ const ChatVerifier: React.FC = () => {
     setModelVerificationStatus(status);
   };
 
+  //TODO: Remove this useEffect
   useEffect(() => {
     if (!isRightSidebarOpen) {
       setModelVerificationStatus(null);
@@ -113,6 +114,7 @@ const ChatVerifier: React.FC = () => {
     }
   }, [isRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails]);
 
+  //TODO: Remove this useEffect
   // Clear the selected message ID after it's been used
   useEffect(() => {
     if (selectedMessageIdForVerifier && isRightSidebarOpen) {
@@ -145,10 +147,8 @@ const ChatVerifier: React.FC = () => {
           </Button>
         </div>
 
-        <div className="flex h-full flex-col">
-          <h2 className="mb-3 flex h-8 items-center rounded font-semibold text-base">{t("Model Verification")}</h2>
-
-          <div className="min-h-[230px] w-full">
+        <div className="flex h-full flex-col gap-6">
+          <div className="flex w-full flex-col gap-6 p-2">
             {modelVerificationStatus?.loading ? (
               <div className="flex items-center justify-center py-4">
                 <Spinner className="size-5" />
@@ -156,11 +156,9 @@ const ChatVerifier: React.FC = () => {
               </div>
             ) : modelVerificationStatus?.error ? (
               <>
-                <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-                  <div className="flex items-center">
-                    <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
-                    <span className="text-destructive text-sm">{modelVerificationStatus.error}</span>
-                  </div>
+                <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                  <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
+                  <span className="text-destructive text-sm">{modelVerificationStatus.error}</span>
                 </div>
                 <Button
                   onClick={() => setModelVerificationStatus(null)}
@@ -174,31 +172,26 @@ const ChatVerifier: React.FC = () => {
               </>
             ) : modelVerificationStatus?.isVerified ? (
               <>
-                <div className="mb-3 rounded-lg border border-green/30 bg-green/10 p-3">
-                  <div className="mb-2 flex items-center">
-                    <CheckCircleIcon className="mr-2 h-5 w-5 text-green" />
-                    <span className="font-medium text-green text-sm">{t("Your chat is confidential.")}</span>
-                  </div>
-                  <div className="mb-2">
-                    <p className="mb-2 text-muted-foreground text-xs">{t("Attested by")}</p>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex space-x-2 text-foreground">
-                        <NvidiaLogo className="h-6 w-16" />
-                      </div>
-                      <span className="text-muted-foreground text-xs">{t("and")}</span>
-                      <div className="flex space-x-2 text-foreground">
-                        <IntelLogo className="h-6 w-12" />
-                      </div>
-                    </div>
-                  </div>
-                  <p style={{ lineHeight: "1.5em" }} className="text-muted-foreground text-xs">
-                    {t(
-                      "This automated verification tool lets you independently confirm that the model is running in the TEE (Trusted Execution Environment)."
-                    )}
+                {selectedModels.length > 0 && (
+                  <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
+                    {selectedModels.length} Verified Models
                   </p>
+                )}
+
+                <p className="font-normal text-sm leading-[140%] opacity-80">
+                  All models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
+                  messages.
+                </p>
+                <div className="flex flex-col items-start gap-3">
+                  <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
+                  <div className="flex items-end gap-4">
+                    <NvidiaLogo className="h-3" />
+                    <IntelLogo className="h-4" />
+                  </div>
                 </div>
-                <Button onClick={openModelVerifier} size="small" className="w-full" variant="secondary">
-                  {t("View Verification Details")}
+
+                <Button onClick={openModelVerifier} className="w-full" variant="secondary">
+                  Show Verification Details
                 </Button>
               </>
             ) : (
@@ -210,21 +203,8 @@ const ChatVerifier: React.FC = () => {
           </div>
 
           {chatId && (
-            <div className="flex-1 overflow-hidden">
-              <div className="flex h-full flex-col">
-                <div className="shrink-0">
-                  <h2 className="flex h-8 items-center rounded font-semibold text-base">
-                    {t("Messages Verification")}
-                  </h2>
-                </div>
-                <div className="scrollbar-hidden flex-1 overflow-y-auto">
-                  <MessagesVerifier
-                    history={history}
-                    chatId={chatId}
-                    initialSelectedMessageId={selectedMessageIdForVerifier || undefined}
-                  />
-                </div>
-              </div>
+            <div className="scrollbar-hidden flex-1 overflow-y-auto">
+              <MessagesVerifier history={history} />
             </div>
           )}
         </div>

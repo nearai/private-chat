@@ -2,9 +2,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { MessageSignature } from "@/api/nearai/client";
 
+export type ExtendedMessageSignature = MessageSignature & {
+  verified?: boolean;
+};
+
 interface MessagesSignaturesState {
-  messagesSignatures: Record<string, MessageSignature>;
-  setMessageSignature: (chatCompletionId: string, signature: MessageSignature) => void;
+  messagesSignatures: Record<string, ExtendedMessageSignature>;
+  setMessageSignature: (chatCompletionId: string, signature: ExtendedMessageSignature) => void;
   removeMessageSignature: (chatCompletionId: string) => void;
   clearAllSignatures: () => void;
 }

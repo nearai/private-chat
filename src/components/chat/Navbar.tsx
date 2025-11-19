@@ -41,7 +41,7 @@ export default function Navbar() {
                 title="Expand Sidebar"
                 className="size-8 text-muted-foreground"
               >
-                <SidebarIcon className="size-5" />
+                <SidebarIcon className="size-5 rotate-180" />
               </Button>
               <Button
                 variant="ghost"

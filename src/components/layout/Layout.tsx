@@ -1,7 +1,7 @@
 import type React from "react";
 import { Outlet } from "react-router";
+import ChatVerifier from "@/components/chat/verifier/ChatVerifier";
 import LeftSidebar from "@/components/sidebar";
-import ChatVerifier from "../chat/verifyer/ChatVerifier";
 
 const Layout: React.FC = () => {
   return (
