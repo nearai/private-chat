@@ -136,15 +136,15 @@ const AuthPage: React.FC = () => {
                 </div>
                 <div className="ml-2 inline-block flex-1 text-left">
                   {"By signing in, I agree to the "}
-                  <a className="underline hover:opacity-20" href="/terms">
+                  <a className="underline hover:text-blue-600" href="/terms">
                     Terms of Service
                   </a>
                   {" , "}
-                  <a className="underline hover:opacity-20" href="/privacy">
+                  <a className="underline hover:text-blue-600" href="/privacy">
                     Privacy Policy
                   </a>
                   {" and "}
-                  <a className="underline hover:opacity-20" href="/privacy-cookie">
+                  <a className="underline hover:text-blue-600" href="/privacy-cookie">
                     Cookie Policy
                   </a>
                   .
