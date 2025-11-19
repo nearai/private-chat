@@ -611,7 +611,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             )}
 
                             <Button
-                              variant={webSearchEnabled ? "secondary" : "ghost"}
+                              variant={webSearchEnabled ? "blue" : "ghost"}
                               onClick={() => setWebSearchEnabled(!webSearchEnabled)}
                               type="button"
                               className="flex h-auto max-w-full items-center gap-1.5 overflow-hidden rounded-full px-2 py-0.5 font-medium text-xs transition-colors duration-300"
