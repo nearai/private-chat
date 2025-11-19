@@ -100,6 +100,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
     if (success) {
       toast.success(t("Copied to clipboard"));
       setCheckedMap((prev) => ({ ...prev, [key]: true }));
+      setTimeout(() => {
+        setCheckedMap((prev) => ({ ...prev, [key]: false }));
+      }, 1000);
     }
   };
 
@@ -235,7 +238,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                             className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
                             title="Copy nonce"
                           >
-                            {checkedMap.nonce ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-6" />}
+                            {checkedMap.nonce ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-4" />}
                           </button>
                         </div>
                       </div>
@@ -261,7 +264,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                             {checkedMap.evidence_list ? (
                               <CheckIcon className="size-4" />
                             ) : (
-                              <ClipboardIcon className="size-6" />
+                              <ClipboardIcon className="size-4" />
                             )}
                           </button>
                         </div>
@@ -285,7 +288,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                           className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
                           title="Copy architecture"
                         >
-                          {checkedMap.arch ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-6" />}
+                          {checkedMap.arch ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-4" />}
                         </button>
                       </div>
                     </div>
@@ -346,9 +349,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                             title="Copy quote"
                           >
                             {checkedMap.intelQuote ? (
-                              <CheckIcon className="size-6" />
+                              <CheckIcon className="size-4" />
                             ) : (
-                              <ClipboardIcon className="size-6" />
+                              <ClipboardIcon className="size-4" />
                             )}
                           </button>
                         </div>

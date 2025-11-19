@@ -1,13 +1,12 @@
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import ArchiveBoxIcon from "@heroicons/react/24/outline/ArchiveBoxIcon";
-import BookmarkIcon from "@heroicons/react/24/outline/BookmarkIcon";
-import BookmarkSlashIcon from "@heroicons/react/24/outline/BookmarkSlashIcon";
-import DocumentDuplicateIcon from "@heroicons/react/24/outline/DocumentDuplicateIcon";
-import PencilIcon from "@heroicons/react/24/outline/PencilIcon";
-import TrashIcon from "@heroicons/react/24/outline/TrashIcon";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useArchiveChat, useCloneChat, useDeleteChat, useTogglePinnedStatus } from "@/api/chat/queries";
+import { useCloneChat, useDeleteChat, useTogglePinnedStatus } from "@/api/chat/queries";
+import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
+import PencilIcon from "@/assets/icons/pen.svg?react";
+import PinIcon from "@/assets/icons/pin.svg?react";
+import TrashIcon from "@/assets/icons/trash.svg?react";
+import UnpinIcon from "@/assets/icons/unpin.svg?react";
 import DownloadDropdown from "@/components/chat/DownloadDropdown";
 import {
   DropdownMenu,
@@ -32,7 +31,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { mutate: toggleChatPinnedStatusById } = useTogglePinnedStatus();
   const { mutate: cloneChatById } = useCloneChat();
-  const { mutate: archiveChatById } = useArchiveChat();
+  // const { mutate: archiveChatById } = useArchiveChat(); //TODO: Add archive chat
   const { mutate: deleteChatById } = useDeleteChat({
     onSuccess: () => {
       setShowDeleteConfirm(false);
@@ -50,9 +49,9 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
     cloneChatById({ id: chat.id });
   };
 
-  const handleArchive = () => {
-    archiveChatById({ id: chat.id });
-  };
+  // const handleArchive = () => {
+  //   archiveChatById({ id: chat.id });
+  // };
 
   const handleDelete = () => {
     setShowDeleteConfirm(true);
@@ -89,12 +88,12 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
           >
             {isPinned ? (
               <>
-                <BookmarkSlashIcon className="h-4 w-4" strokeWidth={2} />
+                <UnpinIcon className="h-4 w-4" strokeWidth={2} />
                 <span>{t("Unpin")}</span>
               </>
             ) : (
               <>
-                <BookmarkIcon className="h-4 w-4" strokeWidth={2} />
+                <PinIcon className="h-4 w-4" strokeWidth={2} />
                 <span>{t("Pin")}</span>
               </>
             )}
@@ -109,17 +108,17 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
           </DropdownMenuItem>
 
           <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
-            <DocumentDuplicateIcon className="h-4 w-4" strokeWidth={2} />
+            <ClipboardIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Clone")}</span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem
+          {/* <DropdownMenuItem
             className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
             onClick={handleArchive}
           >
             <ArchiveBoxIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Archive")}</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
           <DownloadDropdown chatId={chat.id} />
 
