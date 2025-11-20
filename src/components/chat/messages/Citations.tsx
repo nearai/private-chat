@@ -46,7 +46,7 @@ export default function Citations({
               >
                 <div className="size-4 rounded-full bg-gray-50 dark:bg-gray-800">{idx + 1}</div>
 
-                <div className="mx-1 flex-1 truncate text-black/60 transition hover:text-black dark:text-white/60 dark:hover:text-white">
+                <div className="mx-1 flex-1 truncate text-black/60 transition hover:text-black">
                   {decodeString(citation.url)}
                 </div>
               </a>
@@ -72,7 +72,7 @@ export default function Citations({
                     {idx + 1}
                   </div>
 
-                  <div className="mx-1 flex-1 truncate text-black/60 transition hover:text-black dark:text-white/60 dark:hover:text-white">
+                  <div className="mx-1 flex-1 truncate text-black/60 transition hover:text-black">
                     {decodeString(citation.url)}
                   </div>
                 </a>

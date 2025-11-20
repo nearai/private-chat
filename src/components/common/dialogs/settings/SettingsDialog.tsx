@@ -54,7 +54,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           <DialogDescription className="sr-only" />
         </DialogHeader>
 
-        <TabbedContent tabs={tabs} defaultTab="general" className="max-h-[32rem] md:min-h-[32rem]" />
+        <TabbedContent tabs={tabs} defaultTab="general" className="max-h-128 md:min-h-128" />
       </DialogContent>
     </Dialog>
   );

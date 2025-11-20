@@ -72,8 +72,8 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
     <div className="group relative w-full" draggable="true">
       <Link
         className={cn(
-          "flex w-full justify-between text-ellipsis whitespace-nowrap rounded-lg px-[11px] py-[6px]",
-          isCurrentChat && "bg-[#00ec9714]"
+          "flex w-full justify-between gap-2 whitespace-nowrap rounded-lg px-2 py-1.5",
+          isCurrentChat && "bg-secondary/30"
         )}
         to={toChatRoute(chat.id)}
         draggable="false"
@@ -83,7 +83,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
             <div className="flex w-full flex-1 self-center">
               <input
                 ref={renameRef}
-                className="h-[20px] w-full self-center border-none bg-transparent text-left text-white outline-none"
+                className="h-[20px] w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
                 onClick={() => startEditingChatName(chat.id)}
                 onChange={(e) => setRenameInput(e.target.value)}
@@ -104,10 +104,8 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
           </>
         ) : (
           <>
-            <div className="flex w-full flex-1 self-center">
-              <div dir="auto" className="h-[20px] w-full self-center overflow-hidden text-left text-white">
-                {getChatTitle(chat)}
-              </div>
+            <div dir="auto" className="h-[20px] w-full self-center overflow-hidden truncate text-left">
+              {getChatTitle(chat)}
             </div>
             {isRenaming && editingChatId === chat.id ? (
               <Spinner className="size-4" />

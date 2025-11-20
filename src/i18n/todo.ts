@@ -1,7 +1,7 @@
 //TODO: add translations for the following keys
 export const newTranslationKeys = {
   Address: "",
-  "AI Chat Verification": "",
+  "Chat is confidential": "",
   Algorithm: "",
   Architecture: "",
   "Attested by": "",

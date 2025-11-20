@@ -1,13 +1,12 @@
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import ArchiveBoxIcon from "@heroicons/react/24/outline/ArchiveBoxIcon";
-import BookmarkIcon from "@heroicons/react/24/outline/BookmarkIcon";
-import BookmarkSlashIcon from "@heroicons/react/24/outline/BookmarkSlashIcon";
-import DocumentDuplicateIcon from "@heroicons/react/24/outline/DocumentDuplicateIcon";
-import PencilIcon from "@heroicons/react/24/outline/PencilIcon";
-import TrashIcon from "@heroicons/react/24/outline/TrashIcon";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useArchiveChat, useCloneChat, useDeleteChat, useTogglePinnedStatus } from "@/api/chat/queries";
+import { useCloneChat, useDeleteChat, useTogglePinnedStatus } from "@/api/chat/queries";
+import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
+import PencilIcon from "@/assets/icons/pen.svg?react";
+import PinIcon from "@/assets/icons/pin.svg?react";
+import TrashIcon from "@/assets/icons/trash.svg?react";
+import UnpinIcon from "@/assets/icons/unpin.svg?react";
 import DownloadDropdown from "@/components/chat/DownloadDropdown";
 import {
   DropdownMenu,
@@ -32,7 +31,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { mutate: toggleChatPinnedStatusById } = useTogglePinnedStatus();
   const { mutate: cloneChatById } = useCloneChat();
-  const { mutate: archiveChatById } = useArchiveChat();
+  // const { mutate: archiveChatById } = useArchiveChat(); //TODO: Add archive chat
   const { mutate: deleteChatById } = useDeleteChat({
     onSuccess: () => {
       setShowDeleteConfirm(false);
@@ -50,9 +49,9 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
     cloneChatById({ id: chat.id });
   };
 
-  const handleArchive = () => {
-    archiveChatById({ id: chat.id });
-  };
+  // const handleArchive = () => {
+  //   archiveChatById({ id: chat.id });
+  // };
 
   const handleDelete = () => {
     setShowDeleteConfirm(true);
@@ -72,62 +71,59 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
         open={showDeleteConfirm}
       />
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="focus:outline-none">
-            <EllipsisHorizontalIcon className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
+        <DropdownMenuTrigger asChild className="shrink-0">
+          <button className="rounded-md px-0.5 hover:bg-secondary/30 focus:outline-none">
+            <EllipsisHorizontalIcon className="hidden h-4 w-4 transition-opacity group-hover:block group-hover:opacity-100" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-full min-w-[200px] rounded-xl border-none bg-gray-875 px-1 py-1.5 outline-none ring-0"
+          className="w-full min-w-[200px] rounded-xl px-1 py-1.5"
           sideOffset={-2}
           side="bottom"
           align="start"
         >
           <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
             onClick={handlePinToggle}
           >
             {isPinned ? (
               <>
-                <BookmarkSlashIcon className="h-4 w-4" strokeWidth={2} />
+                <UnpinIcon className="h-4 w-4" strokeWidth={2} />
                 <span>{t("Unpin")}</span>
               </>
             ) : (
               <>
-                <BookmarkIcon className="h-4 w-4" strokeWidth={2} />
+                <PinIcon className="h-4 w-4" strokeWidth={2} />
                 <span>{t("Pin")}</span>
               </>
             )}
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
             onClick={handleRename}
           >
             <PencilIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Rename")}</span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
-            onClick={handleClone}
-          >
-            <DocumentDuplicateIcon className="h-4 w-4" strokeWidth={2} />
+          <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
+            <ClipboardIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Clone")}</span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+          {/* <DropdownMenuItem
+            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
             onClick={handleArchive}
           >
             <ArchiveBoxIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Archive")}</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
           <DownloadDropdown chatId={chat.id} />
 
           <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5 text-white hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+            className="flex cursor-pointer flex-row gap-2 rounded-md bg-destructive/10 px-3 py-1.5 text-destructive-foreground hover:bg-destructive/20! hover:text-destructive-foreground!"
             onClick={handleDelete}
           >
             <TrashIcon className="h-4 w-4" strokeWidth={2} />

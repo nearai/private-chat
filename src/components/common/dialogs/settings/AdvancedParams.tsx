@@ -29,7 +29,7 @@ const AdvancedParams = ({ admin = false, params, onChange }: AdvancedParamsProps
   };
 
   return (
-    <div className="flex flex-col gap-2 pb-safe-bottom text-xs">
+    <div className="flex flex-col gap-2 text-xs">
       {/* Stream Chat Response */}
       <CycleParam
         label={t("Stream Chat Response")}
