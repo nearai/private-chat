@@ -1,11 +1,11 @@
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router";
-import { Toaster } from "sonner";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import AdminLayout from "@/components/layout/AdminLayot";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { Toaster } from "@/components/ui/sonner";
 import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
@@ -15,7 +15,6 @@ import PrivacyPage from "@/pages/PrivacyPage";
 import { APP_ROUTES } from "@/pages/routes";
 import TermsPage from "@/pages/TermsPage";
 import WelcomePage from "@/pages/WelcomePage";
-import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
 import { posthogPageView } from "./lib/posthog";
@@ -25,21 +24,9 @@ function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
 
-  const { settings } = useSettingsStore();
-
   const { isFetching: isModelsFetching } = useModels();
   const { isFetching: isUserDataFetching } = useUserData();
   const isLoading = isModelsFetching || isUserDataFetching;
-
-  const toasterTheme = useMemo(() => {
-    if (settings.theme?.includes("dark")) {
-      return "dark";
-    }
-    if (settings.theme === "system") {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }
-    return "light";
-  }, [settings.theme]);
 
   useEffect(() => {
     posthogPageView();
@@ -52,7 +39,7 @@ function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <div className="relative h-screen">
-        <Toaster theme={toasterTheme} richColors position="top-right" />
+        <Toaster />
         <Routes>
           <Route
             element={

@@ -154,7 +154,7 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
                         {row?.map((cell: Tokens.TableCell, cellIdx: number) => (
                           <td
                             key={`${key}-row-${rowIdx}-${cellIdx}`}
-                            className="border border-gray-100 px-3! py-1.5! text-gray-900 dark:border-gray-850 dark:text-white"
+                            className="border border-gray-100 px-3! py-1.5! text-gray-900 dark:border-gray-850"
                           >
                             <MarkdownInlineTokens tokens={cell.tokens} id={`${key}-row-${rowIdx}-${cellIdx}`} />
                           </td>
@@ -183,12 +183,7 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
               {token.items.map((item: Tokens.ListItem, itemIdx: number) => (
                 <li key={`${key}-${itemIdx}`} className="text-start">
                   {item.task && (
-                    <input
-                      className="-translate-x-1 translate-y-[1px]"
-                      type="checkbox"
-                      checked={item.checked}
-                      readOnly
-                    />
+                    <input className="-translate-x-1 translate-y-px" type="checkbox" checked={item.checked} readOnly />
                   )}
                   <MarkdownTokens tokens={item.tokens} id={`${key}-${itemIdx}`} top={token.loose} />
                 </li>

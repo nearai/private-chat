@@ -1,5 +1,6 @@
-import { Check, ChevronDown } from "lucide-react";
-import OpenAIIcon from "@/assets/icons/open-ai-icon.png";
+import { CheckIcon, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import OpenAIIcon from "@/assets/icons/openai.svg";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ModelV1 } from "@/types";
+import { Button } from "../ui/button";
 
 interface ModelSelectorItemProps {
   value: string;
@@ -21,70 +23,64 @@ interface ModelSelectorItemProps {
 
 function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, showRemove }: ModelSelectorItemProps) {
   const selectedModelObj = value ? availableModels.find((m) => m.modelId === value) : null;
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex w-full max-w-fit">
-      <div className="w-full overflow-hidden">
-        <div className="mr-1 max-w-full">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex w-full items-center gap-1.5 truncate rounded bg-transparent px-3 py-1.5 font-semibold text-sm outline-hidden dark:bg-[rgba(0,236,151,0.08)] dark:text-[rgba(0,236,151,1)]"
-                aria-label="Select a model"
-              >
-                <span className="self-end pb-[1px] font-normal text-xs opacity-50">Model</span>
-                {selectedModelObj ? selectedModelObj.modelId : "Select a model"}
-                <ChevronDown className="ml-2 size-3 self-center" strokeWidth={2.5} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-[32rem] max-w-[calc(100vw-1rem)] rounded-xl border-none bg-white shadow-lg ring-none dark:bg-gray-875 dark:text-white"
-              align="start"
+      <div className="mr-1 max-w-full">
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center gap-1.5 truncate rounded-lg bg-transparent px-3 py-1.5 font-normal text-base leading-[normal] outline-hidden hover:bg-secondary/30",
+                open && "bg-secondary/30"
+              )}
+              aria-label="Select a model"
             >
-              <div className="max-h-64 overflow-y-auto px-3 py-2">
-                {availableModels.length === 0 ? (
-                  <div className="block px-3 py-2 text-gray-700 text-sm dark:text-gray-100">No results found</div>
-                ) : (
-                  availableModels.map((model) => {
-                    const isSelected = value === model.modelId;
+              {selectedModelObj ? (
+                <>
+                  <img src={selectedModelObj.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
+                  {selectedModelObj.modelId}
+                </>
+              ) : (
+                "Select a model"
+              )}
+              <ChevronDown className="h-5 w-5 opacity-60" strokeWidth={2.5} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="max-h-64" align="start">
+            <>
+              {availableModels.length === 0 ? (
+                <DropdownMenuItem className="block text-sm">No results found</DropdownMenuItem>
+              ) : (
+                availableModels.map((model) => {
+                  const isSelected = value === model.modelId;
 
-                    return (
-                      <DropdownMenuItem
-                        key={model.modelId}
-                        onClick={() => onChange(index, model.modelId)}
-                        className={cn(
-                          "mb-1 flex w-full cursor-pointer select-none flex-row items-center rounded-button rounded-lg py-2 pr-1.5 pl-3 text-left font-medium text-gray-700 text-sm outline-hidden transition-all duration-75 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800",
-                          isSelected && "bg-gray-100 dark:bg-gray-800"
-                        )}
-                      >
-                        <div className="flex flex-1 flex-col">
-                          <div className="flex items-center gap-2">
-                            <div className="flex min-w-fit items-center">
-                              <div className="mr-2 flex size-5 items-center justify-center">
-                                <img src={model.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-3.5" />
-                              </div>
-                              <div className="line-clamp-1">{model.modelId}</div>
-                            </div>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="ml-auto pr-2 pl-2 md:pr-0">
-                            <Check className="h-5 w-5 text-green-500" />
-                          </div>
-                        )}
-                      </DropdownMenuItem>
-                    );
-                  })
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                  return (
+                    <DropdownMenuItem
+                      key={model.modelId}
+                      onClick={() => onChange(index, model.modelId)}
+                      className={cn("cursor-pointer", isSelected && "pointer-events-none")}
+                    >
+                      <div className="flex flex-1 items-center gap-2">
+                        <img src={model.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
+                        <div className="line-clamp-1">{model.modelId}</div>
+                      </div>
+                      <div className="flex size-6 shrink-0 items-center justify-center">
+                        {isSelected && <CheckIcon className="size-4" />}
+                      </div>
+                    </DropdownMenuItem>
+                  );
+                })
+              )}
+            </>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {showRemove && (
-        <div className="-translate-y-[0.5px] mx-1 self-center disabled:text-gray-600 disabled:hover:text-gray-600">
+        <div className="-translate-y-[0.5px] mx-1 self-center disabled:opacity-40">
           <button
             type="button"
             onClick={(e) => {
@@ -155,28 +151,27 @@ export default function ModelSelector() {
             showRemove={selectedModelIdx > 0}
           />
           {selectedModelIdx === 0 && !disabledAdd && (
-            <div className="-translate-y-[0.5px] mx-1 self-center disabled:text-gray-600 disabled:hover:text-gray-600">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAddModel();
-                }}
-                aria-label="Add Model"
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAddModel();
+              }}
+              aria-label="Add Model"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                className="size-5"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="2"
-                  stroke="currentColor"
-                  className="size-3.5"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
-                </svg>
-              </button>
-            </div>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+              </svg>
+            </Button>
           )}
         </div>
       ))}

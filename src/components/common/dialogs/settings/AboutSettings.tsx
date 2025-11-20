@@ -3,7 +3,7 @@ import { APP_NAME } from "@/api/constants";
 const AboutSettings = () => {
   return (
     <div className="flex h-full flex-col justify-between text-sm">
-      <div className="max-h-[28rem] space-y-3 overflow-y-scroll lg:max-h-full">
+      <div className="max-h-112 space-y-3 overflow-y-scroll lg:max-h-full">
         <div>
           <div className="mb-2.5 flex items-center space-x-2 font-medium text-sm">
             <div>{APP_NAME}</div>

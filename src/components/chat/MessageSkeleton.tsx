@@ -21,12 +21,12 @@ const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
 
       <div className="w-0 flex-auto pl-1">
         <div className="flex items-center space-x-2">
-          <span className="line-clamp-1 font-normal text-black dark:text-white">{model}</span>
+          <span className="line-clamp-1 font-normal">{model}</span>
           <div className="ml-3 flex items-center">
             <VerifiedIcon className="h-6" />
           </div>
 
-          <div className="invisible ml-0.5 translate-y-[1px] self-center font-medium text-gray-400 text-xs first-letter:capitalize group-hover:visible">
+          <div className="invisible ml-0.5 self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
             <span className="line-clamp-1">{formatDate(Date.now())}</span>
           </div>
         </div>
@@ -34,9 +34,7 @@ const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
         <div className={`markdown-prose w-full min-w-full`}>
           <div>
             <div className="relative flex w-full flex-col" id="response-content-container">
-              <div className="shimmer text-gray-500 dark:text-gray-400">
-                {message !== undefined ? message : "Processing..."}
-              </div>
+              <div className="shimmer text-muted-foreground">{message !== undefined ? message : "Processing..."}</div>
             </div>
           </div>
         </div>

@@ -200,7 +200,7 @@ const Home = ({
   }
 
   return (
-    <div className="flex h-full flex-col bg-gray-900" id="chat-container">
+    <div className="flex h-full flex-col" id="chat-container">
       <Navbar />
       <div
         ref={scrollContainerRef}
