@@ -132,7 +132,22 @@ export default function FileDialog({
                     className="line-clamp-1 hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
-                      if (fileContent && fileContent.url) {
+
+                      if (typeof fileContent === "object" && !fileContent.url) {
+                        const jsonString = JSON.stringify(fileContent, null, 2);
+                        const blob = new Blob([jsonString], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = fileData?.filename || "file.json";
+                        a.click();
+
+                        URL.revokeObjectURL(url);
+                        return;
+                      }
+
+                      if (fileContent?.url) {
                         window.open(
                           fileContent.type === "file" ? `${fileContent.url}/content` : `${fileContent.url}`,
                           "_blank"

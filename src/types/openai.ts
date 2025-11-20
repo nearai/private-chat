@@ -41,13 +41,18 @@ export const extractCitations = (content: ContentItem[]): string[] => {
     .flatMap((item) => item.annotations || []);
 };
 
-export const extractFiles = (content: ContentItem[], type: "input_file" | "output_file" = "input_file") => {
-  return content.filter((item) => item.type === type) as Array<{
-    type: "input_file" | "input_audio" | "input_image";
-    file_id?: string;
-    audio_file_id?: string;
-    image_url?: string;
-  }>;
+export const extractFiles = (
+  content: ContentItem[],
+  type: "input_file" | "output_file" = "input_file"
+): ContentItem[] => {
+  return content.flatMap((item) => {
+    if (item.type === type) return [item];
+    if (item.type === "input_text") {
+      const match = item.text?.match(/\[File:\s*(file-[a-zA-Z0-9-]+)\]/i);
+      return match ? [{ type: "input_file", file_id: match[1] }] : [];
+    }
+    return [];
+  });
 };
 
 export const generateContentFileDataForOpenAI = (file: FileContentItem): ContentItem => {
