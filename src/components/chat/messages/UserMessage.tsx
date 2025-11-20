@@ -186,7 +186,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
 
                     {/* {!readOnly && (!isFirstMessage || siblings.length > 1) && (
                       <button
-                        className="invisible rounded-sm p-1 transition hover:text-black group-hover:visible dark:hover:"
+                        className="invisible rounded-sm p-1 transition hover:text-black group-hover:visible"
                         onClick={() => setShowDeleteConfirm(true)}
                         title="Delete"
                       >
