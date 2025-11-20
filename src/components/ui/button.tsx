@@ -14,7 +14,7 @@ const buttonVariants = cva(
           "bg-destructive hover:bg-destructive/60 focus-visible:ring-destructive/20 active:bg-destructive/80",
         secondary: "bg-secondary/30 text-secondary-foreground hover:bg-secondary/60 active:bg-secondary/80",
         ghost: "bg-transparent text-foreground hover:bg-secondary/20 active:bg-secondary/40",
-        blue: "bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600 dark:bg-blue-700 dark:active:bg-blue-800 dark:hover:bg-blue-600",
+        blue: "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 dark:bg-blue-800 dark:active:bg-blue-800 dark:hover:bg-blue-700",
       },
       size: {
         default: "h-11 px-3 py-2 has-[>svg]:px-2",

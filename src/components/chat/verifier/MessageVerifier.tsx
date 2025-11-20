@@ -23,9 +23,10 @@ interface MessageVerifierProps {
     chatCompletionId: string;
   };
   index: number;
+  isLastIndex: boolean;
 }
 
-const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index }) => {
+const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLastIndex }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures, setMessageSignature } = useMessagesSignaturesStore();
 
@@ -130,7 +131,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index }) => 
       className={cn(
         "flex cursor-pointer flex-col items-start gap-6 rounded-xl p-2 transition-colors",
         showDetails && "bg-card/30 dark:bg-card",
-        (!isVerified || error) && "bg-destructive/10"
+        (isVerified === false || error) && !isLoading && "bg-destructive/10"
       )}
       onClick={() => setShowDetails((prev) => !prev)}
       title="Click to view signature details"
@@ -140,7 +141,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index }) => 
         <div className="flex items-center gap-1">
           <ChevronRightIcon className={cn("size-3.5 opacity-60 transition-transform", showDetails && "rotate-90")} />
           <p className="font-medium text-sm leading-[160%] opacity-80">
-            {t("Message")} {index + 1}
+            {t("Message")} {index + 1} {isLastIndex ? " (latest)" : ""}
           </p>
         </div>
         <p className="line-clamp-2 max-w-[230px] font-normal text-sm leading-[140%] opacity-80">{content}</p>
