@@ -1,4 +1,4 @@
-import type { Settings, User, UserRole } from "@/types";
+import type { UpdateUserSettingsRequest, User, UserRole, UserSettingsResponse } from "@/types";
 import { ApiClient } from "../base-client";
 
 class UsersClient extends ApiClient {
@@ -7,6 +7,7 @@ class UsersClient extends ApiClient {
       apiPrefix: "/api/v1",
       defaultHeaders: {
         Accept: "application/json",
+        "Content-Type": "application/json",
       },
       includeAuth: true,
     });
@@ -35,13 +36,12 @@ class UsersClient extends ApiClient {
     return this.get<User[]>("/users/");
   }
 
-  //TODO: is correct type?
-  async getUserSettings(): Promise<Settings> {
-    return this.get<Settings>("/users/user/setting");
+  async getUserSettings(): Promise<UserSettingsResponse> {
+    return this.get<UserSettingsResponse>("/users/me/settings", { apiVersion: "v2" });
   }
 
-  async updateUserSettings(settings: Settings): Promise<void> {
-    return this.post<void>("/users/user/setting", settings);
+  async updateUserSettings(settings: UpdateUserSettingsRequest): Promise<UserSettingsResponse> {
+    return this.post<UserSettingsResponse>("/users/me/settings", settings, { apiVersion: "v2" });
   }
 
   async getUserById(id: string): Promise<User> {

@@ -334,7 +334,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </Button>
               </>
             )}
-            {!readOnly && (
+            {!readOnly && isMessageCompleted && (
               <>
                 <Button
                   size="icon"

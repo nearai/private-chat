@@ -2,12 +2,12 @@ import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useUpdateUserSettings, useUserSettings } from "@/api/users/queries";
 import Collapsible from "@/components/common/Collapsible";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
 import type { Settings } from "@/types";
@@ -23,13 +23,15 @@ const GeneralSettings = () => {
   const { t, i18n } = useTranslation("translation", { useSuspense: false });
   const { settings, setSettings } = useSettingsStore();
   const { user } = useUserStore();
+  const { data: remoteSettings } = useUserSettings();
+  const { mutateAsync: updateUserSettings, isPending: isUpdatingSettings } = useUpdateUserSettings();
   const { theme, setTheme } = useTheme();
 
   const [saved, setSaved] = useState(false);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [lang, setLang] = useState(i18n.language || "en-US");
   const [notificationEnabled, setNotificationEnabled] = useState(false);
-  const [system, setSystem] = useState(localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || "");
+  const [system, setSystem] = useState("");
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
@@ -69,9 +71,8 @@ const GeneralSettings = () => {
       setLanguages(langs);
     };
     loadLanguages();
-
     setNotificationEnabled(settings.notificationEnabled ?? false);
-    setSystem(settings.system || localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || "");
+    setSystem(settings.system || "");
 
     let rf = settings.requestFormat ?? null;
     if (rf !== null && rf !== "json") {
@@ -116,6 +117,13 @@ const GeneralSettings = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (!remoteSettings) return;
+
+    setNotificationEnabled(remoteSettings.settings.notification);
+    setSystem(remoteSettings.settings.system_prompt || "");
+  }, [remoteSettings]);
+
   const toggleNotification = async () => {
     const permission = await Notification.requestPermission();
 
@@ -147,8 +155,7 @@ const GeneralSettings = () => {
     changeLanguage(newLang);
   };
 
-  const handleSave = () => {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT, system);
+  const handleSave = async () => {
     // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
     // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
@@ -216,7 +223,18 @@ const GeneralSettings = () => {
     //     finalRequestFormat !== null ? finalRequestFormat : undefined,
     // });
 
-    // toast.success(t("Settings saved successfully!"));
+    try {
+      await updateUserSettings({
+        notification: notificationEnabled,
+        system_prompt: system || "",
+      });
+      toast.success(t("Settings saved successfully!"));
+    } catch (error) {
+      toast.error(t("Failed to update settings. Please try again."));
+      console.error(error);
+      return;
+    }
+
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -353,8 +371,8 @@ const GeneralSettings = () => {
 
       {/* Save Button */}
       <div className="flex justify-end pt-3 font-medium text-sm">
-        <Button size="small" onClick={handleSave}>
-          {saved ? t("Saved") : t("Save")}
+        <Button disabled={isUpdatingSettings} size="small" onClick={handleSave}>
+          {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
         </Button>
       </div>
     </div>

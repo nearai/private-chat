@@ -2,12 +2,14 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { chatClient } from "@/api/chat/client";
+import { useTranslation } from "react-i18next";
+import { chatClient, isUploadError } from "@/api/chat/client";
 
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
 import { compressImage } from "@/lib/image";
+import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -76,6 +78,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isMessageCompleted = true,
 }) => {
   const { settings } = useSettingsStore();
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [loaded, setLoaded] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
@@ -84,6 +87,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
@@ -147,17 +151,29 @@ const MessageInput: React.FC<MessageInputProps> = ({
         : { type: "input_file", id: data.id, name: data.filename };
 
       return newFile;
-    } catch (error) {
-      console.error("Error uploading file:", error);
+    } catch (errorObj: unknown) {
+      if (isUploadError(errorObj)) {
+        if (errorObj.error.type === "invalid_request_error") {
+          toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+        }
+      } else {
+        toast.error(t("Error uploading file."));
+      }
+      console.error("Error uploading file:", errorObj);
       return undefined;
     }
   };
 
   const inputFilesHandler = async (inputFiles: File[]) => {
-    for (const file of inputFiles) {
-      const newFile = await uploadFileHandler(file);
-      if (!newFile) continue;
-      setFiles((prev) => [...prev, newFile]);
+    setIsUploading(true);
+    try {
+      for (const file of inputFiles) {
+        const newFile = await uploadFileHandler(file);
+        if (!newFile) continue;
+        setFiles((prev) => [...prev, newFile]);
+      }
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -402,7 +418,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         <img
                           crossOrigin="anonymous"
                           alt="model profile"
-                          className="size-3.5 max-w-[28px] rounded-full object-cover"
+                          className="size-3.5 max-w-7 rounded-full object-cover"
                           src={
                             atSelectedModel?.info?.meta?.profile_image_url ??
                             `${window.location.pathname}/static/favicon.png`
@@ -456,7 +472,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   }
                 }}
               />
-
               <form className="flex w-full gap-1.5" onSubmit={handleSubmit}>
                 <div
                   className="relative flex w-full flex-1 flex-col rounded-3xl border border-border bg-input px-1 shadow-lg transition focus-within:shadow-xl hover:shadow-xl"
@@ -553,7 +568,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         onPaste={handlePaste}
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
-                        // rows={15}
                         style={{ lineHeight: "1.5" }}
                       />
                     </div>
@@ -568,18 +582,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
                               className="rounded-full bg-transparent p-1.5 text-muted-foreground outline-hidden transition hover:bg-secondary/30 focus:outline-hidden"
                               type="button"
                               aria-label="More"
+                              disabled={isUploading}
                               onClick={() => {
                                 filesInputRef.current?.click();
                               }}
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="size-5"
-                              >
-                                <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                              </svg>
+                              {isUploading ? (
+                                <Spinner className="size-4" />
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="size-5"
+                                >
+                                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                                </svg>
+                              )}
                             </button>
                           </div>
                           <div className="scrollbar-none flex flex-1 items-center gap-1 overflow-x-auto">
