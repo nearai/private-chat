@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useUpdateUserSettings, useUserSettings } from "@/api/users/queries";
 import Collapsible from "@/components/common/Collapsible";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
+import { validateJSON } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
@@ -20,6 +22,8 @@ const GeneralSettings = () => {
   const { t, i18n } = useTranslation("translation", { useSuspense: false });
   const { settings, setSettings } = useSettingsStore();
   const { user } = useUserStore();
+  const { data: remoteSettings } = useUserSettings();
+  const { mutateAsync: updateUserSettings, isPending: isUpdatingSettings } = useUpdateUserSettings();
 
   const [saved, setSaved] = useState(false);
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -113,6 +117,13 @@ const GeneralSettings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!remoteSettings) return;
+
+    setNotificationEnabled(remoteSettings.settings.notification);
+    setSystem(remoteSettings.settings.system_prompt || "");
+  }, [remoteSettings]);
+
   const toggleNotification = async () => {
     const permission = await Notification.requestPermission();
 
@@ -139,17 +150,17 @@ const GeneralSettings = () => {
     changeLanguage(newLang);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT, system);
-    // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
+    let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
-    // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
-    //   if (!validateJSON(finalRequestFormat as string)) {
-    //     toast.error(t("Invalid JSON schema"));
-    //     return;
-    //   }
-    //   finalRequestFormat = JSON.parse(finalRequestFormat as string);
-    // }
+    if (finalRequestFormat !== null && finalRequestFormat !== "json") {
+      if (!validateJSON(finalRequestFormat as string)) {
+        toast.error(t("Invalid JSON schema"));
+        return;
+      }
+      finalRequestFormat = JSON.parse(finalRequestFormat as string);
+    }
 
     // setSettings({
     //   system: system !== "" ? system : undefined,
@@ -208,7 +219,17 @@ const GeneralSettings = () => {
     //     finalRequestFormat !== null ? finalRequestFormat : undefined,
     // });
 
-    // toast.success(t("Settings saved successfully!"));
+    try {
+      await updateUserSettings({
+        notification: notificationEnabled,
+        system_prompt: system || "",
+      });
+      toast.success(t("Settings saved successfully!"));
+    } catch (error) {
+      toast.error((error as Error)?.message || t("Failed to update settings. Please try again."));
+      return;
+    }
+
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -343,10 +364,11 @@ const GeneralSettings = () => {
       {/* Save Button */}
       <div className="flex justify-end pt-3 font-medium text-sm">
         <button
+          disabled={isUpdatingSettings}
           className="rounded-full bg-black px-3.5 py-1.5 font-medium text-sm text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
           onClick={handleSave}
         >
-          {saved ? t("Saved") : t("Save")}
+          {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
         </button>
       </div>
     </div>

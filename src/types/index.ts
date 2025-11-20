@@ -397,6 +397,18 @@ export interface Settings {
   chatBubble?: boolean;
 }
 
+export interface UserSettingsPayload {
+  notification: boolean;
+  system_prompt: string;
+}
+
+export interface UserSettingsResponse {
+  user_id: string;
+  settings: UserSettingsPayload;
+}
+
+export type UpdateUserSettingsRequest = UserSettingsPayload;
+
 // Config types
 export interface Config {
   status?: boolean;
