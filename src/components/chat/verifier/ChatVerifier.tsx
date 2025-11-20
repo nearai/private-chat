@@ -27,7 +27,6 @@ const ChatVerifier: React.FC = () => {
   const {
     isRightSidebarOpen,
     setIsRightSidebarOpen,
-    selectedMessageIdForVerifier,
     setSelectedMessageIdForVerifier,
     setShouldScrollToSignatureDetails,
   } = useViewStore();
@@ -113,17 +112,6 @@ const ChatVerifier: React.FC = () => {
     }
   }, [isRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails]);
 
-  // Clear the selected message ID after it's been used
-  useEffect(() => {
-    if (selectedMessageIdForVerifier && isRightSidebarOpen) {
-      // Clear it after a short delay to allow MessagesVerifier to pick it up
-      const timer = setTimeout(() => {
-        setSelectedMessageIdForVerifier(null);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedMessageIdForVerifier, isRightSidebarOpen, setSelectedMessageIdForVerifier]);
-
   return (
     <div className="relative z-50">
       <div
@@ -145,7 +133,7 @@ const ChatVerifier: React.FC = () => {
           </Button>
         </div>
 
-        <div className="flex h-full flex-col gap-6">
+        <div className="flex flex-col gap-6 overflow-hidden">
           <div className="flex w-full flex-col gap-6 p-2">
             {modelVerificationStatus?.loading ? (
               <div className="flex items-center justify-center py-4">
@@ -200,11 +188,7 @@ const ChatVerifier: React.FC = () => {
             )}
           </div>
 
-          {chatId && (
-            <div className="scrollbar-none flex-1 overflow-y-auto">
-              <MessagesVerifier history={history} />
-            </div>
-          )}
+          {chatId && <MessagesVerifier history={history} />}
         </div>
       </div>
 

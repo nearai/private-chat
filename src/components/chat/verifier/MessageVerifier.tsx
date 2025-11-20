@@ -1,6 +1,6 @@
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { nearAIClient } from "@/api/nearai/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { cn } from "@/lib/time";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
+import { useViewStore } from "@/stores/useViewStore";
 import {
   type ConversationModelOutput,
   ConversationTypes,
@@ -29,7 +30,14 @@ interface MessageVerifierProps {
 const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLastIndex }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures, setMessageSignature } = useMessagesSignaturesStore();
+  const { selectedMessageIdForVerifier, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails } =
+    useViewStore();
 
+  const isSelected = useMemo(() => {
+    return selectedMessageIdForVerifier === message.chatCompletionId;
+  }, [selectedMessageIdForVerifier, message.chatCompletionId]);
+
+  const messageRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showVerifySignatureDialog, setShowVerifySignatureDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,6 +102,28 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
     }
   }, [signature, message.chatCompletionId, isVerified, isLoading, error, fetchSignature, setMessageSignature]);
 
+  useEffect(() => {
+    if (isSelected) {
+      setShowDetails(true);
+    }
+  }, [isSelected]);
+
+  useEffect(() => {
+    if (isSelected && shouldScrollToSignatureDetails && messageRef.current) {
+      setShowDetails(true);
+
+      setTimeout(() => {
+        messageRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+
+        setShouldScrollToSignatureDetails(false);
+      }, 100);
+    }
+  }, [isSelected, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails]);
+
   const details = [
     {
       label: t("ID"),
@@ -128,10 +158,12 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
 
   return (
     <div
+      ref={messageRef}
       className={cn(
         "flex flex-col items-start gap-6 rounded-xl p-2 transition-colors",
         showDetails && "bg-card/30 dark:bg-card",
-        (isVerified === false || error) && !isLoading && "bg-destructive/10"
+        (isVerified === false || error) && !isLoading && "bg-destructive/10",
+        isSelected && "ring ring-border"
       )}
       data-message-id={message.chatCompletionId}
     >
