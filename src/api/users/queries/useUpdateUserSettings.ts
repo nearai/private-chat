@@ -14,10 +14,12 @@ export const useUpdateUserSettings = (options?: UseUpdateUserSettingsOptions) =>
   return useMutation({
     ...options,
     mutationFn: async (payload: UpdateUserSettingsRequest) => await usersClient.updateUserSettings(payload),
-    onSuccess: (data, variables, context) => {
+
+    onSuccess: (data, variables, context, mutation) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.meSettings });
+
       if (options?.onSuccess) {
-        options.onSuccess(data, variables, context);
+        options.onSuccess(data, variables, context, mutation);
       }
     },
   });
