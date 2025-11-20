@@ -129,15 +129,20 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
   return (
     <div
       className={cn(
-        "flex cursor-pointer flex-col items-start gap-6 rounded-xl p-2 transition-colors",
+        "flex flex-col items-start gap-6 rounded-xl p-2 transition-colors",
         showDetails && "bg-card/30 dark:bg-card",
         (isVerified === false || error) && !isLoading && "bg-destructive/10"
       )}
-      onClick={() => setShowDetails((prev) => !prev)}
-      title="Click to view signature details"
       data-message-id={message.chatCompletionId}
     >
-      <div className="flex flex-col gap-2">
+      <div
+        className="flex cursor-pointer flex-col gap-2"
+        onClick={(e) => {
+          e.preventDefault();
+          setShowDetails((prev) => !prev);
+        }}
+        title="Click to view signature details"
+      >
         <div className="flex items-center gap-1">
           <ChevronRightIcon className={cn("size-3.5 opacity-60 transition-transform", showDetails && "rotate-90")} />
           <p className="font-medium text-sm leading-[160%] opacity-80">
