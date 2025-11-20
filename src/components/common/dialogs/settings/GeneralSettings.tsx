@@ -8,7 +8,6 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
-import { validateJSON } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
@@ -160,15 +159,15 @@ const GeneralSettings = () => {
 
   const handleSave = async () => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT, system);
-    let finalRequestFormat: Settings["requestFormat"] = requestFormat;
+    // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
-    if (finalRequestFormat !== null && finalRequestFormat !== "json") {
-      if (!validateJSON(finalRequestFormat as string)) {
-        toast.error(t("Invalid JSON schema"));
-        return;
-      }
-      finalRequestFormat = JSON.parse(finalRequestFormat as string);
-    }
+    // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
+    //   if (!validateJSON(finalRequestFormat as string)) {
+    //     toast.error(t("Invalid JSON schema"));
+    //     return;
+    //   }
+    //   finalRequestFormat = JSON.parse(finalRequestFormat as string);
+    // }
 
     // setSettings({
     //   system: system !== "" ? system : undefined,
@@ -234,7 +233,8 @@ const GeneralSettings = () => {
       });
       toast.success(t("Settings saved successfully!"));
     } catch (error) {
-      toast.error((error as Error)?.message || t("Failed to update settings. Please try again."));
+      toast.error(t("Failed to update settings. Please try again."));
+      console.error(error);
       return;
     }
 

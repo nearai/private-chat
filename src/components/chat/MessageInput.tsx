@@ -2,6 +2,7 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
+import { useTranslation } from "react-i18next";
 import { chatClient, isUploadError } from "@/api/chat/client";
 
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
@@ -77,6 +78,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isMessageCompleted = true,
 }) => {
   const { settings } = useSettingsStore();
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [loaded, setLoaded] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
@@ -152,10 +154,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
     } catch (errorObj: unknown) {
       if (isUploadError(errorObj)) {
         if (errorObj.error.type === "invalid_request_error") {
-          toast.error("This file type is not supported. Please upload an image or other supported formats.");
+          toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
         }
       } else {
-        toast.error("Error uploading file.");
+        toast.error(t("Error uploading file."));
       }
       console.error("Error uploading file:", errorObj);
       return undefined;
