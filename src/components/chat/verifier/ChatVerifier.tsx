@@ -103,7 +103,6 @@ const ChatVerifier: React.FC = () => {
     setModelVerificationStatus(status);
   };
 
-  //TODO: Remove this useEffect
   useEffect(() => {
     if (!isRightSidebarOpen) {
       setModelVerificationStatus(null);
@@ -114,7 +113,6 @@ const ChatVerifier: React.FC = () => {
     }
   }, [isRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails]);
 
-  //TODO: Remove this useEffect
   // Clear the selected message ID after it's been used
   useEffect(() => {
     if (selectedMessageIdForVerifier && isRightSidebarOpen) {
@@ -203,7 +201,7 @@ const ChatVerifier: React.FC = () => {
           </div>
 
           {chatId && (
-            <div className="scrollbar-hidden flex-1 overflow-y-auto">
+            <div className="scrollbar-none flex-1 overflow-y-auto">
               <MessagesVerifier history={history} />
             </div>
           )}

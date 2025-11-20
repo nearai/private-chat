@@ -205,7 +205,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = () => {
   //             <button
   //               type="button"
   //               id="merge-response-button"
-  //               className="regenerate-response-button visible rounded-lg p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5 dark:hover:"
+  //               className="regenerate-response-button visible rounded-lg p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5"
   //               onClick={mergeResponses}
   //               title={"Merge Responses"}
   //             >

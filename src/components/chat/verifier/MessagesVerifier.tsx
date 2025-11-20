@@ -1,6 +1,5 @@
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
@@ -25,14 +24,10 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures } = useMessagesSignaturesStore();
 
-  const [viewMore, setViewMore] = useState(false);
-
   const chatCompletions = useMemo(() => {
     if (!history) return [];
-    return Object.values(history.messages);
+    return Object.values(history.messages).reverse();
   }, [history]);
-
-  const messageList = viewMore ? chatCompletions : chatCompletions.slice(0, 2);
 
   const verifiedCount = useMemo(() => {
     return chatCompletions.filter((message) => {
@@ -47,23 +42,17 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
         <div className="flex flex-col gap-y-4">
           <p className="font-medium text-green-dark text-xs leading-[normal]">{verifiedCount} Verified Messages</p>
 
-          {messageList.map((message, index) => (
-            <MessageVerifier
-              message={message}
-              key={`message-verification-${message.chatCompletionId}-${index}`}
-              index={index}
-            />
-          ))}
-
-          {chatCompletions.length > 2 && (
-            <button
-              className="flex w-full items-center justify-center gap-2.5 rounded-md bg-secondary px-4 py-2 text-secondary-foreground text-sm transition-colors hover:bg-secondary/80"
-              onClick={() => setViewMore(!viewMore)}
-            >
-              {viewMore ? t("View Less") : t("View More")}
-              <ChevronDownIcon className={`h-4 w-4 ${viewMore ? "rotate-180" : ""}`} strokeWidth={2.5} />
-            </button>
-          )}
+          {chatCompletions.reverse().map((message, index, array) => {
+            const reversedIndex = array.length - 1 - index;
+            return (
+              <MessageVerifier
+                message={message}
+                key={`message-verification-${message.chatCompletionId}-${index}`}
+                index={reversedIndex}
+                isLastIndex={reversedIndex === array.length - 1}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="py-8 text-center text-muted-foreground">

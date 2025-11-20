@@ -86,7 +86,7 @@
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,md}": [
-      "bun run lint"
+      "pnpm run lint"
     ]
   },
   "husky": {
