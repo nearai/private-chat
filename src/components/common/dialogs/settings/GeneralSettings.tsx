@@ -8,7 +8,6 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
 import type { Settings } from "@/types";
@@ -32,7 +31,7 @@ const GeneralSettings = () => {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [lang, setLang] = useState(i18n.language || "en-US");
   const [notificationEnabled, setNotificationEnabled] = useState(false);
-  const [system, setSystem] = useState(localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || "");
+  const [system, setSystem] = useState("");
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
@@ -72,9 +71,8 @@ const GeneralSettings = () => {
       setLanguages(langs);
     };
     loadLanguages();
-
     setNotificationEnabled(settings.notificationEnabled ?? false);
-    setSystem(settings.system || localStorage.getItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT) || "");
+    setSystem(settings.system || "");
 
     let rf = settings.requestFormat ?? null;
     if (rf !== null && rf !== "json") {
@@ -158,7 +156,6 @@ const GeneralSettings = () => {
   };
 
   const handleSave = async () => {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SYSTEM_PROMPT, system);
     // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
     // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
