@@ -2,7 +2,7 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { chatClient } from "@/api/chat/client";
+import { chatClient, isUploadError } from "@/api/chat/client";
 
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
@@ -148,8 +148,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
         : { type: "input_file", id: data.id, name: data.filename };
 
       return newFile;
-    } catch (error) {
-      console.error("Error uploading file:", error);
+    } catch (errorObj: unknown) {
+      if (isUploadError(errorObj)) {
+        if (errorObj.error.type === "invalid_request_error") {
+          toast.error("This file type is not supported. Please upload an image or other supported formats.");
+        }
+      } else {
+        toast.error("Error uploading file.");
+      }
+      console.error("Error uploading file:", errorObj);
       return undefined;
     }
   };

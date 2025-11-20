@@ -10,6 +10,18 @@ import { getTimeRange } from "@/lib/time";
 import type { Chat, ChatInfo, Conversation, ConversationItemsResponse, StartStreamProps, Tag } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
+export interface UploadError {
+  error: {
+    type: string;
+    message?: string;
+    code?: string | number;
+  };
+}
+
+export function isUploadError(err: unknown): err is UploadError {
+  return typeof err === "object" && err !== null && "error" in err && typeof (err as any).error?.type === "string";
+}
+
 class ChatClient extends ApiClient {
   constructor() {
     super({
