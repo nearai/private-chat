@@ -59,7 +59,10 @@ export function posthogIdentify(rawUserId: string, properties?: Record<string, a
   const userIdHash = sha256(rawUserId);
 
   try {
-    W.posthog.identify(userIdHash, properties);
+    W.posthog.identify(userIdHash, { 
+      ...properties,
+      $user_id: userIdHash 
+    });
   } catch (err) {
     console.error("PostHog identify error:", err);
   }
