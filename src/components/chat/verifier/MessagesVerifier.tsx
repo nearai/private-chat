@@ -54,6 +54,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
       <div className="scrollbar-none flex flex-1 flex-col gap-y-2 overflow-y-auto px-1 py-4">
         {chatCompletions.reverse().map((message, index, array) => {
           const reversedIndex = array.length - 1 - index;
+          const isCompleted = message.content.every((item) => item.status === "completed");
+          if (!isCompleted) return null;
           return (
             <MessageVerifier
               message={message}
