@@ -4,7 +4,7 @@ import Spinner from "@/components/common/Spinner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatFileSize, getLineCount } from "@/lib/index";
-import { decodeString } from "@/lib/time";
+import { cn, decodeString } from "@/lib/time";
 import type { ContentItem } from "@/types/openai";
 
 export default function FileDialog({
@@ -43,9 +43,10 @@ export default function FileDialog({
   return (
     <Dialog>
       <DialogTrigger
-        className={`group relative flex w-60 items-center gap-1 bg-gray-850 p-1.5 ${
+        className={cn(
+          "group relative flex w-60 items-center gap-1 bg-card p-1.5 text-left",
           smallView ? "rounded-xl" : "rounded-2xl"
-        } text-left`}
+        )}
         type="button"
         // onClick={async () => {
         //   if (fileData?.content) {
@@ -133,7 +134,7 @@ export default function FileDialog({
                     onClick={(e) => {
                       e.preventDefault();
 
-                      if (typeof fileContent === "object" && !fileContent.url) {
+                      if (fileContent && typeof fileContent === "object" && !fileContent.url) {
                         const jsonString = JSON.stringify(fileContent, null, 2);
                         const blob = new Blob([jsonString], { type: "application/json" });
                         const url = URL.createObjectURL(blob);

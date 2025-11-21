@@ -49,7 +49,7 @@ export const extractFiles = (
     if (item.type === type) return [item];
     if (item.type === "input_text") {
       const match = item.text?.match(/\[File:\s*(file-[a-zA-Z0-9-]+)\]/i);
-      return match ? [{ type: "input_file", file_id: match[1] }] : [];
+      return match ? [{ type, file_id: match[1] }] : [];
     }
     return [];
   });
