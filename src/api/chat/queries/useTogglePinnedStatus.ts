@@ -21,7 +21,7 @@ const createPinnedStatusMutation = (
   return useMutation({
     mutationFn,
     onSuccess: () => {
-      queryClient.refetchQueries({queryKey: queryKeys.conversation.all});
+      queryClient.refetchQueries({ queryKey: queryKeys.conversation.all });
     },
     ...options,
   });

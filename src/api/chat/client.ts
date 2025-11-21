@@ -249,11 +249,11 @@ class ChatClient extends ApiClient {
   }
 
   async pinConversationById(id: string) {
-    return this.post<Chat>(`/conversations/${id}/pin`, {}, { apiVersion: "v2"});
+    return this.post<Chat>(`/conversations/${id}/pin`, {}, { apiVersion: "v2" });
   }
 
   async unpinConversationById(id: string) {
-    return this.delete<Chat>(`/conversations/${id}/pin`, { apiVersion: "v2"});
+    return this.delete<Chat>(`/conversations/${id}/pin`, { apiVersion: "v2" });
   }
 
   async cloneChatById(id: string, title?: string) {
@@ -277,11 +277,11 @@ class ChatClient extends ApiClient {
   }
 
   async archiveChatById(id: string) {
-    return this.post<Chat>(`/conversations/${id}/archive`, {}, { apiVersion: "v2"});
+    return this.post<Chat>(`/conversations/${id}/archive`, {}, { apiVersion: "v2" });
   }
 
   async unarchiveChatById(id: string) {
-    return this.delete<Chat>(`/conversations/${id}/archive`, { apiVersion: "v2"});
+    return this.delete<Chat>(`/conversations/${id}/archive`, { apiVersion: "v2" });
   }
 
   async deleteSharedChatById(id: string) {
@@ -295,7 +295,7 @@ class ChatClient extends ApiClient {
   }
 
   async deleteChatById(id: string) {
-    return this.delete<Chat>(`/conversations/${id}`, { apiVersion: "v2"});
+    return this.delete<Chat>(`/conversations/${id}`, { apiVersion: "v2" });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

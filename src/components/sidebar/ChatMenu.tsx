@@ -30,7 +30,7 @@ type ChatMenuProps = {
 export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPinned }: ChatMenuProps) {
   const { t } = useTranslation("translation", { useSuspense: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { reloadConversations } = useConversation()
+  const { reloadConversations } = useConversation();
   const { mutate: pinConversationById } = usePinConversationById();
   const { mutate: unpinConversationById } = useUnpinConversationById();
   const { mutate: cloneChatById } = useCloneChat();
