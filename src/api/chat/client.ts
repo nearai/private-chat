@@ -7,7 +7,15 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
 import { DEFAULT_SIGNING_ALGO, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { getTimeRange } from "@/lib/time";
-import type { Chat, ChatInfo, Conversation, ConversationItemsResponse, StartStreamProps, Tag } from "@/types";
+import type {
+  Chat,
+  ChatInfo,
+  Conversation,
+  ConversationInfo,
+  ConversationItemsResponse,
+  StartStreamProps,
+  Tag,
+} from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
 export interface UploadError {
@@ -154,6 +162,12 @@ class ChatClient extends ApiClient {
 
   async deleteConversation(id: string) {
     return this.delete<void>(`/conversations/${id}`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async deleteConversationItem(conversationId: string, itemId: string) {
+    return this.delete<ConversationInfo>(`/conversations/${conversationId}/items/${itemId}`, {
       apiVersion: "v2",
     });
   }

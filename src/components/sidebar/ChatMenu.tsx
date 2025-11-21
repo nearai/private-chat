@@ -32,7 +32,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   const { mutate: toggleChatPinnedStatusById } = useTogglePinnedStatus();
   const { mutate: cloneChatById } = useCloneChat();
   // const { mutate: archiveChatById } = useArchiveChat(); //TODO: Add archive chat
-  const { mutate: deleteChatById } = useDeleteChat({
+  const { mutate: deleteChatById, isPending: isDeleting } = useDeleteChat({
     onSuccess: () => {
       setShowDeleteConfirm(false);
       if (handleDeleteSuccess) {
@@ -67,6 +67,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
           </>
         }
         onConfirm={() => deleteChatById({ id: chat.id })}
+        isLoading={isDeleting}
         onCancel={() => setShowDeleteConfirm(false)}
         open={showDeleteConfirm}
       />

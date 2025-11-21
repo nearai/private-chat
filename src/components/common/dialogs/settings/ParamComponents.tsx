@@ -7,7 +7,7 @@ import { CompactTooltip } from "@/components/ui/tooltip";
 // Button component for toggle
 export const ParamButton = ({ children, onClick }: PropsWithChildren & { onClick: () => void }) => {
   return (
-    <Button variant="ghost" onClick={onClick} type="button" size="small" className="h-auto rounded-sm p-1 text-xs">
+    <Button variant="ghost" onClick={onClick} type="button" className="h-auto rounded-sm p-1 text-xs">
       {children}
     </Button>
   );

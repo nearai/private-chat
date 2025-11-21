@@ -1,7 +1,9 @@
 import type React from "react";
+import { useMemo } from "react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { formatDate } from "@/lib/time";
+import { useChatStore } from "@/stores/useChatStore";
 
 interface MessageSkeletonProps {
   message?: string;
@@ -13,10 +15,20 @@ const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
   message = "Encrypting & fetching messages ...",
   model = "Assistant",
 }) => {
+  const { models } = useChatStore();
+
+  const modelIcon = useMemo(() => {
+    return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
+  }, [models, model]);
+
   return (
     <div className="group flex w-full">
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
-        <NearAIIcon className="mt-0.5 h-6 w-6" />
+        {modelIcon ? (
+          <img src={modelIcon} alt={model} className="mt-0.5 h-6 w-6 rounded" />
+        ) : (
+          <NearAIIcon className="mt-0.5 h-6 w-6 rounded" />
+        )}
       </div>
 
       <div className="w-0 flex-auto pl-1">

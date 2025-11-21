@@ -97,7 +97,6 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
                 <span>{t("Address")}</span>
                 <Button
                   type="button"
-                  size="small"
                   variant="secondary"
                   className="h-auto gap-x-1 px-2 py-1 text-xs"
                   onClick={() => handleCopy(address, "address")}
@@ -125,7 +124,6 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
                 <span>{t("Message")}</span>
                 <Button
                   type="button"
-                  size="small"
                   variant="secondary"
                   className="h-auto gap-x-1 px-2 py-1 text-xs"
                   onClick={() => handleCopy(message, "message")}
@@ -152,7 +150,6 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
                 <span>{t("Signature")}</span>
                 <Button
                   onClick={() => handleCopy(signature, "signature")}
-                  size="small"
                   variant="secondary"
                   className="h-auto gap-x-1 px-2 py-1 text-xs"
                 >

@@ -371,7 +371,7 @@ const GeneralSettings = () => {
 
       {/* Save Button */}
       <div className="flex justify-end pt-3 font-medium text-sm">
-        <Button disabled={isUpdatingSettings} size="small" onClick={handleSave}>
+        <Button disabled={isUpdatingSettings} onClick={handleSave}>
           {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
         </Button>
       </div>

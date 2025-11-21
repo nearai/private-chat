@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
+import { useDeleteConversationItem } from "@/api/chat/queries";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { queryKeys } from "@/api/query-keys";
 import MessageInput from "@/components/chat/MessageInput";
@@ -14,9 +15,7 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-
 import type { Conversation, ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
-
 import { ConversationRoles } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
@@ -107,6 +106,8 @@ const Home = ({
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
+  const { mutateAsync: deleteConversationItem } = useDeleteConversationItem();
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationData, chatId);
 
@@ -142,14 +143,6 @@ const Home = ({
     [chatId, queryClient, scrollToBottom, startStream, selectedModels]
   );
 
-  /* simple stubs */
-  const handleEditMessage = useCallback((id: string, c: string) => console.log("Edit:", id, c), []);
-  const handleSaveMessage = useCallback((id: string, c: string) => console.log("Save:", id, c), []);
-  const handleDeleteMessage = useCallback((id: string) => console.log("Delete:", id), []);
-  const handleRegenerateResponse = useCallback(async (m: ConversationModelOutput) => console.log("Regen:", m), []);
-  const handleShowPrev = useCallback((m: ConversationModelOutput) => console.log("Prev:", m), []);
-  const handleShowNext = useCallback((m: ConversationModelOutput) => console.log("Next:", m), []);
-
   // Load welcome prompt (one-time)
   useEffect(() => {
     const welcome = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
@@ -181,6 +174,35 @@ const Home = ({
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
 
+  /* simple stubs */
+  const handleEditMessage = useCallback((id: string, c: string) => console.log("Edit:", id, c), []);
+  const handleSaveMessage = useCallback((id: string, c: string) => console.log("Save:", id, c), []);
+  const handleDeleteMessage = useCallback(
+    async (id: string) => {
+      if (!chatId || !conversationData?.data) return;
+
+      const messageIndex = conversationData.data.findIndex((msg) => msg.id === id);
+      if (messageIndex === -1) return;
+
+      const itemsToDelete = [id];
+
+      const nextMessage = conversationData.data[messageIndex + 1];
+      if (
+        nextMessage &&
+        ((nextMessage.type === "message" && nextMessage.role === "assistant") || nextMessage.type === "web_search_call")
+      ) {
+        itemsToDelete.push(nextMessage.id);
+      }
+
+      await Promise.all(itemsToDelete.map((itemId) => deleteConversationItem({ conversationId: chatId, itemId })));
+    },
+    [chatId, deleteConversationItem, conversationData]
+  );
+
+  const handleRegenerateResponse = useCallback(async (m: ConversationModelOutput) => console.log("Regen:", m), []);
+  const handleShowPrev = useCallback((m: ConversationModelOutput) => console.log("Prev:", m), []);
+  const handleShowNext = useCallback((m: ConversationModelOutput) => console.log("Next:", m), []);
+
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />
@@ -207,6 +229,7 @@ const Home = ({
                 readOnly={false}
                 editMessage={handleEditMessage}
                 deleteMessage={handleDeleteMessage}
+                siblings={[]}
               />
             );
           }
@@ -242,7 +265,6 @@ const Home = ({
                   readOnly={false}
                   webSearchEnabled={msg.webSearchMessages.length > 0}
                   saveMessage={handleSaveMessage}
-                  deleteMessage={handleDeleteMessage}
                   regenerateResponse={handleRegenerateResponse}
                   showPreviousMessage={handleShowPrev}
                   showNextMessage={handleShowNext}

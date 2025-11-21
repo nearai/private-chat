@@ -163,7 +163,6 @@ const ChatVerifier: React.FC = () => {
                   disabled={!selectedModels[0]}
                   variant="secondary"
                   className="w-full"
-                  size="small"
                 >
                   {t("Retry Verification")}
                 </Button>

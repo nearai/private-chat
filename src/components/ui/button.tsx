@@ -17,8 +17,7 @@ const buttonVariants = cva(
         blue: "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 dark:bg-blue-800 dark:active:bg-blue-800 dark:hover:bg-blue-700",
       },
       size: {
-        default: "h-11 px-3 py-2 has-[>svg]:px-2",
-        small: "h-9 px-3 py-1.5 text-sm has-[>svg]:px-1.5",
+        default: "h-9 px-3 py-1.5 text-sm has-[>svg]:px-1.5",
         icon: "size-6 rounded-md",
       },
     },

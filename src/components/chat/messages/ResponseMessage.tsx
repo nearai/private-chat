@@ -4,24 +4,22 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import CopyIcon from "@/assets/icons/clipboard.svg?react";
 import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
+import { Button } from "@/components/ui/button";
 import { verifySignature } from "@/lib/signature";
 import { cn, formatDate } from "@/lib/time";
 import markedExtension from "@/lib/utils/extension";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
+import { useChatStore } from "@/stores/useChatStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationModelOutput } from "@/types";
 import { extractMessageContent } from "@/types/openai";
-
-// import Citations from "./Citations";
-
-import { Button } from "@/components/ui/button";
-import { useChatStore } from "@/stores/useChatStore";
-import { useViewStore } from "@/stores/useViewStore";
 // import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
 
@@ -32,7 +30,6 @@ interface ResponseMessageProps {
   readOnly: boolean;
   webSearchEnabled: boolean;
   saveMessage: (messageId: string, content: string) => void;
-  deleteMessage: (messageId: string) => void;
   regenerateResponse: (message: ConversationModelOutput) => Promise<void>;
   showPreviousMessage: (message: ConversationModelOutput) => void;
   showNextMessage: (message: ConversationModelOutput) => void;
@@ -345,20 +342,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   }}
                   title="Copy"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2.3"
-                    stroke="currentColor"
-                    className="h-4 w-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
-                    />
-                  </svg>
+                  <CopyIcon className="h-4 w-4" />
                 </Button>
 
                 <Button

@@ -6,4 +6,5 @@ export { useDeleteChat } from "./useDeleteConversation";
 
 // Mutation
 
+export { useDeleteConversationItem } from "./useDeleteConversationItem";
 export { useTogglePinnedStatus } from "./useTogglePinnedStatus";
