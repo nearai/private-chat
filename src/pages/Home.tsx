@@ -260,6 +260,16 @@ const Home = ({
 
           return null;
         })}
+
+        {currentMessages.length === 1 &&
+          currentMessages[0].type === "message" &&
+          currentMessages[0].role === "user" && (
+            <MessageSkeleton
+              key={currentMessages[0].id || `created-${0}`}
+              model={currentMessages[0].model}
+              message="Starting..."
+            />
+          )}
       </div>
 
       <MessageInput
