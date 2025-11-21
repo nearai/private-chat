@@ -51,10 +51,10 @@ const ChatPlaceholder: React.FC<ChatPlaceholderProps> = ({ inputValue, setInputV
         <div className="flex w-full items-center gap-4 text-center font-primary text-3xl text-gray-800 dark:text-gray-100">
           <div className="flex w-full flex-col items-center justify-center">
             <div className="flex w-fit max-w-2xl flex-col items-center justify-center gap-3 px-2 pb-3 sm:gap-3.5">
-              <h1 className="flex items-center gap-2 text-3xl text-white sm:text-3xl">
+              <h1 className="flex items-center gap-2 text-3xl sm:text-3xl">
                 <NearAIIcon className="h-6" /> AI
               </h1>
-              <p className="text-base text-white dark:text-gray-300">
+              <p className="text-base dark:text-gray-300">
                 Chat with your personal assistant without worrying about leaking private information.
               </p>
             </div>
@@ -78,7 +78,7 @@ const ChatPlaceholder: React.FC<ChatPlaceholderProps> = ({ inputValue, setInputV
                         <div className="flex flex-col text-left">
                           {prompt.title && prompt.title[0] !== "" ? (
                             <>
-                              <div className="line-clamp-1 font-medium text-white transition dark:text-gray-300 dark:group-hover:text-gray-200">
+                              <div className="line-clamp-1 font-medium transition dark:text-gray-300 dark:group-hover:text-gray-200">
                                 {prompt.title[0]}
                               </div>
                               <div className="line-clamp-1 font-normal text-gray-400 text-xs dark:text-gray-400">

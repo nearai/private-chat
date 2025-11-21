@@ -1,18 +1,15 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { CompactTooltip } from "@/components/ui/tooltip";
 
 // Button component for toggle
 export const ParamButton = ({ children, onClick }: PropsWithChildren & { onClick: () => void }) => {
   return (
-    <button
-      className="flex rounded-sm p-1 px-3 text-xs transition hover:bg-gray-100 dark:hover:bg-gray-800"
-      onClick={onClick}
-      type="button"
-    >
+    <Button variant="ghost" onClick={onClick} type="button" size="small" className="h-auto rounded-sm p-1 text-xs">
       {children}
-    </button>
+    </Button>
   );
 };
 
@@ -73,7 +70,7 @@ export const RangeInput = ({ value, onChange, min, max, step, parse = parseFloat
           step={Number(step)}
           value={[value]}
           onValueChange={(value) => onChange(value[0])}
-          className="h-2 w-full cursor-pointer appearance-none rounded-lg dark:bg-gray-700"
+          className="h-2 w-full cursor-pointer appearance-none rounded-lg"
         />
       </div>
       <div>
@@ -122,7 +119,7 @@ export const TextInput = <T extends string | number = string | number>({
   return (
     <div className="mt-0.5 flex">
       <input
-        className="w-full rounded-lg px-4 py-2 text-sm outline-none dark:bg-gray-850 dark:text-gray-300"
+        className="w-full rounded-lg px-4 py-2 text-sm outline-none"
         type={type}
         placeholder={placeholder}
         value={value}
@@ -149,7 +146,7 @@ export const ToggleSwitch = ({
 }: ToggleSwitchProps) => {
   return (
     <div className="mt-1 flex items-center justify-between">
-      <div className="text-gray-500 text-xs">{value ? enabledLabel : disabledLabel}</div>
+      <div className="text-muted-foreground text-xs">{value ? enabledLabel : disabledLabel}</div>
       <div className="pr-2">
         <label className="relative inline-flex cursor-pointer items-center">
           <input
@@ -158,7 +155,7 @@ export const ToggleSwitch = ({
             onChange={(e) => onChange(e.target.checked)}
             className="peer sr-only"
           />
-          <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none dark:border-gray-600 dark:bg-gray-700" />
+          <div className="peer h-5 w-9 rounded-full bg-secondary/30 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
         </label>
       </div>
     </div>
@@ -169,7 +166,7 @@ export const ToggleSwitch = ({
 interface CycleParamProps {
   label: string;
   tooltip?: string;
-  value: string;
+  value: React.ReactNode;
   onCycle: () => void;
 }
 
@@ -178,7 +175,7 @@ export const CycleParam = ({ label, tooltip, value, onCycle }: CycleParamProps) 
     <div className="flex w-full justify-between py-0.5">
       <div className="self-center font-medium text-xs">{label}</div>
       <ParamButton onClick={onCycle}>
-        <span className="self-center">{value}</span>
+        <div className="self-center">{value}</div>
       </ParamButton>
     </div>
   );

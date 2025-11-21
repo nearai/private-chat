@@ -18,7 +18,7 @@ const SelectNative = ({ className, children, ...props }: ComponentProps<"select"
         {children}
       </select>
       {!props.multiple && (
-        <span className="pointer-events-none absolute inset-y-0 left-0 flex h-full w-9 items-center justify-center text-muted-foreground/80 peer-disabled:opacity-50 peer-aria-invalid:text-destructive/80">
+        <span className="pointer-events-none absolute inset-y-0 right-0 flex h-full w-9 items-center justify-center text-muted-foreground/80 peer-disabled:opacity-50 peer-aria-invalid:text-destructive/80">
           <ChevronDownIcon size={16} aria-hidden="true" />
         </span>
       )}

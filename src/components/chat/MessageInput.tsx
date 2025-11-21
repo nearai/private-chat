@@ -2,11 +2,14 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { chatClient } from "@/api/chat/client";
+import { useTranslation } from "react-i18next";
+import { chatClient, isUploadError } from "@/api/chat/client";
 
 import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
+import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
 import { compressImage } from "@/lib/image";
+import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -14,10 +17,10 @@ import { useViewStore } from "@/stores/useViewStore";
 import type { History, Message, Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
 import UserMenu from "../sidebar/UserMenu";
+import { Button } from "../ui/button";
 
 interface MessageInputProps {
   messages?: Message[];
-  transparentBackground?: boolean;
   onChange?: (data: {
     prompt: string;
     files: FileContentItem[];
@@ -46,13 +49,13 @@ interface MessageInputProps {
   showUserProfile?: boolean;
   fullWidth?: boolean;
   toolsDisabled?: boolean;
+  isMessageCompleted?: boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
-  transparentBackground = false,
   onChange = () => {},
   createMessagePair = () => {},
   stopResponse = () => {},
@@ -72,16 +75,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
   showUserProfile = true,
   fullWidth = true,
   toolsDisabled = false,
+  isMessageCompleted = true,
 }) => {
   const { settings } = useSettingsStore();
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [loaded, setLoaded] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
+  const { isEditingChatName, webSearchEnabled, setWebSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
@@ -145,22 +151,36 @@ const MessageInput: React.FC<MessageInputProps> = ({
         : { type: "input_file", id: data.id, name: data.filename };
 
       return newFile;
-    } catch (error) {
-      console.error("Error uploading file:", error);
+    } catch (errorObj: unknown) {
+      if (isUploadError(errorObj)) {
+        if (errorObj.error.type === "invalid_request_error") {
+          toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+        }
+      } else {
+        toast.error(t("Error uploading file."));
+      }
+      console.error("Error uploading file:", errorObj);
       return undefined;
     }
   };
 
   const inputFilesHandler = async (inputFiles: File[]) => {
-    for (const file of inputFiles) {
-      const newFile = await uploadFileHandler(file);
-      if (!newFile) continue;
-      setFiles((prev) => [...prev, newFile]);
+    setIsUploading(true);
+    try {
+      for (const file of inputFiles) {
+        const newFile = await uploadFileHandler(file);
+        if (!newFile) continue;
+        setFiles((prev) => [...prev, newFile]);
+      }
+    } finally {
+      setIsUploading(false);
     }
   };
 
   useEffect(() => {
     setLoaded(true);
+    if (isEditingChatName) return;
+
     const chatInput = document.getElementById("chat-input");
     setTimeout(() => chatInput?.focus(), 0);
 
@@ -223,6 +243,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
     e.preventDefault();
     if (prompt.trim() || files.length > 0) {
+      if (!isMessageCompleted) return;
       onSubmit(prompt, files, webSearchEnabled);
       setPrompt("");
       setFiles([]);
@@ -271,6 +292,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       if (enterPressed) {
         e.preventDefault();
         if (prompt !== "" || files.length > 0) {
+          if (!isMessageCompleted) return;
           onSubmit(prompt, files, webSearchEnabled);
           setFiles([]);
           setPrompt("");
@@ -332,21 +354,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
       {/* Files Overlay */}
       {dragged && (
         <div
-          className={`fixed ${
+          className={cn(
+            "pointer-events-none fixed top-0 right-0 bottom-0 z-9999 flex h-full w-full touch-none",
             isLeftSidebarOpen ? "left-0 md:left-[260px] md:w-[calc(100%-260px)]" : "left-0"
-          } pointer-events-none fixed top-0 right-0 bottom-0 z-9999 flex h-full w-full touch-none`}
+          )}
           id="dropzone"
           role="region"
           aria-label="Drag and Drop Container"
         >
-          <div className="absolute flex h-full w-full justify-center bg-gray-800/40 backdrop-blur-sm">
+          <div className="absolute flex h-full w-full justify-center bg-secondary/40 backdrop-blur-sm">
             <div className="m-auto flex flex-col justify-center">
               <div className="max-w-md">
                 <div className="px-3">
                   <div className="mb-3 text-center text-6xl">📄</div>
-                  <div className="z-50 text-center font-semibold text-xl dark:text-white">Add Files</div>
+                  <div className="z-50 text-center font-semibold text-xl">Add Files</div>
 
-                  <div className="mt-2 w-full px-2 text-center text-sm dark:text-gray-200">
+                  <div className="mt-2 w-full px-2 text-center text-sm">
                     Drop any files here to add to the conversation
                   </div>
                 </div>
@@ -358,17 +381,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
       <div
         className={cn(
-          `flex-row font-primary ${messages?.length === 0 ? "flex-1" : ""}`,
+          "flex-row font-primary",
+          messages?.length === 0 ? "flex-1" : "",
           fullWidth ? "w-full" : "w-full md:max-w-3xl"
         )}
       >
         <div className="inset-x-0 mx-auto flex justify-center bg-transparent">
-          <div className={`flex flex-col px-3 ${settings.widescreenMode ? "max-w-full" : "max-w-6xl"} w-full`}>
+          <div className={cn("flex w-full flex-col px-3", settings.widescreenMode ? "max-w-full" : "max-w-6xl")}>
             <div className="relative">
               {autoScroll === false && history?.currentId && (
                 <div className="-top-12 pointer-events-none absolute right-0 left-0 z-30 flex justify-center">
                   <button
-                    className="pointer-events-auto rounded-full border border-gray-100 bg-white p-1.5 dark:border-none dark:bg-white/20"
+                    className="pointer-events-auto rounded-full border border-border bg-white p-1.5"
                     onClick={() => {
                       scrollToBottom();
                     }}
@@ -387,14 +411,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
             <div className="relative w-full">
               {(atSelectedModel !== undefined || selectedToolIds.length > 0 || webSearchEnabled) && (
-                <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-gradient-to-t from-white px-3 pt-1.5 pb-0.5 text-left dark:from-gray-900">
+                <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-gradient-to-t from-background px-3 pt-1.5 pb-0.5 text-left">
                   {atSelectedModel !== undefined && (
                     <div className="flex w-full items-center justify-between">
-                      <div className="flex items-center gap-2 pl-px text-sm dark:text-gray-500">
+                      <div className="flex items-center gap-2 pl-px text-sm">
                         <img
                           crossOrigin="anonymous"
                           alt="model profile"
-                          className="size-3.5 max-w-[28px] rounded-full object-cover"
+                          className="size-3.5 max-w-7 rounded-full object-cover"
                           src={
                             atSelectedModel?.info?.meta?.profile_image_url ??
                             `${window.location.pathname}/static/favicon.png`
@@ -405,7 +429,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         </div>
                       </div>
                       <div>
-                        <button className="flex items-center dark:text-gray-500" onClick={() => setAtSelectedModel()}>
+                        <button className="flex items-center" onClick={() => setAtSelectedModel()}>
                           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                             <path
                               fillRule="evenodd"
@@ -423,14 +447,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </div>
         </div>
 
-        <div
-          className={cn(
-            transparentBackground ? "bg-transparent" : "bg-gray-900 dark:bg-gray-900",
-            "flex flex-row items-center pb-4 md:pl-2.5"
-          )}
-        >
+        <div className="flex items-end bg-transparent pb-4 md:pl-2.5">
           {!isMobile && !isLeftSidebarOpen && showUserProfile && (
-            <div className="flex select-none rounded-xl transition hover:bg-gray-50 dark:hover:bg-gray-850">
+            <div className="flex select-none rounded-xl transition hover:bg-secondary/30">
               <UserMenu collapsed={true} />
             </div>
           )}
@@ -453,10 +472,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   }
                 }}
               />
-
               <form className="flex w-full gap-1.5" onSubmit={handleSubmit}>
                 <div
-                  className="app-chat-input relative flex w-full flex-1 flex-col rounded-3xl border border-gray-50 bg-white/90 px-1 shadow-lg transition focus-within:border-gray-100 hover:border-gray-100 dark:border-gray-850 dark:bg-gray-400/5 dark:text-gray-100 hover:dark:border-gray-800 focus-within:dark:border-gray-800"
+                  className="relative flex w-full flex-1 flex-col rounded-3xl border border-border bg-input px-1 shadow-lg transition focus-within:shadow-xl hover:shadow-xl"
                   dir={settings.chatDirection ?? "auto"}
                 >
                   {files.length > 0 && (
@@ -488,7 +506,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                               </div>
                               <div className="-top-1 -right-1 absolute">
                                 <button
-                                  className="invisible rounded-full border border-white bg-white text-black transition group-hover:visible"
+                                  className="invisible rounded-full border border-border bg-background transition group-hover:visible"
                                   type="button"
                                   onClick={() => removeFile(file.id)}
                                 >
@@ -504,7 +522,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-800">
+                            <div className="flex items-center gap-2 rounded-lg bg-secondary/30 p-2">
                               <div className="flex flex-1 items-center gap-2">
                                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                                   <path
@@ -515,7 +533,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                 </svg>
                                 <span className="text-sm">{file.type}</span>
                               </div>
-                              <button onClick={() => removeFile(file.id)} className="text-gray-500 hover:text-red-500">
+                              <button
+                                onClick={() => removeFile(file.id)}
+                                className="text-muted-foreground hover:text-destructive-foreground"
+                              >
                                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                                   <path
                                     fillRule="evenodd"
@@ -533,7 +554,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
                   <div className="px-2.5">
                     <div
-                      className="scrollbar-hidden h-fit max-h-80 w-full resize-none overflow-auto bg-transparent px-1 pt-3 text-left outline-hidden dark:text-gray-100"
+                      className="scrollbar-hidden h-fit max-h-80 w-full resize-none overflow-auto bg-transparent px-1 pt-3 text-left outline-hidden"
                       id="chat-input-container"
                     >
                       <textarea
@@ -547,7 +568,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         onPaste={handlePaste}
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
-                        // rows={15}
                         style={{ lineHeight: "1.5" }}
                       />
                     </div>
@@ -559,27 +579,32 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         <>
                           <div className="relative">
                             <button
-                              className="rounded-full bg-transparent p-1.5 text-gray-800 outline-hidden transition hover:bg-gray-100 focus:outline-hidden dark:text-white dark:hover:bg-gray-800"
+                              className="rounded-full bg-transparent p-1.5 text-muted-foreground outline-hidden transition hover:bg-secondary/30 focus:outline-hidden"
                               type="button"
                               aria-label="More"
+                              disabled={isUploading}
                               onClick={() => {
                                 filesInputRef.current?.click();
                               }}
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="size-5"
-                              >
-                                <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                              </svg>
+                              {isUploading ? (
+                                <Spinner className="size-4" />
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="size-5"
+                                >
+                                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                                </svg>
+                              )}
                             </button>
                           </div>
                           <div className="scrollbar-none flex flex-1 items-center gap-1 overflow-x-auto">
                             {toolServers.length + selectedToolIds.length > 0 && (
                               <button
-                                className="flex translate-y-[0.5px] items-center gap-1 self-center rounded-lg p-1 text-gray-600 transition hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
+                                className="flex translate-y-[0.5px] items-center gap-1 self-center rounded-lg p-1 text-muted-foreground transition hover:text-muted-foreground/80"
                                 aria-label="Available Tools"
                                 type="button"
                                 onClick={() => setShowTools(!showTools)}
@@ -598,30 +623,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                                   />
                                 </svg>
-                                <span className="font-medium text-gray-600 text-sm dark:text-gray-300">
+                                <span className="font-medium text-muted-foreground text-sm">
                                   {toolServers.length + selectedToolIds.length}
                                 </span>
                               </button>
                             )}
 
-                            <button
+                            <Button
+                              variant={webSearchEnabled ? "blue" : "ghost"}
                               onClick={() => setWebSearchEnabled(!webSearchEnabled)}
                               type="button"
-                              className={`flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2 py-0.5 font-medium text-xs transition-colors duration-300 focus:outline-hidden ${
-                                webSearchEnabled
-                                  ? "border-nearg-500 bg-nearg-500 text-nearg-400"
-                                  : "border-gray-200 border-transparent bg-transparent text-gray-300 hover:bg-gray-800"
-                              }`}
+                              className="flex h-auto max-w-full items-center gap-1.5 overflow-hidden rounded-full px-2 py-0.5 font-medium text-xs transition-colors duration-300"
                             >
-                              <GlobeIcon
-                                className="size-5"
-                                strokeWidth="1.75"
-                                stroke={webSearchEnabled ? "rgba(0, 236, 151)" : "#fff"}
-                              />
+                              <GlobeIcon className="size-5" strokeWidth="1.75" stroke="currentColor" />
                               <span className="translate-y-[0.5px] overflow-hidden text-ellipsis whitespace-nowrap">
                                 Web Search
                               </span>
-                            </button>
+                            </Button>
                           </div>
                         </>
                       )}
@@ -630,36 +648,25 @@ const MessageInput: React.FC<MessageInputProps> = ({
                     <div className="mr-1 flex shrink-0 space-x-1 self-end">
                       {(taskIds && taskIds.length > 0) ||
                       (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
-                        <button
-                          className="rounded-full bg-white p-1.5 text-gray-800 transition hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800"
-                          onClick={stopResponse}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="size-5"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 01-1.313-1.313V9.564z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
+                        <Button size="icon" onClick={stopResponse} className="size-10">
+                          <StopMessageIcon className="size-5" />
+                        </Button>
                       ) : (
-                        <button
+                        <Button
                           id="send-message-button"
-                          className={`${
-                            !(prompt === "" && files.length === 0)
-                              ? "bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
-                              : "disabled bg-gray-200 text-white dark:bg-gray-700 dark:text-gray-900"
-                          } self-center rounded-full p-1.5 transition`}
+                          className="size-10 rounded-full"
                           type="submit"
-                          disabled={prompt === "" && files.length === 0}
+                          title={isMessageCompleted ? "Send" : "Stop"}
+                          disabled={isMessageCompleted && prompt === "" && files.length === 0}
+                          size="icon"
                         >
-                          <SendMessageIcon className="size-5" />
-                        </button>
+                          {isMessageCompleted ? (
+                            <SendMessageIcon className="size-5" />
+                          ) : (
+                            // TODO: stop message
+                            <StopMessageIcon className="size-5" />
+                          )}
+                        </Button>
                       )}
                     </div>
                   </div>

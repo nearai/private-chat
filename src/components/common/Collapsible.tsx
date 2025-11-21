@@ -1,4 +1,5 @@
 import React, { type ReactNode, useState } from "react";
+import { cn } from "@/lib/time";
 
 interface CollapsibleProps {
   title?: string;
@@ -88,9 +89,10 @@ const Collapsible: React.FC<CollapsibleProps> = ({
 
         {grow && (
           <div
-            className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={cn(
+              "overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
               isOpen && !hide ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
-            }`}
+            )}
           >
             {children}
           </div>

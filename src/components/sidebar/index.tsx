@@ -1,21 +1,22 @@
 import type React from "react";
 import { useMemo, useState } from "react";
 
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 
 import ChatArrowDown from "@/assets/icons/chat-arrow-down.svg?react";
-import CloseIcon from "@/assets/icons/close-icon.svg?react";
-import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
+import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
+import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { cn, getTimeRange } from "@/lib/time";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationInfo } from "@/types";
+import { Button } from "../ui/button";
 import ChatItem from "./ChatItem";
-
 import UserMenu from "./UserMenu";
 
 const LeftSidebar: React.FC = () => {
+  const navigate = useNavigate();
   const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
   const { chatId } = useParams();
 
@@ -38,45 +39,35 @@ const LeftSidebar: React.FC = () => {
     [conversations]
   );
   return (
-    <nav className="top-0 left-0 z-50 shrink-0 overflow-x-hidden text-sm transition-width duration-200 ease-in-out">
+    <nav className="top-0 left-0 z-50 shrink-0 overflow-x-hidden text-sidebar-foreground text-sm transition-width duration-200 ease-in-out">
       <div
         id="sidebar"
         className={cn(
-          "fixed top-0 left-0 z-50 flex h-svh shrink-0 select-none flex-col overflow-x-hidden bg-gray-900 text-gray-900 text-sm transition-width duration-200 ease-in-out dark:bg-gray-900 dark:text-gray-200",
+          "sidebar-gradient fixed top-0 left-0 z-50 flex h-svh shrink-0 select-none flex-col overflow-x-hidden rounded-r-3xl p-4 text-sm transition-width duration-200 ease-in-out",
           isLeftSidebarOpen ? "w-[260px] max-w-[260px] md:relative" : "-translate-x-[260px] invisible w-0"
         )}
       >
-        <div className="flex flex-col px-2">
-          <div className="my-4 flex w-full justify-between px-2">
-            <button
+        <div className="flex flex-col">
+          <div className="flex w-full justify-between">
+            <NearAIIcon className="h-8" />
+
+            <Button
+              variant="ghost"
               type="button"
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded shadow hover:bg-gray-850 dark:bg-[rgba(248,248,248,0.04)]"
-            >
-              <NearAIIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded text-white shadow transition-colors hover:bg-gray-850 dark:bg-[rgba(248,248,248,0.04)] dark:hover:text-gray-300"
+              size="icon"
+              className="text-muted-foreground"
               onClick={() => setIsLeftSidebarOpen(false)}
             >
-              <CloseIcon />
-            </button>
+              <SidebarIcon className="size-5" />
+            </Button>
           </div>
-          <div className="w-full">
-            <div className="mb-5 flex h-9 items-center justify-center space-x-1 text-gray-600 dark:text-white">
-              <Link
-                id="sidebar-new-chat-button"
-                className="no-drag-region flex h-full flex-1 items-center justify-center gap-x-2 rounded-lg bg-[#F8F8F80A] px-2 py-1 text-right text-white transition hover:bg-gray-850"
-                to="/"
-              >
-                <div className="flex items-center">
-                  <div className="self-center font-medium font-primary text-sm">New Chat</div>
-                </div>
-                <div>
-                  <PencilIcon fill={"#000"} />
-                </div>
+          <div className="my-6 w-full">
+            <Button variant="ghost" type="button" className="flex h-9 justify-start rounded-xl" asChild>
+              <Link id="sidebar-new-chat-button" to="/">
+                <PencilIcon />
+                <p className="text-sm">New Chat</p>
               </Link>
-            </div>
+            </Button>
           </div>
 
           <div className="w-full cursor-pointer" onClick={() => setIsChatsOpen(!isChatsOpen)}>
@@ -84,7 +75,7 @@ const LeftSidebar: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div className="group relative flex w-full items-center justify-between rounded-md text-gray-500 transition">
                   <button className="flex w-full items-center gap-1.5 py-1.5 pl-2 font-medium text-xs">
-                    <div className="size-3 text-gray-300 dark:text-gray-600">
+                    <div className="size-3 text-gray-300">
                       <ChatArrowDown stroke="#676767" className={!isChatsOpen ? "rotate-270" : ""} />
                     </div>
                     <div className="translate-y-[0.5px]">Chats</div>
@@ -95,7 +86,7 @@ const LeftSidebar: React.FC = () => {
           </div>
         </div>
         {isLoading && (
-          <div className="flex-1 overflow-hidden px-2">
+          <div className="flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-center">
                 Loading chats{" "}
@@ -105,7 +96,7 @@ const LeftSidebar: React.FC = () => {
           </div>
         )}
         {isChatsOpen && !isLoading && (
-          <div className="flex-1 overflow-hidden px-2">
+          <div className="flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto overflow-x-hidden">
               {chatsGroupedByFolder.map(([timeRange, chats], index) => (
                 <div key={timeRange}>
@@ -118,7 +109,15 @@ const LeftSidebar: React.FC = () => {
                     {timeRange}
                   </div>
                   {chats.map((chat) => (
-                    <ChatItem key={chat.id} chat={chat} isCurrentChat={chat.id === chatId} />
+                    <ChatItem
+                      key={chat.id}
+                      chat={chat}
+                      isCurrentChat={chat.id === chatId}
+                      handleDeleteSuccess={() => {
+                        if (chat.id !== chatId) return;
+                        navigate("/");
+                      }}
+                    />
                   ))}
                 </div>
               ))}
@@ -126,7 +125,7 @@ const LeftSidebar: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-auto px-2">
+        <div className="mt-auto">
           <UserMenu />
         </div>
       </div>

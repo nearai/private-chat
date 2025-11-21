@@ -1,15 +1,1 @@
-#!/bin/sh
-
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
-
-if [ -n "$STAGED_FILES" ]; then
-  echo "🔧 Running Biome formatter & checker on staged files..."
-
-  npm run format --silent
-
-  echo "$STAGED_FILES" | xargs git add
-
-  echo "✅ Biome formatting and linting complete."
-else
-  echo "✨ No staged files to process."
-fi
+pnpm dlx lint-staged

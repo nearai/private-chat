@@ -10,9 +10,11 @@ import { usersClient } from "@/api/users/client";
 import CheckIcon from "@/assets/icons/check-icon.svg?react";
 import GitHubIcon from "@/assets/icons/github-icon.svg?react";
 import GoogleIcon from "@/assets/icons/google-icon.svg?react";
-import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
+import NearAIIcon from "@/assets/icons/near-ai.svg?react";
+import { Button } from "@/components/ui/button";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
+import { cn } from "@/lib/time";
 import type { OAuth2Provider } from "@/types";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
@@ -73,14 +75,14 @@ const AuthPage: React.FC = () => {
   return (
     <div className="relative">
       <div className="fixed z-50 m-10">
-        <NearAIIcon className="h-6 w-6" />
+        <NearAIIcon className="h-8" />
       </div>
 
-      <div className="flex justify-center bg-transparent font-primary text-black dark:text-white">
+      <div className="flex justify-center bg-transparent">
         <div className="flex min-h-screen flex-col px-10 sm:max-w-md">
           {config.features?.auth_trusted_header || config.features?.auth === false ? (
             <div className="my-auto w-full pb-10">
-              <div className="flex items-center justify-center gap-3 text-center font-semibold text-xl sm:text-2xl dark:text-gray-200">
+              <div className="flex items-center justify-center gap-3 text-center font-semibold text-xl sm:text-2xl">
                 <p className="text-center">Signing in to {config.name}</p>
                 <div>
                   <Spinner />
@@ -88,34 +90,28 @@ const AuthPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="my-auto w-full pb-10 dark:text-gray-100">
+            <div className="my-auto w-full pb-10">
               <div className="mb-1 flex flex-col items-center justify-center">
                 <p className="font-medium text-2xl">Sign in to {config.name}</p>
 
                 {config.onboarding && (
-                  <p className="mt-1 font-medium text-gray-500 text-xs">
+                  <p className="mt-1 font-medium text-xs">
                     ⓘ {config.name} does not make any external connections, and your data stays securely on your locally
                     hosted server.
                   </p>
                 )}
               </div>
 
-              <hr className="my-4 h-px w-full border-0 bg-gray-700/10 dark:bg-gray-100/10" />
+              <hr className="my-4 h-px w-full border-0" />
               <div className="flex flex-col space-y-2">
-                <button
-                  className="flex w-full items-center justify-center rounded-full bg-gray-700/5 py-2.5 font-medium text-sm transition hover:bg-gray-700/10 dark:bg-gray-100/5 dark:text-gray-300 dark:hover:bg-gray-100/10 dark:hover:text-white"
-                  onClick={() => handleOAuthLogin("google")}
-                >
+                <Button className="rounded-full" onClick={() => handleOAuthLogin("google")} variant="secondary">
                   <GoogleIcon className="mr-3 h-6 w-6" />
                   <span>Continue with Google</span>
-                </button>
-                <button
-                  className="flex w-full items-center justify-center rounded-full bg-gray-700/5 py-2.5 font-medium text-sm transition hover:bg-gray-700/10 dark:bg-gray-100/5 dark:text-gray-300 dark:hover:bg-gray-100/10 dark:hover:text-white"
-                  onClick={() => handleOAuthLogin("github")}
-                >
+                </Button>
+                <Button onClick={() => handleOAuthLogin("github")} className="rounded-full" variant="secondary">
                   <GitHubIcon className="mr-3 h-6 w-6" />
                   <span>Continue with GitHub</span>
-                </button>
+                </Button>
               </div>
 
               <label className="flex cursor-pointer items-start pt-10 text-xs">
@@ -129,25 +125,26 @@ const AuthPage: React.FC = () => {
                   }}
                 />
                 <div
-                  className={`mt-0.5 h-4 w-4 ${
-                    agreedTerms ? "bg-[#00EC97]" : "bg-gray-50"
-                  } flex items-center justify-center rounded shadow`}
+                  className={cn(
+                    "mt-0.5 flex h-4 w-4 items-center justify-center rounded shadow",
+                    agreedTerms ? "bg-green-dark" : "bg-input"
+                  )}
                 >
                   <CheckIcon
-                    className={`mt-[1px] h-3 w-3 transition-opacity ${agreedTerms ? "opacity-100" : "opacity-0"}`}
+                    className={cn("mt-px h-3 w-3 transition-opacity", agreedTerms ? "opacity-100" : "opacity-0")}
                   />
                 </div>
                 <div className="ml-2 inline-block flex-1 text-left">
                   {"By signing in, I agree to the "}
-                  <a className="underline hover:text-blue-300" href="/terms">
+                  <a className="underline hover:text-blue-600" href="/terms">
                     Terms of Service
                   </a>
                   {" , "}
-                  <a className="underline hover:text-blue-300" href="/privacy">
+                  <a className="underline hover:text-blue-600" href="/privacy">
                     Privacy Policy
                   </a>
                   {" and "}
-                  <a className="underline hover:text-blue-300" href="/privacy-cookie">
+                  <a className="underline hover:text-blue-600" href="/privacy-cookie">
                     Cookie Policy
                   </a>
                   .

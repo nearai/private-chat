@@ -6,7 +6,7 @@ import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useResponse } from "@/api/chat/queries/useResponse";
 import { queryKeys } from "@/api/query-keys";
-import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
+import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
@@ -112,15 +112,13 @@ export default function NewChat({
   };
 
   return (
-    <div id="chat-container" className="relative flex h-full grow-1 flex-col bg-gray-900">
+    <div id="chat-container" className="relative flex h-full grow flex-col">
       <Navbar />
-      <div className="flex h-full grow-1 flex-col items-center justify-center">
+      <div className="flex h-full grow flex-col items-center justify-center">
         <div className="flex w-full flex-col items-center justify-center">
           <div className="flex w-fit max-w-2xl flex-col items-center justify-center gap-3 px-2 pb-3 sm:gap-3.5">
-            <h1 className="flex max-w-2xl items-center gap-2 text-center text-3xl text-white sm:text-3xl">
-              <NearAIIcon className="h-6" /> AI
-            </h1>
-            <p className="text-center text-base text-white dark:text-gray-300">
+            <NearAIIcon className="h-6" />
+            <p className="text-center text-base text-muted-foreground">
               Chat with your personal assistant without worrying about leaking private information.
             </p>
           </div>
@@ -135,7 +133,7 @@ export default function NewChat({
           />
           <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
             <div className="mx-5">
-              <div className="mb-1 flex items-center gap-1 font-medium text-gray-400 text-xs dark:text-gray-400">
+              <div className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
                 <Bolt className="h-4 w-4" />
                 Suggested
               </div>
@@ -145,28 +143,22 @@ export default function NewChat({
                     <button
                       key={prompt.content}
                       role="listitem"
-                      className="waterfall group flex w-full flex-1 shrink-0 flex-col justify-between rounded-xl bg-transparent px-3 py-2 font-normal text-base transition hover:bg-black/5 dark:hover:bg-white/5"
+                      className="waterfall group flex w-full flex-1 shrink-0 flex-col justify-between rounded-xl px-3 py-2 font-normal text-base transition hover:bg-secondary/30"
                       style={{ animationDelay: `${idx * 60}ms` }}
                       onClick={() => setInputValue(prompt.content)}
                     >
                       <div className="flex flex-col text-left">
                         {prompt.title && prompt.title[0] !== "" ? (
                           <>
-                            <div className="line-clamp-1 font-medium text-white transition dark:text-gray-300 dark:group-hover:text-gray-200">
-                              {prompt.title[0]}
-                            </div>
-                            <div className="line-clamp-1 font-normal text-gray-400 text-xs dark:text-gray-400">
+                            <div className="line-clamp-1 font-medium transition">{prompt.title[0]}</div>
+                            <div className="line-clamp-1 font-normal text-muted-foreground text-xs">
                               {prompt.title[1]}
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className="line-clamp-1 font-medium transition dark:text-gray-300 dark:group-hover:text-gray-200">
-                              {prompt.content}
-                            </div>
-                            <div className="line-clamp-1 font-normal text-gray-600 text-xs dark:text-gray-400">
-                              Prompt
-                            </div>
+                            <div className="line-clamp-1 font-medium transition">{prompt.content}</div>
+                            <div className="line-clamp-1 font-normal text-muted-foreground text-xs">Prompt</div>
                           </>
                         )}
                       </div>

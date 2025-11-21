@@ -397,6 +397,18 @@ export interface Settings {
   chatBubble?: boolean;
 }
 
+export interface UserSettingsPayload {
+  notification: boolean;
+  system_prompt: string;
+}
+
+export interface UserSettingsResponse {
+  user_id: string;
+  settings: UserSettingsPayload;
+}
+
+export type UpdateUserSettingsRequest = UserSettingsPayload;
+
 // Config types
 export interface Config {
   status?: boolean;
@@ -475,6 +487,10 @@ export interface ViewStore {
 
 export interface ChatStore {
   webSearchEnabled: boolean;
+  isEditingChatName: boolean;
+  editingChatId: string | null;
+  startEditingChatName: (chatId: string) => void;
+  stopEditingChatName: () => void;
   setWebSearchEnabled: (webSearchEnabled: boolean) => void;
   models: ModelV1[];
   selectedModels: string[];

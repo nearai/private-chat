@@ -92,7 +92,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
     <div className="flex h-full flex-col text-sm">
       <ul className="flex flex-col gap-2">
         <li
-          className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-gray-200 dark:hover:bg-gray-800"
+          className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-secondary/30"
           onClick={() => {
             if (!importing) {
               inputRef.current?.click();
