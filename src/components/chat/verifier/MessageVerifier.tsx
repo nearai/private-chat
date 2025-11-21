@@ -112,7 +112,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
     if (isSelected && shouldScrollToSignatureDetails && messageRef.current) {
       setShowDetails(true);
 
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         messageRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
@@ -121,6 +121,8 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
 
         setShouldScrollToSignatureDetails(false);
       }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, [isSelected, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails]);
 
