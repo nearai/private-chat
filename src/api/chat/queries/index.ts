@@ -1,9 +1,9 @@
 // Query
-
-export { useArchiveChat } from "./useArchiveChat";
 export { useCloneChat } from "./useCloneChat";
 export { useDeleteChat } from "./useDeleteConversation";
 
 // Mutation
-
-export { useTogglePinnedStatus } from "./useTogglePinnedStatus";
+export { usePinConversationById } from "./useTogglePinnedStatus";
+export { useUnpinConversationById } from "./useTogglePinnedStatus";
+export { useArchiveChat } from "./useArchiveChat";
+export { useUnarchiveChat } from "./useArchiveChat";
