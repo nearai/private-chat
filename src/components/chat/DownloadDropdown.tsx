@@ -11,7 +11,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createMessagesList } from "@/lib";
+
 import { useSettingsStore } from "@/stores/useSettingsStore";
 
 type DownloadDropdownProps = {
@@ -24,11 +24,15 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   const downloadAsJSON = async () => {
     try {
-      const chatData = await chatClient.getChatById(chatId);
+      const chatData = await chatClient.getConversationItems(chatId);
+      console.log("downloadAsJSON chatData", chatData);
       if (!chatData) return;
-      const blob = new Blob([JSON.stringify([chatData])], {
-        type: "application/json",
-      });
+      const blob = new Blob(
+        chatData.data.map((item) => JSON.stringify(item)),
+        {
+          type: "application/json",
+        }
+      );
       FileSaver.saveAs(blob, `chat-export-${Date.now()}.json`);
       toast.info("Download JSON - coming soon");
     } catch (error) {
@@ -38,19 +42,20 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   const downloadAsTXT = async () => {
     try {
-      const chatData = await chatClient.getChatById(chatId);
-      if (!chatData) return;
+      const [conversationMetadata, conversationItems] = await Promise.all([
+        chatClient.getConversation(chatId),
+        chatClient.getConversationItems(chatId),
+      ]);
+      if (!conversationItems || !conversationMetadata) return;
 
-      const history = chatData.chat.history;
-      const messages = createMessagesList(history, history.currentId);
-      const chatText = messages.reduce((a, message) => {
-        return `${a}### ${message.role.toUpperCase()}\n${message.content}\n\n`;
+      const chatText = conversationItems.data.reduce((a, message) => {
+        return `${a}### ${message.role.toUpperCase()}\n${message.type === "message" ? message.content : message.action.query}\n\n`;
       }, "");
 
       const blob = new Blob([chatText.trim()], {
         type: "text/plain",
       });
-      FileSaver.saveAs(blob, `chat-${chatData.chat.title}.txt`);
+      FileSaver.saveAs(blob, `chat-${conversationMetadata.metadata.title}.txt`);
       toast.info("Download TXT - coming soon");
     } catch (error) {
       console.error("Failed to download TXT:", error);
@@ -59,8 +64,11 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   const downloadAsPDF = async () => {
     try {
-      const chatData = await chatClient.getChatById(chatId);
-      if (!chatData) return;
+      const [conversationMetadata, conversationItems] = await Promise.all([
+        chatClient.getConversation(chatId),
+        chatClient.getConversationItems(chatId),
+      ]);
+      if (!conversationItems || !conversationMetadata) return;
       const containerElement = document.getElementById("messages-container");
 
       if (containerElement) {
@@ -124,7 +132,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
           heightLeft -= pageHeight;
         }
 
-        pdf.save(`chat-${chatData.chat.title}.pdf`);
+        pdf.save(`chat-${conversationMetadata.metadata.title}.pdf`);
         toast.info("Download PDF - coming soon");
       }
     } catch (error) {
