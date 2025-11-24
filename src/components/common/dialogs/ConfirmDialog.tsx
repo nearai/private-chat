@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from "react-i18next";
 
 type ConfirmDialogProps = {
   title: string;
@@ -15,10 +16,22 @@ type ConfirmDialogProps = {
   onConfirm: () => void;
   onCancel: () => void;
   confirmText?: string;
+  loadingText?: string;
+  isLoading?: boolean;
   open: boolean;
 };
 
-const ConfirmDialog = ({ title, description, onConfirm, onCancel, open, confirmText }: ConfirmDialogProps) => {
+const ConfirmDialog = ({
+  title,
+  description,
+  onConfirm,
+  onCancel,
+  confirmText,
+  isLoading = false,
+  open
+}: ConfirmDialogProps) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
+
   return (
     <AlertDialog open={open}>
       <AlertDialogContent>
@@ -27,8 +40,16 @@ const ConfirmDialog = ({ title, description, onConfirm, onCancel, open, confirmT
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{confirmText ?? "Confirm"}</AlertDialogAction>
+          <AlertDialogCancel onClick={onCancel} disabled={isLoading}>
+            {t("Cancel")}
+          </AlertDialogCancel>
+
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
+            {isLoading ? t("Processing") : (confirmText ?? t("Confirm"))}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
