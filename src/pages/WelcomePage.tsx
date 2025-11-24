@@ -16,8 +16,11 @@ const WelcomePage: React.FC = () => {
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT, value);
+    if (value.length > 0) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT, value);
+    }
   };
+
   const gotoAuth = async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (token) {
