@@ -256,10 +256,8 @@ class ChatClient extends ApiClient {
     return this.delete<Chat>(`/conversations/${id}/pin`, { apiVersion: "v2" });
   }
 
-  async cloneChatById(id: string, title?: string) {
-    return this.post<Chat>(`/chats/${id}/clone`, {
-      ...(title && { title: title }),
-    });
+  async cloneChatById(id: string) {
+    return this.post<Chat>(`/conversations/${id}/clone`, {}, { apiVersion: "v2" });
   }
 
   async cloneSharedChatById(id: string) {
