@@ -83,7 +83,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
             <div className="flex w-full flex-1 self-center">
               <input
                 ref={renameRef}
-                className="h-[20px] w-full self-center border-none bg-transparent text-left outline-none"
+                className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
                 onClick={() => startEditingChatName(chat.id)}
                 onChange={(e) => setRenameInput(e.target.value)}
@@ -104,7 +104,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
           </>
         ) : (
           <>
-            <div dir="auto" className="h-[20px] w-full self-center overflow-hidden truncate text-left">
+            <div dir="auto" className="h-5 w-full self-center overflow-hidden truncate text-left">
               {getChatTitle(chat)}
             </div>
             {isRenaming && editingChatId === chat.id ? (
