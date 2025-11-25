@@ -1,7 +1,9 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { CompactTooltip } from "@/components/ui/tooltip";
 
 // Button component for toggle
@@ -168,16 +170,12 @@ interface CycleParamProps {
   tooltip?: string;
   value: React.ReactNode;
   onCycle: () => void;
-  icon?: React.ReactNode;
 }
 
-export const CycleParam = ({ label, tooltip, value, onCycle, icon }: CycleParamProps) => {
+export const CycleParam = ({ label, tooltip, value, onCycle }: CycleParamProps) => {
   const content = (
     <div className="flex w-full justify-between py-0.5">
-      <div className="flex flex-row items-center gap-1 self-center font-medium text-xs">
-        {icon}
-        {label}
-      </div>
+      <div className="flex flex-row items-center gap-1 self-center font-medium text-base">{label}</div>
       <ParamButton onClick={onCycle}>
         <div className="self-center">{value}</div>
       </ParamButton>
@@ -189,4 +187,61 @@ export const CycleParam = ({ label, tooltip, value, onCycle, icon }: CycleParamP
   }
 
   return content;
+};
+
+export const SwitchParam = ({
+  label,
+  value,
+  onChange,
+  description,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  description?: string;
+}) => {
+  return (
+    <div className="flex w-full items-center justify-between py-0.5">
+      <div className="flex flex-col items-start gap-1 self-center font-medium text-base">
+        {label}
+        {description && <div className="font-normal text-sm">{description}</div>}
+      </div>
+      <Switch checked={value} onCheckedChange={onChange} />
+    </div>
+  );
+};
+
+export const SelectParam = ({
+  label,
+  value,
+  onChange,
+  description,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  description?: string;
+  options: { value: string; label: string }[];
+}) => {
+  return (
+    <div className="flex w-full items-center justify-between py-0.5">
+      <div className="flex grow flex-col items-start gap-1 self-center font-medium text-base">
+        {label}
+        {description && <div className="font-normal text-sm">{description}</div>}
+      </div>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={value} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 };
