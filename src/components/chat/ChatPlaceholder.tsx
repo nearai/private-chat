@@ -2,7 +2,7 @@ import Bolt from "@heroicons/react/24/outline/BoltIcon";
 import Fuse from "fuse.js";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import NearAIIcon from "@/assets/icons/near-icon-green.svg?react";
+import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 
 import { allPrompts } from "@/pages/welcome/data";
 
@@ -51,10 +51,8 @@ const ChatPlaceholder: React.FC<ChatPlaceholderProps> = ({ inputValue, setInputV
         <div className="flex w-full items-center gap-4 text-center font-primary text-3xl text-gray-800 dark:text-gray-100">
           <div className="flex w-full flex-col items-center justify-center">
             <div className="flex w-fit max-w-2xl flex-col items-center justify-center gap-3 px-2 pb-3 sm:gap-3.5">
-              <h1 className="flex items-center gap-2 text-3xl sm:text-3xl">
-                <NearAIIcon className="h-6" /> AI
-              </h1>
-              <p className="text-base dark:text-gray-300">
+              <NearAIIcon className="h-6" />
+              <p className="text-center text-base text-muted-foreground">
                 Chat with your personal assistant without worrying about leaking private information.
               </p>
             </div>
