@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import {
+  type ConversationModelOutput,
+  type ConversationReasoning,
+  ConversationTypes,
+  type ConversationUserInput,
+  type ConversationWebSearchCall,
+} from "@/types";
 
 type DownloadDropdownProps = {
   chatId: string;
@@ -48,8 +55,23 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
       ]);
       if (!conversationItems || !conversationMetadata) return;
 
+      const formatMessageContent = (
+        message: ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall | ConversationReasoning
+      ) => {
+        switch (message.type) {
+          case ConversationTypes.MESSAGE:
+            return message.content.map((content) => content.text || "").join("\n");
+          case ConversationTypes.WEB_SEARCH_CALL:
+            return message.action.query;
+          case ConversationTypes.REASONING:
+            return message.content;
+          default:
+            return "";
+        }
+      };
+
       const chatText = conversationItems.data.reduce((a, message) => {
-        return `${a}### ${message.role.toUpperCase()}\n${message.type === "message" ? message.content : message.action.query}\n\n`;
+        return `${a}### ${message?.role ? message.role.toUpperCase() : "SYSTEM"}\n${formatMessageContent(message)}\n\n`;
       }, "");
 
       const blob = new Blob([chatText.trim()], {
@@ -74,21 +96,17 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
       if (containerElement) {
         const isDarkMode = settings.theme === "dark";
 
-        // Define a fixed virtual screen size
         const virtualWidth = 1024;
         const virtualHeight = 1400;
 
-        // Clone the container to avoid layout shifts
         const clonedElement = containerElement.cloneNode(true) as HTMLElement;
         clonedElement.style.width = `${virtualWidth}px`;
         clonedElement.style.height = "auto";
 
         document.body.appendChild(clonedElement);
 
-        // Render to canvas with predefined width
         const canvas = await html2canvas(clonedElement, {
-          backgroundColor: "var(--background)",
-          // backgroundColor: isDarkMode ? "black" : "white",
+          backgroundColor: "#f5f8f9",
           useCORS: true,
           scale: 2,
           width: virtualWidth,
@@ -111,7 +129,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
         // Set page background for dark mode
         if (isDarkMode) {
-          pdf.setFillColor(0, 0, 0);
+          pdf.setFillColor(245, 248, 249);
           pdf.rect(0, 0, imgWidth, pageHeight, "F");
         }
 
