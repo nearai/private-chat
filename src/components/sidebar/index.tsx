@@ -169,7 +169,8 @@ const LeftSidebar: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-auto">
+        <div className="flex flex-col items-start gap-6">
+          <div className="w-full border border-primary border-t opacity-20" />
           <UserMenu />
         </div>
       </div>
