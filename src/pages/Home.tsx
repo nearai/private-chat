@@ -37,6 +37,7 @@ interface CombinedAssistantMessage {
   webSearchMessages: ConversationWebSearchCall[];
   currentStatus: MessageStatusType;
   id?: string;
+  hasStoppedMessage?: boolean;
 }
 
 type CombinedMessage = ConversationUserInput | CombinedAssistantMessage;
@@ -68,6 +69,7 @@ function combineMessages(
         webSearchMessages: [],
         currentStatus: MessageStatus.CREATED,
         id: msg.id,
+        hasStoppedMessage: false,
       };
       combined.push(last);
     }
@@ -77,10 +79,18 @@ function combineMessages(
         last.webSearchMessages.push(msg);
         last.currentStatus = MessageStatus.WEB_SEARCH;
         last.id = msg.id;
+        // Check if this web search was stopped
+        if (msg.status === "failed") {
+          last.hasStoppedMessage = true;
+        }
       } else if (msg.type === "message" && msg.role === "assistant") {
         last.contentMessages.push(msg);
         last.currentStatus = MessageStatus.OUTPUT;
         last.id = msg.id;
+        // Check if this message was stopped
+        if (msg.status === "failed") {
+          last.hasStoppedMessage = true;
+        }
       }
     }
   }
@@ -90,8 +100,10 @@ function combineMessages(
 
 const Home = ({
   startStream,
+  stopResponse,
 }: {
   startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
+  stopResponse?: () => void;
 }) => {
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
@@ -176,7 +188,8 @@ const Home = ({
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
-    return !last || last.role !== "assistant" || last.status === "completed";
+    // Allow sending when there is stopped message
+    return !last || last.role !== "assistant" || last.status === "completed" || last.status === "failed";
   }, [conversationData]);
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
@@ -214,14 +227,28 @@ const Home = ({
           if (msg.type === "message" && msg.role === "assistant") {
             if (msg.currentStatus === MessageStatus.WEB_SEARCH) {
               const latest = msg.webSearchMessages.at(-1);
+              if (msg.hasStoppedMessage || latest?.status === "failed") {
+                return <MessageSkeleton key={msg.id || `search-${idx}`} model={latest?.model} message="Stopped message" animate={false} />;
+              }
               const q = latest?.action?.query ? `Searching for: ${latest.action.query}` : "Performing web search";
-              return <MessageSkeleton key={msg.id || `search-${idx}`} model={latest?.model} message={q} />;
+              return <MessageSkeleton key={msg.id || `search-${idx}`} model={latest?.model} message={q} animate={false} />;
             }
 
             if (msg.currentStatus === MessageStatus.OUTPUT && msg.contentMessages.length > 0) {
               const out = msg.contentMessages.at(-1);
 
               const isEmpty = !out || !out.content?.some((c) => c.type === "output_text" && c.text?.trim() !== "");
+
+              if (msg.hasStoppedMessage || out?.status === "failed") {
+                return (
+                  <MessageSkeleton
+                    key={out?.id || `output-${idx}`}
+                    model={out?.model}
+                    message="Stopped message"
+                    animate={false}
+                  />
+                );
+              }
 
               if (isEmpty) {
                 return (
@@ -278,6 +305,7 @@ const Home = ({
         setPrompt={setInputValue}
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
+        stopResponse={stopResponse}
       />
     </div>
   );

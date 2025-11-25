@@ -1,13 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
+import { produce } from "immer";
 
 import { chatClient } from "@/api/chat/client";
 import { DEFAULT_MODEL } from "@/api/constants";
+import { queryKeys } from "@/api/query-keys";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useStreamStore } from "@/stores/useStreamStore";
+import { ConversationRoles, ConversationTypes } from "@/types";
 import type { Conversation } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
@@ -19,7 +22,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const queryClient = useQueryClient();
   const { selectedModels } = useChatStore();
   const { settings } = useSettingsStore();
-  const { addStream, removeStream, markStreamComplete } = useStreamStore();
+  const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
 
   const initializeCache = useCallback(
     (conversationId: string, contentItems: ContentItem[]) => {
@@ -79,6 +82,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
       const initialData = initializeCache(conversationId, contentItems);
 
+      let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+
       const streamPromise = chatClient.startStream({
         model,
         role: "user",
@@ -87,9 +92,15 @@ export default function ChatController({ children }: { children?: React.ReactNod
         queryClient,
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
+        onReaderReady: (reader, abortController) => {
+          streamReader = reader;
+          addStream(conversationId, streamPromise, initialData, reader, abortController);
+        },
       });
 
-      addStream(conversationId, streamPromise, initialData);
+      if (!streamReader) {
+        addStream(conversationId, streamPromise, initialData);
+      }
 
       streamPromise
         .then(() => {
@@ -97,7 +108,10 @@ export default function ChatController({ children }: { children?: React.ReactNod
           removeStream(conversationId);
         })
         .catch((error) => {
-          console.error("Stream error:", error);
+          // ignore AbortError, it's expected when stopping
+          if (error?.name !== "AbortError") {
+            console.error("Stream error:", error);
+          }
           markStreamComplete(conversationId);
           removeStream(conversationId);
         });
@@ -130,16 +144,57 @@ export default function ChatController({ children }: { children?: React.ReactNod
     [startStream, params.chatId]
   );
 
+  // Stop function to cancel active streams
+  const stopResponse = useCallback(() => {
+    const chatId = params.chatId;
+    if (chatId) {
+      // Update conversation data to mark last assistant message as failed (stopped message)
+      queryClient.setQueryData<Conversation>(queryKeys.conversation.byId(chatId), (old) => {
+        
+        if (!old) return old;
+
+        return produce(old, (draft) => {
+          const lastAssistantMessage = [...(draft.data ?? [])]
+            .reverse()
+            .find(
+              (item) =>
+                item.type === ConversationTypes.MESSAGE &&
+                item.role === ConversationRoles.ASSISTANT &&
+                item.status === "pending"
+            );
+
+          if (lastAssistantMessage && lastAssistantMessage.type === ConversationTypes.MESSAGE) {
+            lastAssistantMessage.status = "failed";
+          }
+
+          // mark any pending web_search_call messages as failed
+          draft.data?.forEach((item) => {
+            if (
+              item.type === ConversationTypes.WEB_SEARCH_CALL &&
+              item.status === "pending"
+            ) {
+              item.status = "failed";
+            }
+          });
+        });
+      });
+      stopStream(chatId);
+    } else {
+      // If no specific chat, stop all streams
+      stopAllStreams();
+    }
+  }, [params.chatId, queryClient, stopStream, stopAllStreams]);
+
   // Determine which component to render based on route
   const renderComponent = useMemo(() => {
     if (location.pathname === APP_ROUTES.HOME) {
-      return <NewChat startStream={startStreamWrapper} />;
+      return <NewChat startStream={startStreamWrapper} stopResponse={stopResponse} />;
     }
     if (location.pathname.startsWith("/c/")) {
-      return <Home startStream={startStreamWrapper} />;
+      return <Home startStream={startStreamWrapper} stopResponse={stopResponse} />;
     }
     return children;
-  }, [location.pathname, children, startStreamWrapper]);
+  }, [location.pathname, children, startStreamWrapper, stopResponse]);
 
   return <>{renderComponent}</>;
 }

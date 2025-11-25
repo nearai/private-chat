@@ -144,11 +144,14 @@ export class ApiClient {
     options: RequestInit & {
       apiVersion?: "v1" | "v2";
       queryClient?: QueryClient;
+      onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
     } = {}
   ): Promise<void> {
+    const abortController = new AbortController();
     const requestOptions: RequestInit = {
       ...options,
       method: "POST",
+      signal: abortController.signal,
     };
 
     if (body !== undefined) {
@@ -183,6 +186,11 @@ export class ApiClient {
       }
 
       const reader = response.body.getReader();
+      
+      // Notify reader is ready for cancellation
+      if (options.onReaderReady) {
+        options.onReaderReady(reader, abortController);
+      }
       const decoder = new TextDecoder();
       const parser = createParser({
         onEvent: onParse,
@@ -346,12 +354,23 @@ export class ApiClient {
         }
       }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        parser.feed(chunk);
+          const chunk = decoder.decode(value, { stream: true });
+          parser.feed(chunk);
+        }
+      } catch (error) {
+        // expected if the stream was cancelled
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        throw error;
+      } finally {
+        // Release the reader lock
+        reader.releaseLock();
       }
 
       const currentChatIdFromLocation = location.pathname.split("/").pop();
