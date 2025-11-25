@@ -168,12 +168,16 @@ interface CycleParamProps {
   tooltip?: string;
   value: React.ReactNode;
   onCycle: () => void;
+  icon?: React.ReactNode;
 }
 
-export const CycleParam = ({ label, tooltip, value, onCycle }: CycleParamProps) => {
+export const CycleParam = ({ label, tooltip, value, onCycle, icon }: CycleParamProps) => {
   const content = (
     <div className="flex w-full justify-between py-0.5">
-      <div className="self-center font-medium text-xs">{label}</div>
+      <div className="flex flex-row items-center gap-1 self-center font-medium text-xs">
+        {icon}
+        {label}
+      </div>
       <ParamButton onClick={onCycle}>
         <div className="self-center">{value}</div>
       </ParamButton>

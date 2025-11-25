@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useUpdateUserSettings, useUserSettings } from "@/api/users/queries";
+import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import Collapsible from "@/components/common/Collapsible";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { SelectNative } from "@/components/ui/select-native";
 import { changeLanguage, getLanguages } from "@/i18n";
+import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
 import type { Settings } from "@/types";
@@ -32,6 +34,7 @@ const GeneralSettings = () => {
   const [lang, setLang] = useState(i18n.language || "en-US");
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [system, setSystem] = useState("");
+  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
@@ -275,6 +278,12 @@ const GeneralSettings = () => {
             label={t("Notifications")}
             value={notificationEnabled ? t("On") : t("Off")}
             onCycle={toggleNotification}
+          />
+          <CycleParam
+            label={t("Web Search")}
+            value={webSearchEnabled ? t("On") : t("Off")}
+            icon={<GlobeIcon className="size-4" strokeWidth="1.75" stroke="currentColor" />}
+            onCycle={() => setWebSearchEnabled(!webSearchEnabled)}
           />
           {/* Dark Theme Toggle */}
           <CycleParam
