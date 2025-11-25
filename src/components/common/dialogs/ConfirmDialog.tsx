@@ -16,7 +16,6 @@ type ConfirmDialogProps = {
   onConfirm: () => void;
   onCancel: () => void;
   confirmText?: string;
-  loadingText?: string;
   isLoading?: boolean;
   open: boolean;
 };

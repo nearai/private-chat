@@ -37,7 +37,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   const { mutate: cloneChatById } = useCloneChat();
   const { mutate: archiveChatById } = useArchiveChat({ onSuccess: () => {
     toast.success(t("Chat archived"));
-    reloadConversations()
+    reloadConversations();
   }});
   const { mutate: deleteChatById, isPending: isDeleting } = useDeleteChat({
     onSuccess: () => {
