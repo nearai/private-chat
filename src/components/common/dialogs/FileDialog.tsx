@@ -164,7 +164,7 @@ export default function FileDialog({
 
             <div>
               <div className="flex w-full flex-col items-center justify-between gap-1 md:flex-row">
-                <div className="flex flex-wrap gap-1 text-gray-500 text-sm">
+                <div className="flex w-full flex-wrap gap-1 text-gray-500 text-sm">
                   {fileData?.bytes && (
                     <>
                       <div className="shrink-0 capitalize">{formatFileSize(fileData.bytes)}</div>•
@@ -172,15 +172,18 @@ export default function FileDialog({
                   )}
 
                   {fileContent && (
-                    <>
+                    <div className="flex w-full flex-col gap-1">
                       <div className="shrink-0 capitalize">
-                        {getLineCount(fileContent.content ?? "")} extracted lines
+                        {getLineCount(fileContent.content ?? "1")} extracted lines
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1">
                         Formatting may be inconsistent from source.
                       </div>
-                    </>
+                      <div className="max-h-[75vh] w-full min-w-0 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+                        {fileContent}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
