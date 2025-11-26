@@ -78,7 +78,9 @@ const chatHistoryMessageSchema = v.object({
 const chatHistorySchema = v.object({
   chat: v.object({
     title: v.string(),
-    messages: v.array(chatHistoryMessageSchema),
+    history: v.object({
+      messages: v.record(v.string(), chatHistoryMessageSchema),
+    }),
   }),
 });
 
@@ -88,7 +90,9 @@ export function historiesToConversations(
   unknownHistories: unknown,
 ): Conversation[] {
   const schema = v.array(chatHistorySchema);
+
   let histories: ChatHistory[];
+
   try {
     histories = v.parse(schema, unknownHistories);
   } catch (e: unknown) {
@@ -97,14 +101,20 @@ export function historiesToConversations(
     }
     throw e;
   }
+
   return histories.map((chat) => historyToConversation(chat));
 }
 
 function historyToConversation(history: ChatHistory): Conversation {
   const title = history.chat.title;
-  const itemsList: Item[][] = history.chat.messages.map<Item[]>((message) => {
+
+  const itemsList: Item[][] = Object.values(history.chat.history.messages).map<
+    Item[]
+  >((message) => {
     const totalItems: Item[] = [];
+
     const model = message.models?.[0] ?? message.model;
+
     const textItem: Item = {
       type: "message",
       role: message.role,
