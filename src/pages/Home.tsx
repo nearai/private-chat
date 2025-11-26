@@ -10,83 +10,15 @@ import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
+import { cn, combineMessages, MessageStatus } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
 
-import type { Conversation, ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
+import type { Conversation, ConversationModelOutput } from "@/types";
 
 import { ConversationRoles } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
-
-const MessageStatus = {
-  CREATED: "created",
-  REASONING: "reasoning",
-  WEB_SEARCH: "web_search",
-  OUTPUT: "output",
-} as const;
-
-type MessageStatusType = (typeof MessageStatus)[keyof typeof MessageStatus];
-
-interface CombinedAssistantMessage {
-  type: "message";
-  role: "assistant";
-  contentMessages: ConversationModelOutput[];
-  reasoningMessages: unknown[];
-  webSearchMessages: ConversationWebSearchCall[];
-  currentStatus: MessageStatusType;
-  id?: string;
-}
-
-type CombinedMessage = ConversationUserInput | CombinedAssistantMessage;
-
-/**
- * Group consecutive assistant messages into one unified structure
- */
-function combineMessages(
-  messages: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[]
-): CombinedMessage[] {
-  if (!messages.length) return [];
-
-  const combined: CombinedMessage[] = [];
-
-  for (const msg of messages) {
-    if (msg.type === "message" && msg.role === "user") {
-      combined.push(msg);
-      continue;
-    }
-
-    let last = combined[combined.length - 1];
-
-    if (!last || (last.type === "message" && last.role === "user")) {
-      last = {
-        type: "message",
-        role: "assistant",
-        contentMessages: [],
-        reasoningMessages: [],
-        webSearchMessages: [],
-        currentStatus: MessageStatus.CREATED,
-        id: msg.id,
-      };
-      combined.push(last);
-    }
-
-    if ("currentStatus" in last) {
-      if (msg.type === "web_search_call") {
-        last.webSearchMessages.push(msg);
-        last.currentStatus = MessageStatus.WEB_SEARCH;
-        last.id = msg.id;
-      } else if (msg.type === "message" && msg.role === "assistant") {
-        last.contentMessages.push(msg);
-        last.currentStatus = MessageStatus.OUTPUT;
-        last.id = msg.id;
-      }
-    }
-  }
-
-  return combined;
-}
 
 const Home = ({
   startStream,
@@ -180,7 +112,7 @@ const Home = ({
   }, [conversationData]);
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
-
+  console.log(currentMessages, conversationData?.data);
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />

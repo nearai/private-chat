@@ -1,4 +1,34 @@
-import type { ChatHistory, Message } from "@/types";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+import type {
+  ChatHistory,
+  ConversationItem,
+  ConversationModelOutput,
+  ConversationUserInput,
+  ConversationWebSearchCall,
+  Message,
+} from "@/types";
+
+export const MessageStatus = {
+  CREATED: "created",
+  REASONING: "reasoning",
+  WEB_SEARCH: "web_search",
+  OUTPUT: "output",
+} as const;
+
+type MessageStatusType = (typeof MessageStatus)[keyof typeof MessageStatus];
+
+interface CombinedAssistantMessage {
+  type: "message";
+  role: "assistant";
+  contentMessages: ConversationModelOutput[];
+  reasoningMessages: unknown[];
+  webSearchMessages: ConversationWebSearchCall[];
+  currentStatus: MessageStatusType;
+  id?: string;
+}
+
+type CombinedMessage = ConversationUserInput | CombinedAssistantMessage;
 
 export const copyToClipboard = async (text: string): Promise<boolean> => {
   let result = false;
@@ -64,6 +94,61 @@ export const createMessagesList = (history: ChatHistory, messageId: string): Mes
   }
 };
 
+// export const combineMessagesById = (messages: ConversationItem[]) => {
+//   const history = {
+//     messages: {},
+//     currentId: null,
+//   };
+
+//   const treeNode = null;
+
+// };
+
+/**
+ * Group consecutive assistant messages into one unified structure
+ */
+export function combineMessages(messages: ConversationItem[]): CombinedMessage[] {
+  if (!messages.length) return [];
+
+  const combined: CombinedMessage[] = [];
+
+  for (const msg of messages) {
+    if (msg.type === "message" && msg.role === "user") {
+      combined.push(msg);
+      continue;
+    }
+
+    let last = combined[combined.length - 1];
+
+    if (!last || (last.type === "message" && last.role === "user")) {
+      last = {
+        type: "message",
+        role: "assistant",
+        contentMessages: [],
+        reasoningMessages: [],
+        webSearchMessages: [],
+        currentStatus: MessageStatus.CREATED,
+        id: msg.id,
+      };
+      combined.push(last);
+    }
+
+    if ("currentStatus" in last) {
+      if (msg.type === "web_search_call") {
+        last.webSearchMessages.push(msg);
+        last.currentStatus = MessageStatus.WEB_SEARCH;
+        last.id = msg.id;
+      } else if (msg.type === "message" && msg.role === "assistant") {
+        last.contentMessages.push(msg);
+        last.currentStatus = MessageStatus.OUTPUT;
+        last.id = msg.id;
+      }
+    }
+  }
+
+  return combined;
+}
+
 export const formatFileSize = (size?: number) => {
   if (size == null || size === undefined) return "Unknown size";
   if (typeof size !== "number" || size < 0) return "Invalid size";
@@ -83,3 +168,7 @@ export const getLineCount = (text: string) => {
   console.log(typeof text);
   return text ? text.split("\n").length : 0;
 };
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}

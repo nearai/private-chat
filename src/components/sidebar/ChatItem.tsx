@@ -2,7 +2,7 @@ import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { toChatRoute } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";

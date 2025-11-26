@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileDialog from "@/components/common/dialogs/FileDialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationUserInput } from "@/types";
 import { extractFiles, extractMessageContent } from "@/types/openai";

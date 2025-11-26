@@ -340,6 +340,7 @@ class ChatClient extends ApiClient {
     queryClient,
     tools,
     include,
+    previous_response_id,
   }: StartStreamProps) {
     const input = Array.isArray(content)
       ? [{ role, content }]
@@ -355,6 +356,7 @@ class ChatClient extends ApiClient {
         include,
         instructions: systemPrompt,
         signing_algo: DEFAULT_SIGNING_ALGO,
+        previous_response_id,
       },
       { apiVersion: "v2", queryClient }
     );

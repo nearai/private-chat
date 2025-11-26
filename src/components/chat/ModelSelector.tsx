@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ModelV1 } from "@/types";
 import { Button } from "../ui/button";

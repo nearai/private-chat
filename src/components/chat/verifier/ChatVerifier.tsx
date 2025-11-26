@@ -10,7 +10,7 @@ import IntelLogo from "@/assets/images/intel.svg?react";
 import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";

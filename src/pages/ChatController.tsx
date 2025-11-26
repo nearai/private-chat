@@ -83,10 +83,11 @@ export default function ChatController({ children }: { children?: React.ReactNod
         model,
         role: "user",
         content: contentItems,
-        conversation: conversationId,
+        // conversation: conversationId,
         queryClient,
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
+        previous_response_id: "resp_3fcdfcfc85d544e699ec6aa9116ab183",
       });
 
       addStream(conversationId, streamPromise, initialData);

@@ -65,6 +65,7 @@ export interface ConversationUserInput {
   role: ConversationRoles.USER;
   content: ContentItem[];
   model: string;
+  previous_response_id?: string;
 }
 
 export interface ConversationModelOutput {
@@ -77,6 +78,7 @@ export interface ConversationModelOutput {
   role: ConversationRoles.ASSISTANT;
   content: ContentItem[];
   model: string;
+  previous_response_id?: string;
 }
 
 export interface ConversationWebSearchCall {
@@ -88,11 +90,32 @@ export interface ConversationWebSearchCall {
   status: "completed" | "failed" | "pending";
   role: ConversationRoles.ASSISTANT;
   action: SearchAction;
+  previous_response_id?: string;
   model: string;
 }
 
+export interface ConversationReasoning {
+  content: string;
+  created_at: number;
+  id: string;
+  model: string;
+  next_response_ids: string[];
+  previous_response_id?: string;
+  response_id: string;
+  status: "completed" | "failed" | "pending";
+  summary: string;
+  role?: ConversationRoles.ASSISTANT;
+  type: ConversationTypes.REASONING;
+}
+
+export type ConversationItem =
+  | ConversationUserInput
+  | ConversationModelOutput
+  | ConversationWebSearchCall
+  | ConversationReasoning;
+
 export interface ConversationItemsResponse {
-  data: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+  data: ConversationItem[];
   first_id: string;
   has_more: boolean;
   last_id: string;
@@ -531,8 +554,9 @@ export interface StartStreamProps {
   model: string;
   role: "user" | "assistant";
   content: string | any[];
-  conversation: string;
+  conversation?: string;
   queryClient: QueryClient;
   tools?: Tool[];
   include?: string[];
+  previous_response_id?: string;
 }

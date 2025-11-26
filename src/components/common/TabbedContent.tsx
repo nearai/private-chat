@@ -1,6 +1,6 @@
 import type React from "react";
 import { useMemo, useState } from "react";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 
 type TabLike = {
   id: string;

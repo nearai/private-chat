@@ -8,8 +8,10 @@ import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib";
 import { verifySignature } from "@/lib/signature";
-import { cn, formatDate } from "@/lib/time";
+import { formatDate } from "@/lib/time";
+
 import markedExtension from "@/lib/utils/extension";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
