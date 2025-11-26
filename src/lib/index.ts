@@ -122,8 +122,11 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
     if (!rootNode && !msg.previous_response_id) rootNode = msg.response_id;
 
     if (msg.previous_response_id) history.messages[msg.response_id].parentResponseId = msg.previous_response_id;
-    if (msg.next_response_ids) history.messages[msg.response_id].nextResponseIds = msg.next_response_ids;
-
+    if (msg.next_response_ids) {
+      const existing = history.messages[msg.response_id].nextResponseIds;
+      const merged = [...new Set([...existing, ...msg.next_response_ids])];
+      history.messages[msg.response_id].nextResponseIds = merged;
+    }
     switch (msg.type) {
       case "reasoning":
         history.messages[msg.response_id].reasoningMessagesIds.push(msg.id);
@@ -160,6 +163,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
   }
 
   if (rootNode) traverse(rootNode, 0);
+  console.log("traverse", rootNode, maxDepth, currentId, Date.now());
 
   return { history, allMessages, currentId: currentId ?? rootNode };
 };

@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
-import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK } from "./constants";
+import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK, TEMP_MESSAGE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 
 export interface ApiClientOptions {
@@ -219,6 +219,24 @@ export class ApiClient {
         const model = (body as { model?: string })?.model || "";
 
         switch (data.type) {
+          case "response.created":
+            updateConversationData((draft) => {
+              const tempUserMessage = draft.data?.find((item) => item.id === TEMP_MESSAGE_ID);
+
+              console.log("tempUserMessage", tempUserMessage, data.response, Date.now());
+              if (tempUserMessage) {
+                console.log("setting response_id", data.response.id, Date.now());
+                tempUserMessage.response_id = data.response.id;
+                const prevResponse = draft.data?.find(
+                  (item) => item.response_id === tempUserMessage.previous_response_id
+                );
+                if (prevResponse) {
+                  console.log("setting next_response_ids", prevResponse.response_id, data.response.id, Date.now());
+                  prevResponse.next_response_ids = [data.response.id];
+                }
+              }
+            });
+            break;
           case "response.output_text.delta":
             updateConversationData(
               (draft) => {

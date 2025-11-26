@@ -1,8 +1,7 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
-import { queryKeys } from "@/api/query-keys";
+
 import MessageInput from "@/components/chat/MessageInput";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
@@ -14,12 +13,13 @@ import { cn, combineMessages, combineMessagesById, extractBatchFromHistory, Mess
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { Conversation, ConversationUserInput } from "@/types";
-import { ConversationRoles } from "@/types";
+import type { ConversationUserInput } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
   startStream,
+  currentMessageId,
+  setCurrentMessageId,
 }: {
   startStream: (
     content: ContentItem[],
@@ -27,14 +27,16 @@ const Home = ({
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
+  currentMessageId: string | null;
+  setCurrentMessageId: Dispatch<SetStateAction<string | null>>;
 }) => {
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
-  const queryClient = useQueryClient();
 
+  console.log("currentMessageId", currentMessageId, Date.now());
   const [inputValue, setInputValue] = useState("");
   const [modelInitialized, setModelInitialized] = useState(false);
-  const [currentMessageId] = useState<string | null>(null);
+
   const { selectedModels, setSelectedModels } = useChatStore();
   const selectedModelsRef = useRef(selectedModels);
 
@@ -52,29 +54,10 @@ const Home = ({
         ...files.map(generateContentFileDataForOpenAI),
       ];
 
-      // Optimistic update
-      queryClient.setQueryData(queryKeys.conversation.byId(chatId), (old: Conversation) => ({
-        ...old,
-        data: [
-          ...(old.data ?? []),
-          {
-            id: `temp-${Date.now()}`,
-            response_id: `response-${Date.now()}`,
-            next_response_ids: [],
-            created_at: Date.now(),
-            status: "pending",
-            role: ConversationRoles.USER,
-            type: "message",
-            content: contentItems,
-            model: selectedModels[0] ?? "",
-          },
-        ],
-      }));
-
       scrollToBottom();
-      startStream(contentItems, webSearchEnabled, chatId, previous_response_id);
+      await startStream(contentItems, webSearchEnabled, chatId, previous_response_id);
     },
-    [chatId, queryClient, scrollToBottom, startStream, selectedModels]
+    [chatId, scrollToBottom, startStream]
   );
 
   /* simple stubs */
@@ -123,8 +106,17 @@ const Home = ({
   }, [conversationData?.data]);
 
   const batches = useMemo(() => {
-    console.log("extractBatchFromHistory", history, currentId ?? currentMessageId, Date.now());
-    return extractBatchFromHistory(history, currentId ?? currentMessageId);
+    console.log(
+      "extractBatchFromHistory",
+      history,
+      "currentMessageId",
+      currentMessageId,
+      "currentId",
+      currentId,
+      allMessages,
+      Date.now()
+    );
+    return extractBatchFromHistory(history, currentMessageId ?? currentId);
   }, [history, currentId, currentMessageId]);
 
   const renderedMessages = useMemo(() => {
@@ -132,9 +124,9 @@ const Home = ({
       const isLast = idx === currentMessages.length - 1;
       const batchMessage = history.messages[batch];
 
-      if (batchMessage.status === MessageStatus.CREATED || !batchMessage) {
-        return null;
-      }
+      // if (batchMessage.status === MessageStatus.CREATED || !batchMessage) {
+      //   return null;
+      // }
       if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
         return (
           <UserMessage
@@ -204,7 +196,6 @@ const Home = ({
     });
   }, [batches, history, allMessages, currentMessages.length, handleDeleteMessage, handleEditMessage]);
 
-  console.log("h", history, allMessages, batches, renderedMessages);
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />

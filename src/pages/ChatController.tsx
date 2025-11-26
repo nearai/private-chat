@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router";
 
 import { chatClient } from "@/api/chat/client";
-import { DEFAULT_MODEL } from "@/api/constants";
+import { DEFAULT_MODEL, TEMP_MESSAGE_ID } from "@/api/constants";
+import { queryKeys } from "@/api/query-keys";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -14,6 +15,7 @@ import Home from "./Home";
 import NewChat from "./NewChat";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
+  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
   const location = useLocation();
   const params = useParams<{ chatId?: string }>();
   const queryClient = useQueryClient();
@@ -22,27 +24,29 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
 
   const initializeCache = useCallback(
-    (conversationId: string, contentItems: ContentItem[]) => {
+    (conversationId: string, contentItems: ContentItem[], previous_response_id?: string) => {
       const existingData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
-      const hasUserMessage = existingData?.data?.some(
-        (item) =>
-          item.type === "message" &&
-          item.role === "user" &&
-          JSON.stringify(item.content) === JSON.stringify(contentItems)
-      );
-      const userMessage = hasUserMessage
-        ? undefined
-        : {
-            id: `temp-${Date.now()}`,
-            response_id: `response-${Date.now()}`,
-            next_response_ids: [],
-            created_at: Date.now(),
-            status: "pending" as const,
-            role: "user" as const,
-            type: "message" as const,
-            content: contentItems,
-            model: selectedModels[0] || "",
-          };
+      const lastResponseId = previous_response_id || existingData?.data.at(-1)?.response_id;
+      const lastResponse = existingData?.data.find((item) => item.response_id === lastResponseId);
+      if (lastResponse) {
+        lastResponse.next_response_ids = [TEMP_MESSAGE_ID];
+      }
+      const tempId = TEMP_MESSAGE_ID;
+      setCurrentMessageId(tempId);
+
+      const userMessage = {
+        id: tempId,
+        response_id: tempId,
+        next_response_ids: [],
+        created_at: Date.now(),
+        status: "pending" as const,
+        role: "user" as const,
+        type: "message" as const,
+        content: contentItems,
+        model: selectedModels[0] || "",
+        previous_response_id: lastResponseId,
+      };
+
       const initialData = existingData
         ? userMessage
           ? {
@@ -62,7 +66,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
             last_id: userMessage?.id || "",
             object: "list" as const,
           };
-      queryClient.setQueryData(["conversation", conversationId], initialData);
+
+      queryClient.setQueryData(queryKeys.conversation.byId(conversationId), initialData);
       return initialData;
     },
     [queryClient, selectedModels]
@@ -82,7 +87,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
       const model = selectedModels[0] || DEFAULT_MODEL;
 
-      const initialData = initializeCache(conversationId, contentItems);
+      const initialData = initializeCache(conversationId, contentItems, previous_response_id);
 
       const streamPromise = chatClient.startStream({
         model,
@@ -142,10 +147,16 @@ export default function ChatController({ children }: { children?: React.ReactNod
       return <NewChat startStream={startStreamWrapper} />;
     }
     if (location.pathname.startsWith("/c/")) {
-      return <Home startStream={startStreamWrapper} />;
+      return (
+        <Home
+          startStream={startStreamWrapper}
+          currentMessageId={currentMessageId}
+          setCurrentMessageId={setCurrentMessageId}
+        />
+      );
     }
     return children;
-  }, [location.pathname, children, startStreamWrapper]);
+  }, [location.pathname, children, startStreamWrapper, currentMessageId]);
 
   return <>{renderComponent}</>;
 }
