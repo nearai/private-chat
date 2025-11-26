@@ -99,7 +99,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const messageContent = extractMessageContent(message.content, "output_text");
   const citations = extractCitations(message.content);
-  console.log(message.content, citations);
+
   const extendedMessageResponse = {
     ...message,
     modelName: message.model || "",
