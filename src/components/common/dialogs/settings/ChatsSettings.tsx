@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { type Conversation, historiesToConversations } from "@/lib/utils/transform-chat-history";
+import dayjs from "dayjs";
 
 interface ImportConversationResult {
   success: boolean;
@@ -28,6 +29,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         items: [],
         metadata: {
           title: conv.title || "Imported Chat",
+          imported_at: dayjs().valueOf().toString(),
         },
       });
       if (!newConversation.id) {
