@@ -87,22 +87,88 @@ export const createMessagesList = (history: ChatHistory, messageId: string): Mes
   }
 
   const message = history.messages[messageId];
-  if (message?.parentId) {
+  if (message?.previous_response_id) {
     return [...createMessagesList(history, message.parentId), message];
   } else {
     return [message];
   }
 };
 
-// export const combineMessagesById = (messages: ConversationItem[]) => {
-//   const history = {
-//     messages: {},
-//     currentId: null,
-//   };
+export interface CombinedResponse {
+  userPromptId: string | null;
+  reasoningMessagesIds: string[];
+  webSearchMessagesIds: string[];
+  outputMessagesIds: string[];
+  parentResponseId: string | null;
+  nextResponseIds: string[];
+}
 
-//   const treeNode = null;
+export const combineMessagesById = (messages: ConversationItem[]) => {
+  const history: { messages: Record<string, CombinedResponse>; currentId: string | null } = {
+    messages: {},
+    currentId: null,
+  };
 
-// };
+  const allMessages: Record<string, ConversationItem> = messages.reduce(
+    (acc, msg) => {
+      acc[msg.id] = msg;
+      return acc;
+    },
+    {} as Record<string, ConversationItem>
+  );
+
+  let rootNode: string | null = null;
+
+  for (const msg of messages) {
+    if (!history.messages[msg.response_id]) {
+      history.messages[msg.response_id] = {
+        userPromptId: null,
+        reasoningMessagesIds: [],
+        webSearchMessagesIds: [],
+        outputMessagesIds: [],
+        parentResponseId: null,
+        nextResponseIds: [],
+      };
+    }
+    if (!rootNode && !msg.previous_response_id) rootNode = msg.response_id;
+
+    if (msg.previous_response_id) history.messages[msg.response_id].parentResponseId = msg.previous_response_id;
+    if (msg.next_response_ids) history.messages[msg.response_id].nextResponseIds = msg.next_response_ids;
+
+    switch (msg.type) {
+      case "reasoning":
+        history.messages[msg.response_id].reasoningMessagesIds.push(msg.id);
+        break;
+      case "web_search_call":
+        history.messages[msg.response_id].webSearchMessagesIds.push(msg.id);
+        break;
+      case "message":
+        if (msg.role === "user") history.messages[msg.response_id].userPromptId = msg.id;
+        else history.messages[msg.response_id].outputMessagesIds.push(msg.id);
+        break;
+    }
+  }
+
+  let maxDepth = 0;
+  let deepestNode: string | null = null;
+
+  function traverse(node: string, depth: number) {
+    const current = history.messages[node];
+    if (!current) return;
+    if (depth > maxDepth) {
+      maxDepth = depth;
+      deepestNode = node;
+    }
+    if (current.nextResponseIds) {
+      for (const next of current.nextResponseIds) {
+        traverse(next, depth + 1);
+      }
+    }
+  }
+  if (rootNode) traverse(rootNode, 0);
+
+  return { history, allMessages, rootNode, currentId: deepestNode };
+};
 
 /**
  * Group consecutive assistant messages into one unified structure

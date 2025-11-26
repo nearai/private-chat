@@ -254,7 +254,7 @@ export interface Message {
 }
 
 export interface ChatHistory {
-  messages: Record<string, Message>;
+  messages: Record<string, ConversationItem>;
   currentId: string | null;
 }
 
@@ -532,12 +532,6 @@ export interface SettingsStore {
 export interface ConfigStore {
   config: Config | null;
   setConfig: (config: Config) => void;
-}
-
-// Chat History types
-export interface ChatHistory {
-  messages: Record<string, Message>;
-  currentId: string | null;
 }
 
 export interface HistoryMessage {
