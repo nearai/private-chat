@@ -41,7 +41,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
         }
       );
       FileSaver.saveAs(blob, `chat-export-${Date.now()}.json`);
-      toast.info("Download JSON - coming soon");
+      toast.success(t("Download JSON successfully"));
     } catch (error) {
       console.error("Failed to download JSON:", error);
     }
@@ -78,7 +78,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
         type: "text/plain",
       });
       FileSaver.saveAs(blob, `chat-${conversationMetadata.metadata.title}.txt`);
-      toast.info("Download TXT - coming soon");
+      toast.success(t("Download TXT successfully"));
     } catch (error) {
       console.error("Failed to download TXT:", error);
     }
@@ -151,7 +151,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
         }
 
         pdf.save(`chat-${conversationMetadata.metadata.title}.pdf`);
-        toast.info("Download PDF - coming soon");
+        toast.success(t("Download PDF successfully"));
       }
     } catch (error) {
       console.error("Error generating PDF:", error);
