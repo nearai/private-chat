@@ -11,6 +11,7 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useViewStore } from "@/stores/useViewStore";
 import {
   type ConversationModelOutput,
+  type ConversationReasoning,
   ConversationTypes,
   type ConversationUserInput,
   type ConversationWebSearchCall,
@@ -20,7 +21,7 @@ import VerifySignatureDialog from "./VerifySignatureDialog";
 
 interface MessageVerifierProps {
   message: {
-    content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+    content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall | ConversationReasoning)[];
     chatCompletionId: string;
   };
   index: number;

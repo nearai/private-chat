@@ -3,7 +3,12 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
-import type { ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
+import type {
+  ConversationModelOutput,
+  ConversationReasoning,
+  ConversationUserInput,
+  ConversationWebSearchCall,
+} from "@/types";
 
 import MessageVerifier from "./MessageVerifier";
 
@@ -12,7 +17,12 @@ interface MessagesVerifierProps {
     messages: Record<
       string,
       {
-        content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+        content: (
+          | ConversationUserInput
+          | ConversationModelOutput
+          | ConversationWebSearchCall
+          | ConversationReasoning
+        )[];
         chatCompletionId: string;
       }
     >;

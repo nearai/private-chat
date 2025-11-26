@@ -1,11 +1,17 @@
 // import dayjs from "dayjs";
 import type React from "react";
+
 // import { useEffect, useState } from "react";
 
 // import { useViewStore } from "@/stores/useViewStore";
 
 // import ResponseMessage from "./ResponseMessage";
-import type { Message as MessageOpenAI } from "openai/resources/conversations/conversations";
+
+import { useMemo } from "react";
+import type { CombinedResponse } from "@/lib";
+import { useViewStore } from "@/stores/useViewStore";
+import type { ConversationItem } from "@/types";
+import ResponseMessage from "./ResponseMessage";
 
 // interface GroupedMessages {
 //   [modelIdx: number]: {
@@ -18,81 +24,89 @@ import type { Message as MessageOpenAI } from "openai/resources/conversations/co
 // }
 
 interface MultiResponseMessagesProps {
-  message: MessageOpenAI;
+  history: { messages: Record<string, CombinedResponse> };
+  batchId: string;
+  currentBatchBundle: string[];
+  allMessages: Record<string, ConversationItem>;
   isLastMessage: boolean;
   readOnly: boolean;
-  webSearchEnabled: boolean;
-  saveMessage: (messageId: string, content: string) => void;
-  deleteMessage: (messageId: string) => void;
-  regenerateResponse: (message: MessageOpenAI) => Promise<void>;
-  mergeResponses: () => void;
-  showPreviousMessage: (message: MessageOpenAI) => void;
-  showNextMessage: (message: MessageOpenAI) => void;
+  regenerateResponse: () => void;
+  showPreviousMessage: () => void;
+  showNextMessage: () => void;
 }
 
-const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = () => {
-  return null;
-  // const parent = null;
-  // console.log("multiple message ", message);
-  // const groupedMessageIds =
+const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
+  history,
+  batchId,
+  currentBatchBundle,
+  allMessages,
+  isLastMessage,
+  readOnly,
+}) => {
+  const parentId = history.messages[batchId].parentResponseId;
+  const parent = parentId ? history.messages[parentId] : null;
+
+  const currentBatchBundleObj = currentBatchBundle.reduce(
+    (acc, id) => {
+      acc[id] = history.messages[id];
+      return acc;
+    },
+    {} as Record<string, CombinedResponse>
+  );
+
+  const groupedBatchIds = useMemo(
+    () =>
+      parent?.nextResponseIds.reduce(
+        (acc, id) => {
+          const outputMessageId = history.messages[id].outputMessagesIds[0];
+          const model = allMessages[outputMessageId].model;
+
+          if (!acc[model]) {
+            acc[model] = { batchIds: [], currentIdx: 0 };
+          }
+
+          acc[model].batchIds.push(id);
+          // Set current index according to current batch bundle
+          if (currentBatchBundleObj[id]) {
+            acc[model].currentIdx = acc[model].batchIds.length - 1;
+          }
+
+          return acc;
+        },
+        {} as Record<string, { batchIds: string[]; currentIdx: number }>
+      ) ?? {},
+    [parent?.nextResponseIds, history.messages, allMessages, currentBatchBundleObj]
+  );
+
+  // const groupedMessageIdsIdx =
   //   parent?.models.reduce(
-  //     (acc: GroupedMessages, model: string, modelIdx: number) => {
-  //       // Find all messages that are children of the parent message and have the same model
-  //       let modelMessageIds = parent.childrenIds
-  //         .map((id: string) => history.messages[id])
-  //         .filter((m: Message | undefined) => m?.modelIdx === modelIdx)
-  //         .map((m: Message) => m.id);
-
-  //       // Legacy support for messages that don't have a modelIdx
-  //       if (modelMessageIds.length === 0) {
-  //         const modelMessages = parent.childrenIds
-  //           .map((id: string) => history.messages[id])
-  //           .filter((m: Message | undefined) => m?.model === model);
-
-  //         modelMessages.forEach((m: Message) => {
-  //           m.modelIdx = modelIdx;
-  //         });
-
-  //         modelMessageIds = modelMessages.map((m: Message) => m.id);
+  //     (acc: GroupedMessagesIdx, _model: string, modelIdx: number) => {
+  //       const idx = groupedMessageIds?.[modelIdx]?.messageIds.findIndex(
+  //         (id: string) => id === messageId
+  //       );
+  //       if (idx !== -1) {
+  //         return {
+  //           ...acc,
+  //           [modelIdx]: idx,
+  //         };
+  //       } else {
+  //         return {
+  //           ...acc,
+  //           [modelIdx]: groupedMessageIds?.[modelIdx]?.messageIds?.length - 1,
+  //         };
   //       }
-
-  //       return {
-  //         ...acc,
-  //         [modelIdx]: { messageIds: modelMessageIds },
-  //       };
   //     },
-  //     {} as GroupedMessages
+  //     {} as GroupedMessagesIdx
   //   ) ?? {};
 
-  // // const groupedMessageIdsIdx =
-  // //   parent?.models.reduce(
-  // //     (acc: GroupedMessagesIdx, _model: string, modelIdx: number) => {
-  // //       const idx = groupedMessageIds?.[modelIdx]?.messageIds.findIndex(
-  // //         (id: string) => id === messageId
-  // //       );
-  // //       if (idx !== -1) {
-  // //         return {
-  // //           ...acc,
-  // //           [modelIdx]: idx,
-  // //         };
-  // //       } else {
-  // //         return {
-  // //           ...acc,
-  // //           [modelIdx]: groupedMessageIds?.[modelIdx]?.messageIds?.length - 1,
-  // //         };
-  // //       }
-  // //     },
-  // //     {} as GroupedMessagesIdx
-  // //   ) ?? {};
-
   // const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
-  // const { isMobile } = useViewStore();
+  const { isMobile } = useViewStore();
 
-  // // const parentMessage = history.messages[messageId];
-  // // const responses =
-  // //   parentMessage?.childrenIds
-  // //     ?.map((id) => history.messages[id])
-  // //     .filter(Boolean) || [];
+  // const parentMessage = history.messages[messageId];
+  // const responses =
+  //   parentMessage?.childrenIds
+  //     ?.map((id) => history.messages[id])
+  //     .filter(Boolean) || [];
 
   // useEffect(() => {
   //   if (responses.length > 0 && !currentMessageId) {
@@ -104,132 +118,111 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = () => {
   //   console.log(messageId);
   // };
 
-  // // const allMessagesDone = !Object.keys(groupedMessageIds).find(
-  // //   (modelIdxStr) => {
-  // //     const modelIdx = parseInt(modelIdxStr, 10);
-  // //     const { messageIds } = groupedMessageIds[modelIdx];
-  // //     const _messageId = messageIds?.[groupedMessageIdsIdx[modelIdx]];
-  // //     return !(history.messages[_messageId]?.done ?? false);
-  // //   }
-  // // );
-
-  // if (!parentMessage) return null;
-
-  // return (
-  //   <div>
-  //     <div
-  //       className="scrollbar-hidden flex snap-x snap-mandatory overflow-x-auto"
-  //       id={`responses-container-${parentMessage.id}`}
-  //     >
-  //       {Object.keys(groupedMessageIds).map((modelIdxStr) => {
-  //         const modelIdx = parseInt(modelIdxStr, 10);
-
-  //         if (
-  //           groupedMessageIdsIdx[modelIdx] === undefined ||
-  //           !groupedMessageIds[modelIdx]?.messageIds ||
-  //           groupedMessageIds[modelIdx].messageIds.length === 0
-  //         ) {
-  //           return null;
-  //         }
-
-  //         const _messageId =
-  //           groupedMessageIds[modelIdx].messageIds[
-  //             groupedMessageIdsIdx[modelIdx]
-  //           ];
-
-  //         const isCurrentMessage = false
-  //           // history.messages[messageId]?.modelIdx === modelIdx;
-  //         const borderClass = isCurrentMessage
-  //           ? `border-gray-100 dark:border-gray-850 border-[1.5px] ${
-  //               isMobile ? "min-w-full" : "min-w-80"
-  //             }`
-  //           : `border-gray-100 dark:border-gray-850 border-dashed ${
-  //               isMobile ? "min-w-full" : "min-w-80"
-  //             }`;
-
-  //         return (
-  //           <div
-  //             key={modelIdx}
-  //             className={`m-1 w-full max-w-full snap-center border ${borderClass} cursor-pointer rounded-2xl p-5 transition-all`}
-  //             onClick={() => updateMessageHistoryCurrentId(_messageId)}
-  //           >
-  //             {/* {message && (
-  //               <ResponseMessage
-  //                 history={history}
-  //                 messageId={_messageId}
-  //                 isLastMessage={true}
-  //                 siblings={groupedMessageIds[modelIdx].messageIds}
-  //                 readOnly={readOnly}
-  //                 webSearchEnabled={webSearchEnabled}
-  //                 saveMessage={saveMessage}
-  //                 deleteMessage={deleteMessage}
-  //                 regenerateResponse={async (msg: Message) => {
-  //                   console.log(msg);
-  //                 }}
-  //                 showPreviousMessage={showPreviousMessage}
-  //                 showNextMessage={showNextMessage}
-  //               />
-  //             )} */}
-  //           </div>
-  //         );
-  //       })}
-  //     </div>
-
-  //     {!readOnly && allMessagesDone && (
-  //       <div className="flex justify-end">
-  //         <div className="w-full">
-  //           {/* {history.messages[messageId]?.merged?.status && (
-  //             <div className="w-full rounded-xl py-2 pr-2 pl-5">
-  //               <div className="flex items-center space-x-2">
-  //                 <span className="font-medium">Merged Response</span>
-  //                 {history.messages[messageId].merged.timestamp && (
-  //                   <span className="-mt-0.5 invisible ml-0.5 self-center font-medium text-gray-400 text-xs uppercase group-hover:visible">
-  //                     {dayjs(history.messages[messageId].merged.timestamp * 1000).format("LT")}
-  //                   </span>
-  //                 )}
-  //               </div>
-
-  //               <div className="markdown-prose mt-1 w-full min-w-full">
-  //                 {!history.messages[messageId].merged.content ? (
-  //                   <div className="text-gray-500 dark:text-gray-400">Loading...</div>
-  //                 ) : (
-  //                   <div className="markdown-content">{history.messages[messageId].merged.content}</div>
-  //                 )}
-  //               </div>
-  //             </div>
-  //           )} */}
-  //         </div>
-
-  //         {isLastMessage && (
-  //           <div className="mt-1 shrink-0 text-gray-600 dark:text-gray-500">
-  //             <button
-  //               type="button"
-  //               id="merge-response-button"
-  //               className="regenerate-response-button visible rounded-lg p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5"
-  //               onClick={mergeResponses}
-  //               title={"Merge Responses"}
-  //             >
-  //               <svg
-  //                 xmlns="http://www.w3.org/2000/svg"
-  //                 className="size-5"
-  //                 fill="none"
-  //                 viewBox="0 0 24 24"
-  //                 stroke="currentColor"
-  //               >
-  //                 <path
-  //                   strokeLinecap="round"
-  //                   strokeLinejoin="round"
-  //                   strokeWidth={2}
-  //                   d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-  //                 />
-  //               </svg>
-  //             </button>
-  //           </div>
-  //         )}
-  //       </div>
-  //     )}
-  //   </div>
+  // const allMessagesDone = !Object.keys(groupedMessageIds).find(
+  //   (modelIdxStr) => {
+  //     const modelIdx = parseInt(modelIdxStr, 10);
+  //     const { messageIds } = groupedMessageIds[modelIdx];
+  //     const _messageId = messageIds?.[groupedMessageIdsIdx[modelIdx]];
+  //     return !(history.messages[_messageId]?.done ?? false);
+  //   }
   // );
+
+  if (!parent) return null;
+
+  return (
+    <div>
+      <div
+        className="scrollbar-hidden flex snap-x snap-mandatory overflow-x-auto"
+        id={`responses-container-${batchId}`}
+      >
+        {Object.values(groupedBatchIds).map(({ batchIds, currentIdx }) => {
+          const isCurrentMessage = currentBatchBundleObj[batchIds[currentIdx]] !== undefined;
+          // history.messages[messageId]?.modelIdx === modelIdx;
+          const borderClass = isCurrentMessage
+            ? `border-gray-100 dark:border-gray-850 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-80"}`
+            : `border-gray-100 dark:border-gray-850 border-dashed ${isMobile ? "min-w-full" : "min-w-80"}`;
+
+          return (
+            <div
+              key={batchIds[currentIdx]}
+              className={`m-1 w-full max-w-full snap-center border ${borderClass} cursor-pointer rounded-2xl p-5 transition-all`}
+              onClick={() => console.log(batchIds[currentIdx])}
+            >
+              {history.messages[batchIds[currentIdx]] && (
+                <ResponseMessage
+                  history={history}
+                  allMessages={allMessages}
+                  batchId={batchIds[currentIdx]}
+                  isLastMessage={true}
+                  siblings={batchIds}
+                  readOnly={readOnly}
+                  regenerateResponse={() => {
+                    console.log("msg");
+                  }}
+                  showPreviousMessage={() => console.log(batchIds[currentIdx])}
+                  showNextMessage={() => console.log(batchIds[currentIdx])}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* {!readOnly && allMessagesDone && (
+        <div className="flex justify-end">
+          <div className="w-full">
+            {history.messages[messageId]?.merged?.status && (
+              <div className="w-full rounded-xl py-2 pr-2 pl-5">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">Merged Response</span>
+                  {history.messages[messageId].merged.timestamp && (
+                    <span className="-mt-0.5 invisible ml-0.5 self-center font-medium text-gray-400 text-xs uppercase group-hover:visible">
+                      {dayjs(history.messages[messageId].merged.timestamp * 1000).format("LT")}
+                    </span>
+                  )}
+                </div>
+
+                <div className="markdown-prose mt-1 w-full min-w-full">
+                  {!history.messages[messageId].merged.content ? (
+                    <div className="text-gray-500 dark:text-gray-400">Loading...</div>
+                  ) : (
+                    <div className="markdown-content">{history.messages[messageId].merged.content}</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {isLastMessage && (
+            <div className="mt-1 shrink-0 text-gray-600 dark:text-gray-500">
+              <button
+                type="button"
+                id="merge-response-button"
+                className="regenerate-response-button visible rounded-lg p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5"
+                onClick={mergeResponses}
+                title={"Merge Responses"}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="size-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+      )} */}
+    </div>
+  );
 };
 
 export default MultiResponseMessages;

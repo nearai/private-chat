@@ -155,7 +155,18 @@ export class ApiClient {
       if (body instanceof FormData) {
         requestOptions.body = body;
       } else {
-        requestOptions.body = JSON.stringify(body);
+        if (
+          typeof body === "object" &&
+          body !== null &&
+          "previous_response_id" in body &&
+          body.previous_response_id !== undefined &&
+          "conversation" in body
+        ) {
+          const newBody = { ...body, conversation: undefined };
+          requestOptions.body = JSON.stringify(newBody);
+        } else {
+          requestOptions.body = JSON.stringify(body);
+        }
       }
     }
     try {

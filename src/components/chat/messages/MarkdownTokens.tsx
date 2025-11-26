@@ -1,11 +1,14 @@
 import DOMPurify from "dompurify";
 import type { Token, Tokens } from "marked";
-import { lexer } from "marked";
+import { lexer, marked } from "marked";
 import type React from "react";
-import type { JSX } from "react";
+import { type JSX, useMemo } from "react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib";
-import { unescapeHtml } from "@/lib/utils/markdown";
+import markedExtension from "@/lib/utils/extension";
+import { processResponseContent, replaceTokens, unescapeHtml } from "@/lib/utils/markdown";
+import markedKatexExtension from "@/lib/utils/marked-katex-extension";
+
 import Collapsible from "../../common/Collapsible";
 import CodeBlock from "./CodeBlock";
 import KatexRenderer from "./KatexRenderer";
@@ -98,6 +101,21 @@ const MarkdownInlineTokens: React.FC<{ tokens?: Token[]; id: string }> = ({ toke
       })}
     </>
   );
+};
+
+export const MarkDown = ({ messageContent, batchId }: { messageContent: string; batchId: string }) => {
+  const tokens = useMemo(() => {
+    if (!messageContent) return [];
+    console.log("start render markdown for", messageContent.slice(0, 10), Date.now());
+
+    marked.use(markedKatexExtension());
+    marked.use(markedExtension());
+    const processedContent = replaceTokens(processResponseContent(messageContent), [], undefined, undefined);
+
+    return marked.lexer(processedContent);
+  }, [messageContent]);
+
+  return <MarkdownTokens tokens={tokens} id={`message-${batchId}`} />;
 };
 
 const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false }) => {

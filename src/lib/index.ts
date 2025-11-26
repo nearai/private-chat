@@ -1,16 +1,15 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type {
-  ChatHistory,
   ConversationItem,
   ConversationModelOutput,
   ConversationUserInput,
   ConversationWebSearchCall,
-  Message,
 } from "@/types";
 
 export const MessageStatus = {
   CREATED: "created",
+  INPUT: "input",
   REASONING: "reasoning",
   WEB_SEARCH: "web_search",
   OUTPUT: "output",
@@ -81,32 +80,20 @@ export const validateJSON = (json: string): boolean => {
   }
 };
 
-export const createMessagesList = (history: ChatHistory, messageId: string): Message[] => {
-  if (messageId === null) {
-    return [];
-  }
-
-  const message = history.messages[messageId];
-  if (message?.previous_response_id) {
-    return [...createMessagesList(history, message.parentId), message];
-  } else {
-    return [message];
-  }
-};
-
 export interface CombinedResponse {
+  responseId: string;
   userPromptId: string | null;
   reasoningMessagesIds: string[];
   webSearchMessagesIds: string[];
   outputMessagesIds: string[];
   parentResponseId: string | null;
   nextResponseIds: string[];
+  status: MessageStatusType;
 }
 
 export const combineMessagesById = (messages: ConversationItem[]) => {
-  const history: { messages: Record<string, CombinedResponse>; currentId: string | null } = {
+  const history: { messages: Record<string, CombinedResponse> } = {
     messages: {},
-    currentId: null,
   };
 
   const allMessages: Record<string, ConversationItem> = messages.reduce(
@@ -122,6 +109,8 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
   for (const msg of messages) {
     if (!history.messages[msg.response_id]) {
       history.messages[msg.response_id] = {
+        status: MessageStatus.CREATED,
+        responseId: msg.response_id,
         userPromptId: null,
         reasoningMessagesIds: [],
         webSearchMessagesIds: [],
@@ -138,26 +127,30 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
     switch (msg.type) {
       case "reasoning":
         history.messages[msg.response_id].reasoningMessagesIds.push(msg.id);
+        history.messages[msg.response_id].status = MessageStatus.REASONING;
         break;
       case "web_search_call":
         history.messages[msg.response_id].webSearchMessagesIds.push(msg.id);
+        history.messages[msg.response_id].status = MessageStatus.WEB_SEARCH;
         break;
       case "message":
         if (msg.role === "user") history.messages[msg.response_id].userPromptId = msg.id;
         else history.messages[msg.response_id].outputMessagesIds.push(msg.id);
+        history.messages[msg.response_id].status =
+          msg.role === "assistant" ? MessageStatus.OUTPUT : MessageStatus.INPUT;
         break;
     }
   }
 
   let maxDepth = 0;
-  let deepestNode: string | null = null;
+  let currentId: string | null = null;
 
   function traverse(node: string, depth: number) {
     const current = history.messages[node];
     if (!current) return;
     if (depth > maxDepth) {
       maxDepth = depth;
-      deepestNode = node;
+      currentId = node;
     }
     if (current.nextResponseIds) {
       for (const next of current.nextResponseIds) {
@@ -165,9 +158,27 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
       }
     }
   }
+
   if (rootNode) traverse(rootNode, 0);
 
-  return { history, allMessages, rootNode, currentId: deepestNode };
+  return { history, allMessages, currentId: currentId ?? rootNode };
+};
+
+export const extractBatchFromHistory = (
+  history: {
+    messages: Record<string, CombinedResponse>;
+  },
+  currentId: string | null
+) => {
+  let current = currentId ? history.messages[currentId] : null;
+
+  if (!current) return [];
+  const batch: string[] = [current.responseId];
+  while (current?.parentResponseId) {
+    batch.push(current.parentResponseId);
+    current = current.parentResponseId ? history.messages[current.parentResponseId] : null;
+  }
+  return batch.reverse();
 };
 
 /**

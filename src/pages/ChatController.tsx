@@ -69,7 +69,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
   );
 
   const startStream = useCallback(
-    async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId: string) => {
+    async (
+      contentItems: ContentItem[],
+      webSearchEnabled: boolean,
+      conversationId: string,
+      previous_response_id?: string
+    ) => {
       if (!conversationId) {
         console.error("Conversation ID is required to start stream");
         return;
@@ -83,11 +88,11 @@ export default function ChatController({ children }: { children?: React.ReactNod
         model,
         role: "user",
         content: contentItems,
-        // conversation: conversationId,
+        conversation: conversationId,
         queryClient,
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
-        previous_response_id: "resp_3fcdfcfc85d544e699ec6aa9116ab183",
+        previous_response_id: previous_response_id,
       });
 
       addStream(conversationId, streamPromise, initialData);
