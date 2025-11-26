@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { type Conversation, historiesToConversations } from "@/lib/utils/transform-chat-history";
+import dayjs from "dayjs";
 
 interface ImportConversationResult {
   success: boolean;
@@ -28,6 +29,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         items: [],
         metadata: {
           title: conv.title || "Imported Chat",
+          importedAt: dayjs().valueOf().toString(),
         },
       });
       if (!newConversation.id) {
@@ -35,10 +37,14 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       }
 
       if (conv.items && conv.items.length > 0) {
-        await addItemsToConversation.mutateAsync({
-          conversationId: newConversation.id,
-          items: conv.items as ResponseInputItem[],
-        });
+        const batchSize = 20;
+        for (let i = 0; i < conv.items.length; i += batchSize) {
+          const batch = conv.items.slice(i, i + batchSize) as ResponseInputItem[];
+          await addItemsToConversation.mutateAsync({
+            conversationId: newConversation.id,
+            items: batch,
+          });
+        }
       }
 
       return { success: true, message: "Conversation imported successfully" };
