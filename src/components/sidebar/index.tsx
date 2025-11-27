@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 
 import ChatArrowDown from "@/assets/icons/chat-arrow-down.svg?react";
+import FeedbackIcon from "@/assets/icons/feedback.svg?react";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
 import SidebarIcon from "@/assets/icons/sidebar.svg?react";
@@ -22,6 +23,13 @@ const LeftSidebar: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
   const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
+
+  const openCrisp = () => {
+    if ((window as any).$crisp) {
+      (window as any).$crisp.push(["do", "chat:show"]);
+      (window as any).$crisp.push(["do", "chat:open"]);
+    }
+  };
 
   const { data: conversations, isLoading } = useGetConversations();
 
@@ -71,12 +79,22 @@ const LeftSidebar: React.FC = () => {
         </div>
 
         {/* New Chat */}
-        <div className="my-6 w-full">
-          <Button variant="ghost" type="button" className="flex h-9 justify-start rounded-xl" asChild>
+        <div className="my-6 w-full space-y-1">
+          <Button variant="ghost" type="button" className="flex h-9 w-full justify-start rounded-xl" asChild>
             <Link id="sidebar-new-chat-button" to="/">
               <PencilIcon />
               <p className="text-sm">{t("New Chat")}</p>
             </Link>
+          </Button>
+
+          <Button
+            variant="ghost"
+            type="button"
+            className="flex h-9 w-full justify-start rounded-xl"
+            onClick={openCrisp}
+          >
+            <FeedbackIcon />
+            <p className="text-sm">{t("Feedback")}</p>
           </Button>
         </div>
 

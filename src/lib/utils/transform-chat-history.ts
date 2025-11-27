@@ -11,11 +11,16 @@ type InputMessage = {
   type: "message";
   role: InputMessageRole;
   content: InputMessageContent[];
+  model?: string;
 };
 
 type InputMessageRole = "user" | "assistant" | "system" | "developer";
 
-type InputMessageContent = InputTextContent | InputImageContent | InputFileContent | OutputTextContent;
+type InputMessageContent =
+  | InputTextContent
+  | InputImageContent
+  | InputFileContent
+  | OutputTextContent;
 
 type InputTextContent = {
   type: "input_text";
@@ -63,19 +68,27 @@ const chatHistoryImageSchema = v.object({
 const chatHistoryMessageSchema = v.object({
   role: chatHistoryRoleSchema,
   content: v.string(),
-  files: v.optional(v.array(v.union([chatHistoryFileSchema, chatHistoryImageSchema]))),
+  files: v.optional(
+    v.array(v.union([chatHistoryFileSchema, chatHistoryImageSchema])),
+  ),
+  model: v.optional(v.string()),
+  models: v.optional(v.array(v.string())),
 });
 
 const chatHistorySchema = v.object({
   chat: v.object({
     title: v.string(),
-    messages: v.array(chatHistoryMessageSchema),
+    history: v.object({
+      messages: v.record(v.string(), chatHistoryMessageSchema),
+    }),
   }),
 });
 
 type ChatHistory = v.InferOutput<typeof chatHistorySchema>;
 
-export function historiesToConversations(unknownHistories: unknown): Conversation[] {
+export function historiesToConversations(
+  unknownHistories: unknown,
+): Conversation[] {
   const schema = v.array(chatHistorySchema);
 
   let histories: ChatHistory[];
@@ -95,18 +108,23 @@ export function historiesToConversations(unknownHistories: unknown): Conversatio
 function historyToConversation(history: ChatHistory): Conversation {
   const title = history.chat.title;
 
-  const itemsList: Item[][] = history.chat.messages.map<Item[]>((message) => {
+  const itemsList: Item[][] = Object.values(history.chat.history.messages).map<
+    Item[]
+  >((message) => {
     const totalItems: Item[] = [];
+
+    const model = message.models?.[0] ?? message.model;
 
     const textItem: Item = {
       type: "message",
       role: message.role,
       content: [
         {
-          type: message.role === "assistant" ? "output_text" : "input_text",
+          type: message.role === "user" ? "input_text" : "output_text",
           text: message.content,
         },
       ],
+      model,
     };
 
     totalItems.push(textItem);
@@ -124,6 +142,7 @@ function historyToConversation(history: ChatHistory): Conversation {
                 file_data: file.file.data.content,
               },
             ],
+            model,
           };
         } else {
           return {
@@ -135,6 +154,7 @@ function historyToConversation(history: ChatHistory): Conversation {
                 image_url: file.url,
               },
             ],
+            model,
           };
         }
       });

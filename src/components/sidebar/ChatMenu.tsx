@@ -1,6 +1,7 @@
 import { ArchiveBoxIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { useArchiveChat, useCloneChat, useDeleteChat, usePinConversationById, useUnpinConversationById } from "@/api/chat/queries";
 import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
 import PencilIcon from "@/assets/icons/pen.svg?react";
@@ -34,8 +35,11 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   const { mutate: pinConversationById } = usePinConversationById();
   const { mutate: unpinConversationById } = useUnpinConversationById();
   const { mutate: cloneChatById } = useCloneChat();
-  const { mutate: archiveChatById } = useArchiveChat({ onSuccess: () => reloadConversations() });
-  const { mutate: deleteChatById } = useDeleteChat({
+  const { mutate: archiveChatById } = useArchiveChat({ onSuccess: () => {
+    toast.success(t("Chat archived"));
+    reloadConversations();
+  }});
+  const { mutate: deleteChatById, isPending: isDeleting } = useDeleteChat({
     onSuccess: () => {
       setShowDeleteConfirm(false);
       if (handleDeleteSuccess) {
@@ -69,6 +73,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
             {t("This will delete")} <span className="font-semibold">{chat.metadata.title}</span>
           </>
         }
+        isLoading={isDeleting}
         onConfirm={() => deleteChatById({ id: chat.id })}
         onCancel={() => setShowDeleteConfirm(false)}
         open={showDeleteConfirm}

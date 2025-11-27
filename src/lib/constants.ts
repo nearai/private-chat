@@ -1,5 +1,5 @@
 export const LOCAL_STORAGE_KEYS = {
-  TOKEN: "token",
+  TOKEN: "sessionToken",
   CONVERSATIONS: "conversations",
   AGREED_TERMS: "agreedTerms",
   WELCOME_PAGE_PROMPT: "welcomePagePrompt",

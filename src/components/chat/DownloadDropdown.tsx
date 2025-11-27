@@ -33,12 +33,9 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
     try {
       const chatData = await chatClient.getConversationItems(chatId);
       if (!chatData) return;
-      const blob = new Blob(
-        chatData.data.map((item) => JSON.stringify(item)),
-        {
-          type: "application/json",
-        }
-      );
+      const blob = new Blob([JSON.stringify(chatData.data)], {
+        type: "application/json",
+      });
       FileSaver.saveAs(blob, `chat-export-${Date.now()}.json`);
       toast.success(t("Download JSON successfully"));
     } catch (error) {

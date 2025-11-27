@@ -6,7 +6,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 // import { useMemo, useState } from "react";
 // import { useTranslation } from "react-i18next";
 // import { toast } from "sonner";
-// import { TEMP_API_BASE_URL } from "@/api/constants";
+// import { DEPRECATED_API_BASE_URL } from "@/api/constants";
 // import { useUpdateUserRole, useUsers } from "@/api/users/queries";
 // import LoadingScreen from "@/components/common/LoadingScreen";
 // import { Pagination } from "@/components/common/Pagination";
@@ -282,7 +282,7 @@ const UserList = () => {
     //               <img
     //                 className="mr-2.5 h-6 w-6 rounded-full object-cover"
     //                 src={
-    //                   user.profile_image_url?.startsWith(TEMP_API_BASE_URL) ||
+    //                   user.profile_image_url?.startsWith(DEPRECATED_API_BASE_URL) ||
     //                   user.profile_image_url?.startsWith("https://www.gravatar.com/avatar/") ||
     //                   user.profile_image_url?.startsWith("data:")
     //                     ? user.profile_image_url

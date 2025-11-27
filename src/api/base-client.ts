@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
-import { TEMP_API_BASE_URL, TEMP_API_BASE_URL_NGROK, TEMP_MESSAGE_ID } from "./constants";
+import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_MESSAGE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 
 export interface ApiClientOptions {
@@ -39,8 +39,8 @@ export class ApiClient {
 
   constructor(options: ApiClientOptions = {}) {
     const {
-      baseURL = TEMP_API_BASE_URL,
-      baseURLNgrok = TEMP_API_BASE_URL_NGROK,
+      baseURL = DEPRECATED_API_BASE_URL,
+      baseURLNgrok = CHAT_API_BASE_URL,
       apiPrefix = "/api",
       defaultHeaders = {},
       includeAuth = true,
