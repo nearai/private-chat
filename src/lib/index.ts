@@ -163,7 +163,6 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
   }
 
   if (rootNode) traverse(rootNode, 0);
-  console.log("traverse", rootNode, maxDepth, currentId, Date.now());
 
   return { history, allMessages, currentId: currentId ?? rootNode };
 };
@@ -175,7 +174,6 @@ export const extractBatchFromHistory = (
   currentId: string | null
 ) => {
   let current = currentId ? history.messages[currentId] : null;
-
   if (!current) return [];
   const batch: string[] = [current.responseId];
   while (current?.parentResponseId) {

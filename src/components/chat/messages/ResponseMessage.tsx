@@ -21,7 +21,7 @@ import type {
   ConversationReasoning,
   ConversationWebSearchCall,
 } from "@/types";
-import { extractCitations, extractMessageContent } from "@/types/openai";
+import { extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
@@ -66,7 +66,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const signature = messagesSignatures[batch.responseId];
   const isMessageCompleted = batch.status === MessageStatus.OUTPUT;
-
   const verificationStatus = useMemo(() => {
     if (!isMessageCompleted || !batch.responseId) {
       return null;
@@ -86,11 +85,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   }, [signature, isMessageCompleted, batch.responseId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
-  const responseModel = outputMessages[0].model;
+
+  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
   const modelIcon = useMemo(() => {
-    return models.find((m) => m.modelId === responseModel)?.metadata?.modelIcon;
-  }, [models, responseModel]);
+    return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
+  }, [models, model]);
 
   // const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -132,22 +132,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
         const q = latestWebSearchCall?.action?.query
           ? `Searching for: ${latestWebSearchCall.action.query}`
           : "Performing web search";
-        return (
-          <MessageSkeleton
-            key={latestWebSearchCall?.id ?? `search-${batch.responseId}`}
-            model={latestWebSearchCall?.model}
-            message={q}
-          />
-        );
+        return <MessageSkeleton key={latestWebSearchCall?.id ?? `search-${batch.responseId}`} message={q} />;
       }
 
       case MessageStatus.REASONING: {
         const latest = batch.reasoningMessagesIds.at(-1);
         const latestReasoning = allMessages[latest ?? ""] as ConversationReasoning | undefined;
         const q = latestReasoning?.summary ? `Reasoning: ${latestReasoning.summary}` : "Reasoning";
-        return (
-          <MessageSkeleton key={latest ?? `reasoning-${batch.responseId}`} model={latestReasoning?.model} message={q} />
-        );
+        return <MessageSkeleton key={latest ?? `reasoning-${batch.responseId}`} message={q} />;
       }
 
       case MessageStatus.OUTPUT:
@@ -180,7 +172,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
       <div className="w-0 flex-auto pl-1">
         <div className="flex items-center space-x-2">
-          <span className="line-clamp-1 font-normal text-muted-foreground">{responseModel || "Assistant"}</span>
+          <span className="line-clamp-1 font-normal text-muted-foreground">{model || "Assistant"}</span>
 
           {/* Verification Badge */}
           <div className="ml-3 flex items-center">
@@ -209,14 +201,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
             ) : null}
           </div>
 
-          {outputMessages[0].created_at && (
+          {createdTimestamp && (
             <div className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
-              <span className="line-clamp-1">{formatDate(outputMessages[0].created_at * 1000)}</span>
+              <span className="line-clamp-1">{formatDate(createdTimestamp * 1000)}</span>
             </div>
           )}
         </div>
 
-        <div className={cn("markdown-prose w-full min-w-full", `chat-${outputMessages[0].role}`)}>
+        <div className={cn("markdown-prose w-full min-w-full", `chat-${batchId}`)}>
           <div>
             {/* {extendedMessageResponse.files &&
               extendedMessageResponse.files.length > 0 && (

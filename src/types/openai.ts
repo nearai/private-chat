@@ -1,4 +1,6 @@
 import type { ResponseOutputText } from "openai/resources/responses/responses.mjs";
+import type { CombinedResponse } from "@/lib";
+import type { ConversationItem } from ".";
 
 export type FileContentItem =
   | { type: "input_file" | "input_audio"; id: string; name: string }
@@ -50,6 +52,14 @@ export const extractFiles = (content: ContentItem[], type: "input_file" | "outpu
     audio_file_id?: string;
     image_url?: string;
   }>;
+};
+
+export const getModelAndCreatedTimestamp = (batch: CombinedResponse, allMessages: Record<string, ConversationItem>) => {
+  const messageId = batch.outputMessagesIds || batch.webSearchMessagesIds || batch.reasoningMessagesIds;
+  const latestMessageId = messageId?.at(-1);
+  if (!latestMessageId || !allMessages[latestMessageId]) return { model: null, createdTimestamp: null };
+  const latestMessage = allMessages[latestMessageId];
+  return { model: latestMessage.model, createdTimestamp: latestMessage.created_at };
 };
 
 export const generateContentFileDataForOpenAI = (file: FileContentItem): ContentItem => {

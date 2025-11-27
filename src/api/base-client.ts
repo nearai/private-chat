@@ -1,10 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createParser, type EventSourceMessage } from "eventsource-parser";
-import { produce } from "immer";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { useConversationStore } from "@/stores/useConversationStore";
 import type {
   Conversation,
   ConversationInfo,
@@ -204,16 +204,11 @@ export class ApiClient {
         const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
         const conversationId = (body as { conversation?: string })?.conversation || "";
 
-        function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
-          options.queryClient?.setQueryData(
-            ["conversation", conversationId],
-            (old: Conversation) =>
-              produce(old, (draft) => {
-                updater(draft);
-                (draft as Conversation & { lastUpdatedAt?: number }).lastUpdatedAt = Date.now();
-              }),
-            setOptions
-          );
+        function updateConversationData(updater: (draft: Conversation) => void) {
+          useConversationStore.getState().updateConversation(conversationId, (draft) => {
+            updater(draft);
+            (draft as Conversation & { lastUpdatedAt?: number }).lastUpdatedAt = Date.now();
+          });
         }
 
         const model = (body as { model?: string })?.model || "";
@@ -223,48 +218,40 @@ export class ApiClient {
             updateConversationData((draft) => {
               const tempUserMessage = draft.data?.find((item) => item.id === TEMP_MESSAGE_ID);
 
-              console.log("tempUserMessage", tempUserMessage, data.response, Date.now());
               if (tempUserMessage) {
-                console.log("setting response_id", data.response.id, Date.now());
                 tempUserMessage.response_id = data.response.id;
                 const prevResponse = draft.data?.find(
                   (item) => item.response_id === tempUserMessage.previous_response_id
                 );
                 if (prevResponse) {
-                  console.log("setting next_response_ids", prevResponse.response_id, data.response.id, Date.now());
                   prevResponse.next_response_ids = [data.response.id];
                 }
               }
             });
             break;
           case "response.output_text.delta":
-            updateConversationData(
-              (draft) => {
-                const currentConversationData = draft.data?.find((item) => item.id === data.item_id);
-                if (
-                  currentConversationData?.type === ConversationTypes.MESSAGE &&
-                  currentConversationData.role === ConversationRoles.ASSISTANT
-                ) {
-                  if (!currentConversationData.content?.length) {
-                    currentConversationData.content = [
-                      {
-                        type: "output_text",
-                        text: data.delta,
-                        annotations: [],
-                      },
-                    ];
-                  } else {
-                    const firstItem = currentConversationData.content[0];
-                    if (firstItem.type === "output_text") {
-                      firstItem.text = (firstItem.text || "") + data.delta;
-                    }
+            updateConversationData((draft) => {
+              const currentConversationData = draft.data?.find((item) => item.id === data.item_id);
+              if (
+                currentConversationData?.type === ConversationTypes.MESSAGE &&
+                currentConversationData.role === ConversationRoles.ASSISTANT
+              ) {
+                if (!currentConversationData.content?.length) {
+                  currentConversationData.content = [
+                    {
+                      type: "output_text",
+                      text: data.delta,
+                      annotations: [],
+                    },
+                  ];
+                } else {
+                  const firstItem = currentConversationData.content[0];
+                  if (firstItem.type === "output_text") {
+                    firstItem.text = (firstItem.text || "") + data.delta;
                   }
                 }
-              },
-              {
-                updatedAt: Date.now(),
               }
-            );
+            });
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {

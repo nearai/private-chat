@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import type { CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationItem } from "@/types";
+import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
 
 // interface GroupedMessages {
@@ -58,8 +59,11 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
     () =>
       parent?.nextResponseIds.reduce(
         (acc, id) => {
-          const outputMessageId = history.messages[id].outputMessagesIds[0];
-          const model = allMessages[outputMessageId].model;
+          const batch = history.messages[id];
+          if (!batch) return acc;
+          const { model } = getModelAndCreatedTimestamp(batch, allMessages);
+
+          if (!model) return acc;
 
           if (!acc[model]) {
             acc[model] = { batchIds: [], currentIdx: 0 };

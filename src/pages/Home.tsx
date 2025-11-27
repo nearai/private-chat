@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 
@@ -9,17 +9,16 @@ import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-import { cn, combineMessages, combineMessagesById, extractBatchFromHistory, MessageStatus } from "@/lib";
+import { cn, combineMessages, MessageStatus } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
+import { useConversationStore } from "@/stores/useConversationStore";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationUserInput } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
   startStream,
-  currentMessageId,
-  setCurrentMessageId,
 }: {
   startStream: (
     content: ContentItem[],
@@ -27,13 +26,9 @@ const Home = ({
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
-  currentMessageId: string | null;
-  setCurrentMessageId: Dispatch<SetStateAction<string | null>>;
 }) => {
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
-
-  console.log("currentMessageId", currentMessageId, Date.now());
   const [inputValue, setInputValue] = useState("");
   const [modelInitialized, setModelInitialized] = useState(false);
 
@@ -43,9 +38,11 @@ const Home = ({
   selectedModelsRef.current = selectedModels;
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
+  const setConversationData = useConversationStore((state) => state.setConversationData);
+  const conversationState = useConversationStore((state) => (chatId ? state.conversations[chatId] : undefined));
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationData, chatId);
+  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState, chatId);
 
   const handleSendMessage = useCallback(
     async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
@@ -78,7 +75,15 @@ const Home = ({
   }, []);
 
   // Reset model initialization when switching conversations
-  useEffect(() => setModelInitialized(false), [conversationData?.id]);
+  useEffect(() => {
+    if (!chatId) return;
+    setModelInitialized(false);
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId || !conversationData) return;
+    setConversationData(chatId, conversationData);
+  }, [chatId, conversationData, setConversationData]);
 
   // Sync selected model with latest conversation
   useEffect(() => {
@@ -99,27 +104,13 @@ const Home = ({
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
 
-  // get initial current id as the deepest node
-  const { history, allMessages, currentId } = useMemo(() => {
-    console.log("combineMessagesById", conversationData?.data, Date.now());
-    return combineMessagesById(conversationData?.data ?? []);
-  }, [conversationData?.data]);
-
-  const batches = useMemo(() => {
-    console.log(
-      "extractBatchFromHistory",
-      history,
-      "currentMessageId",
-      currentMessageId,
-      "currentId",
-      currentId,
-      allMessages,
-      Date.now()
-    );
-    return extractBatchFromHistory(history, currentMessageId ?? currentId);
-  }, [history, currentId, currentMessageId]);
-
+  const history = conversationState?.history ?? { messages: {} };
+  const allMessages = conversationState?.allMessages ?? {};
+  const batches = conversationState?.batches ?? [];
+  console.log("batches", batches, history, allMessages, currentMessages);
   const renderedMessages = useMemo(() => {
+    if (!batches.length) return [];
+
     return batches.map((batch, idx) => {
       const isLast = idx === currentMessages.length - 1;
       const batchMessage = history.messages[batch];
@@ -146,7 +137,6 @@ const Home = ({
       ) {
         return null;
       }
-
       const messages = [];
       if (batchMessage.userPromptId) {
         messages.push(

@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 
 import { chatClient } from "@/api/chat/client";
@@ -7,70 +7,69 @@ import { DEFAULT_MODEL, TEMP_MESSAGE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
-import { useSettingsStore } from "@/stores/useSettingsStore";
+import { createEmptyConversation, useConversationStore } from "@/stores/useConversationStore";
 import { useStreamStore } from "@/stores/useStreamStore";
-import type { Conversation } from "@/types";
+import type { Conversation, ConversationUserInput } from "@/types";
+import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
-  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
   const location = useLocation();
   const params = useParams<{ chatId?: string }>();
   const queryClient = useQueryClient();
   const { selectedModels } = useChatStore();
-  const { settings } = useSettingsStore();
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
+  const updateConversation = useConversationStore((state) => state.updateConversation);
 
   const initializeCache = useCallback(
     (conversationId: string, contentItems: ContentItem[], previous_response_id?: string) => {
       const existingData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
-      const lastResponseId = previous_response_id || existingData?.data.at(-1)?.response_id;
-      const lastResponse = existingData?.data.find((item) => item.response_id === lastResponseId);
-      if (lastResponse) {
-        lastResponse.next_response_ids = [TEMP_MESSAGE_ID];
-      }
       const tempId = TEMP_MESSAGE_ID;
-      setCurrentMessageId(tempId);
 
-      const userMessage = {
+      const userMessage: ConversationUserInput = {
         id: tempId,
         response_id: tempId,
         next_response_ids: [],
         created_at: Date.now(),
         status: "pending" as const,
-        role: "user" as const,
-        type: "message" as const,
+        role: ConversationRoles.USER,
+        type: ConversationTypes.MESSAGE,
         content: contentItems,
         model: selectedModels[0] || "",
-        previous_response_id: lastResponseId,
+        previous_response_id:
+          previous_response_id ||
+          (existingData?.data.at(-1)?.response_id ??
+            useConversationStore.getState().conversations[conversationId]?.conversation?.data.at(-1)?.response_id),
       };
 
-      const initialData = existingData
-        ? userMessage
-          ? {
-              ...existingData,
-              data: [...(existingData.data ?? []), userMessage] as Conversation["data"],
+      updateConversation(
+        conversationId,
+        (draft) => {
+          const lastResponseId = userMessage.previous_response_id || draft.data.at(-1)?.response_id;
+          if (lastResponseId) {
+            const lastResponse = draft.data.find((item) => item.response_id === lastResponseId);
+            if (lastResponse) {
+              lastResponse.next_response_ids = [tempId];
             }
-          : existingData
-        : {
-            id: conversationId,
-            created_at: Date.now(),
-            metadata: {
-              title: "New Conversation",
-            },
-            data: userMessage ? ([userMessage] as Conversation["data"]) : [],
-            has_more: false,
-            first_id: userMessage?.id || "",
-            last_id: userMessage?.id || "",
-            object: "list" as const,
-          };
+          }
+          draft.data = [...(draft.data ?? []), userMessage];
+          draft.last_id = userMessage.id;
+          if (!draft.first_id) {
+            draft.first_id = userMessage.id;
+          }
+        },
+        { overrideCurrentMessageId: tempId, baseConversation: existingData }
+      );
 
-      queryClient.setQueryData(queryKeys.conversation.byId(conversationId), initialData);
-      return initialData;
+      return (
+        useConversationStore.getState().conversations[conversationId]?.conversation ??
+        existingData ??
+        createEmptyConversation(conversationId)
+      );
     },
-    [queryClient, selectedModels]
+    [queryClient, selectedModels, updateConversation]
   );
 
   const startStream = useCallback(
@@ -105,25 +104,17 @@ export default function ChatController({ children }: { children?: React.ReactNod
       streamPromise
         .then(() => {
           markStreamComplete(conversationId);
-          removeStream(conversationId);
         })
         .catch((error) => {
           console.error("Stream error:", error);
           markStreamComplete(conversationId);
+        })
+        .finally(() => {
           removeStream(conversationId);
+          void queryClient.invalidateQueries({ queryKey: queryKeys.conversation.byId(conversationId) });
         });
     },
-    [
-      selectedModels,
-      initializeCache,
-      queryClient,
-      addStream,
-      markStreamComplete,
-      removeStream,
-      location.pathname,
-      params.chatId,
-      settings.notificationEnabled,
-    ]
+    [selectedModels, initializeCache, queryClient, addStream, markStreamComplete, removeStream]
   );
 
   // Wrapper function that matches the signature expected by NewChat and Home
@@ -147,16 +138,10 @@ export default function ChatController({ children }: { children?: React.ReactNod
       return <NewChat startStream={startStreamWrapper} />;
     }
     if (location.pathname.startsWith("/c/")) {
-      return (
-        <Home
-          startStream={startStreamWrapper}
-          currentMessageId={currentMessageId}
-          setCurrentMessageId={setCurrentMessageId}
-        />
-      );
+      return <Home startStream={startStreamWrapper} />;
     }
     return children;
-  }, [location.pathname, children, startStreamWrapper, currentMessageId]);
+  }, [location.pathname, children, startStreamWrapper]);
 
   return <>{renderComponent}</>;
 }
