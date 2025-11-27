@@ -1,7 +1,7 @@
 import Bolt from "@heroicons/react/24/outline/BoltIcon";
 import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useResponse } from "@/api/chat/queries/useResponse";
@@ -16,6 +16,7 @@ import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
+import { DEFAULT_MODEL } from "@/api/constants";
 
 export default function NewChat({
   startStream,
@@ -24,7 +25,8 @@ export default function NewChat({
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
-  const { selectedModels } = useChatStore();
+  const { selectedModels, models, setSelectedModels } = useChatStore();
+  const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
   const { createConversation, updateConversation } = useConversation();
   const { generateChatTitle } = useResponse();
@@ -120,6 +122,23 @@ export default function NewChat({
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
   };
+
+  useEffect(() => {
+    if (modelInitializedRef.current) return;
+    const validSelectedModels = selectedModels.filter((modelId) => models.some((model) => model.modelId === modelId));
+    if (validSelectedModels.length === 0 && models.length > 0) {
+      // set default model
+      const selectedDefaultModel = models.find((model) => model.modelId === DEFAULT_MODEL);
+      if (selectedDefaultModel) {
+        setSelectedModels([selectedDefaultModel.modelId]);
+      }
+      modelInitializedRef.current = true;
+    }
+
+    return () => {
+      modelInitializedRef.current = false;
+    };
+  }, [selectedModels, models, setSelectedModels]);
 
   return (
     <div id="chat-container" className="relative flex h-full grow flex-col">
