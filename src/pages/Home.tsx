@@ -15,7 +15,13 @@ import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
 
-import type { Conversation, ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
+import type {
+  Conversation,
+  ConversationModelOutput,
+  ConversationReasoning,
+  ConversationUserInput,
+  ConversationWebSearchCall,
+} from "@/types";
 
 import { ConversationRoles } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
@@ -45,7 +51,7 @@ type CombinedMessage = ConversationUserInput | CombinedAssistantMessage;
  * Group consecutive assistant messages into one unified structure
  */
 function combineMessages(
-  messages: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[]
+  messages: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall | ConversationReasoning)[]
 ): CombinedMessage[] {
   if (!messages.length) return [];
 
@@ -189,6 +195,7 @@ const Home = ({
 
       <div
         ref={scrollContainerRef}
+        id="messages-container"
         onScroll={handleScroll}
         className={cn("flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500", {
           "pl-12.5": !isLeftSidebarOpen,

@@ -91,8 +91,22 @@ export interface ConversationWebSearchCall {
   model: string;
 }
 
+export interface ConversationReasoning {
+  content: string;
+  created_at: number;
+  id: string;
+  model: string;
+  next_response_ids: string[];
+  previous_response_id: string;
+  response_id: string;
+  status: "completed" | "failed" | "pending";
+  summary: string;
+  role?: ConversationRoles.ASSISTANT;
+  type: ConversationTypes.REASONING;
+}
+
 export interface ConversationItemsResponse {
-  data: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+  data: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall | ConversationReasoning)[];
   first_id: string;
   has_more: boolean;
   last_id: string;
