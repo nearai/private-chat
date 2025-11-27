@@ -52,11 +52,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   isLastMessage,
   readOnly,
   regenerateResponse,
-  showPreviousMessage,
-  showNextMessage,
   siblings,
 }) => {
-  console.log("siblings", siblings, batchId);
   const { setLastResponseId } = useConversationStore();
   const { webSearchEnabled } = useChatStore();
   const { t } = useTranslation("translation", { useSuspense: false });

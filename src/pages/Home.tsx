@@ -57,13 +57,8 @@ const Home = ({
     [chatId, scrollToBottom, startStream]
   );
 
-  /* simple stubs */
   const handleEditMessage = useCallback((id: string, c: string) => console.log("Edit:", id, c), []);
   const handleDeleteMessage = useCallback((id: string) => console.log("Delete:", id), []);
-  // const handleSaveMessage = useCallback((id: string, c: string) => console.log("Save:", id, c), []);
-  // const handleRegenerateResponse = useCallback(async (m: ConversationModelOutput) => console.log("Regen:", m), []);
-  // const handleShowPrev = useCallback((b: string) => console.log("Prev:", b), []);
-  // const handleShowNext = useCallback((b: string) => console.log("Next:", b), []);
 
   // Load welcome prompt (one-time)
   useEffect(() => {
