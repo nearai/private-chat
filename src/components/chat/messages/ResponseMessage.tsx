@@ -1,7 +1,8 @@
 import { XCircleIcon } from "@heroicons/react/24/outline";
 import type React from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useParams } from "react-router";
 import { toast } from "sonner";
 import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
@@ -10,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { type CombinedResponse, cn, MessageStatus } from "@/lib";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
-
 import { useChatStore } from "@/stores/useChatStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -19,9 +19,10 @@ import type {
   ConversationItem,
   ConversationModelOutput,
   ConversationReasoning,
+  ConversationUserInput,
   ConversationWebSearchCall,
 } from "@/types";
-import { extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
+import { type ContentItem, extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
@@ -33,7 +34,12 @@ interface ResponseMessageProps {
   siblings: string[];
   isLastMessage: boolean;
   readOnly: boolean;
-  regenerateResponse: () => void;
+  regenerateResponse: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
   showPreviousMessage: () => void;
   showNextMessage: () => void;
 }
@@ -54,6 +60,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { settings } = useSettingsStore();
   const { messagesSignatures } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
+  const { chatId } = useParams<{ chatId: string }>();
   const { models } = useChatStore();
 
   const batch = history.messages[batchId];
@@ -85,6 +92,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   }, [signature, isMessageCompleted, batch.responseId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
+
+  const handleRegenerateResponse = useCallback(async () => {
+    const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
+    // Need fix for files that will display input_file correctly
+    console.log(batch, batch?.parentResponseId, batch?.parentResponseId ?? undefined);
+    await regenerateResponse(userPrompt.content, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
+  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages]);
 
   const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
@@ -323,15 +337,17 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("text-muted-foreground", isLastMessage ? "visible" : "invisible group-hover:visible")}
-                onClick={() => regenerateResponse()}
-                title="Regenerate"
-              >
-                <RegenerateIcon />
-              </Button>
+              {batch?.parentResponseId && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("text-muted-foreground", isLastMessage ? "visible" : "invisible group-hover:visible")}
+                  onClick={handleRegenerateResponse}
+                  title="Regenerate"
+                >
+                  <RegenerateIcon />
+                </Button>
+              )}
             </>
           )}
         </div>

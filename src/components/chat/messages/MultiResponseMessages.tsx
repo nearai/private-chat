@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import type { CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationItem } from "@/types";
-import { getModelAndCreatedTimestamp } from "@/types/openai";
+import { type ContentItem, getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
 
 // interface GroupedMessages {
@@ -31,7 +31,12 @@ interface MultiResponseMessagesProps {
   allMessages: Record<string, ConversationItem>;
   isLastMessage: boolean;
   readOnly: boolean;
-  regenerateResponse: () => void;
+  regenerateResponse: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
   showPreviousMessage: () => void;
   showNextMessage: () => void;
 }
@@ -43,6 +48,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   allMessages,
   isLastMessage,
   readOnly,
+  regenerateResponse,
 }) => {
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
@@ -160,9 +166,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
                   isLastMessage={true}
                   siblings={batchIds}
                   readOnly={readOnly}
-                  regenerateResponse={() => {
-                    console.log("msg");
-                  }}
+                  regenerateResponse={regenerateResponse}
                   showPreviousMessage={() => console.log(batchIds[currentIdx])}
                   showNextMessage={() => console.log(batchIds[currentIdx])}
                 />

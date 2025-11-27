@@ -120,14 +120,19 @@ export default function ChatController({ children }: { children?: React.ReactNod
   // Wrapper function that matches the signature expected by NewChat and Home
   // Accepts optional conversationId - if not provided, gets from route params
   const startStreamWrapper = useCallback(
-    async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => {
+    async (
+      contentItems: ContentItem[],
+      webSearchEnabled: boolean,
+      conversationId?: string,
+      previous_response_id?: string
+    ) => {
       // Use provided conversationId or get from route params
       const finalConversationId = conversationId || params.chatId;
       if (!finalConversationId) {
         console.error("Conversation ID not available");
         return;
       }
-      return startStream(contentItems, webSearchEnabled, finalConversationId);
+      return startStream(contentItems, webSearchEnabled, finalConversationId, previous_response_id);
     },
     [startStream, params.chatId]
   );

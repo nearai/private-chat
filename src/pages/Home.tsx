@@ -161,7 +161,7 @@ const Home = ({
             currentBatchBundle={batches}
             isLastMessage={isLast}
             readOnly={false}
-            regenerateResponse={() => console.log("regen")}
+            regenerateResponse={startStream}
             showPreviousMessage={() => console.log("prev")}
             showNextMessage={() => console.log("next")}
           />
@@ -175,7 +175,7 @@ const Home = ({
             batchId={batch}
             isLastMessage={isLast}
             readOnly={false}
-            regenerateResponse={() => console.log("regen")}
+            regenerateResponse={startStream}
             showPreviousMessage={() => console.log("prev")}
             showNextMessage={() => console.log("next")}
             siblings={[]}
