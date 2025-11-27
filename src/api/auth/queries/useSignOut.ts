@@ -14,6 +14,7 @@ export const useSignOut = () => {
     onSuccess: () => {
       setUser(null);
       localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
       navigate(APP_ROUTES.AUTH);
     },
   });

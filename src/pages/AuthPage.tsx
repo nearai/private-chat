@@ -45,9 +45,13 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const sessionId = searchParams.get("session_id");
     const isNewUser = searchParams.get("is_new_user") === "true";
     if (token) {
       localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
+      if (sessionId) {
+        localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
 

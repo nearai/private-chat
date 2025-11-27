@@ -44,19 +44,10 @@ class AuthClient extends ApiClient {
   }
 
   async signOut(): Promise<void> {
-    await fetch(`${this.baseURLV2}/auths/signout`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then(async (res) => {
-        if (!res.ok) throw await res.json();
-      })
-      .catch((err) => {
-        console.error(err);
-        throw err.detail || err;
-      });
+    const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
+    return this.post("/auth/logout", {
+      session_id: sessionId,
+    });
   }
 
   async updateProfile(token: string, name: string, profileImageUrl: string) {
