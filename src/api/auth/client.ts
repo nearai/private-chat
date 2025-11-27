@@ -45,9 +45,14 @@ class AuthClient extends ApiClient {
 
   async signOut(): Promise<void> {
     const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
-    return this.post("/auths/logout", {
-      session_id: sessionId,
-    });
+    return this.post("/auth/logout",
+      {
+        session_id: sessionId,
+      }, 
+      { 
+        apiVersion: "v2"
+      }
+    );
   }
 
   async updateProfile(token: string, name: string, profileImageUrl: string) {
