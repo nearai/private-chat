@@ -37,10 +37,14 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       }
 
       if (conv.items && conv.items.length > 0) {
-        await addItemsToConversation.mutateAsync({
-          conversationId: newConversation.id,
-          items: conv.items as ResponseInputItem[],
-        });
+        const batchSize = 20;
+        for (let i = 0; i < conv.items.length; i += batchSize) {
+          const batch = conv.items.slice(i, i + batchSize) as ResponseInputItem[];
+          await addItemsToConversation.mutateAsync({
+            conversationId: newConversation.id,
+            items: batch,
+          });
+        }
       }
 
       return { success: true, message: "Conversation imported successfully" };

@@ -13,7 +13,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
+import type {
+  ConversationModelOutput,
+  ConversationReasoning,
+  ConversationUserInput,
+  ConversationWebSearchCall,
+} from "@/types";
 import type { VerificationStatus } from "../types";
 import MessagesVerifier from "./MessagesVerifier";
 import ModelVerifier from "./ModelVerifier";
@@ -56,7 +61,17 @@ const ChatVerifier: React.FC = () => {
 
         return acc;
       },
-      {} as Record<string, { content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[] }>
+      {} as Record<
+        string,
+        {
+          content: (
+            | ConversationUserInput
+            | ConversationModelOutput
+            | ConversationWebSearchCall
+            | ConversationReasoning
+          )[];
+        }
+      >
     );
 
     for (const responseId in responseItems) {
@@ -79,7 +94,12 @@ const ChatVerifier: React.FC = () => {
         {} as Record<
           string,
           {
-            content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+            content: (
+              | ConversationUserInput
+              | ConversationModelOutput
+              | ConversationWebSearchCall
+              | ConversationReasoning
+            )[];
             chatCompletionId: string;
           }
         >

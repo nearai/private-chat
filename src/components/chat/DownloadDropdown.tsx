@@ -11,8 +11,15 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createMessagesList } from "@/lib";
+
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import {
+  type ConversationModelOutput,
+  type ConversationReasoning,
+  ConversationTypes,
+  type ConversationUserInput,
+  type ConversationWebSearchCall,
+} from "@/types";
 
 type DownloadDropdownProps = {
   chatId: string;
@@ -24,13 +31,13 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   const downloadAsJSON = async () => {
     try {
-      const chatData = await chatClient.getChatById(chatId);
+      const chatData = await chatClient.getConversationItems(chatId);
       if (!chatData) return;
-      const blob = new Blob([JSON.stringify([chatData])], {
+      const blob = new Blob([JSON.stringify(chatData.data)], {
         type: "application/json",
       });
       FileSaver.saveAs(blob, `chat-export-${Date.now()}.json`);
-      toast.info("Download JSON - coming soon");
+      toast.success(t("Download JSON successfully"));
     } catch (error) {
       console.error("Failed to download JSON:", error);
     }
@@ -38,20 +45,36 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   const downloadAsTXT = async () => {
     try {
-      const chatData = await chatClient.getChatById(chatId);
-      if (!chatData) return;
+      const [conversationMetadata, conversationItems] = await Promise.all([
+        chatClient.getConversation(chatId),
+        chatClient.getConversationItems(chatId),
+      ]);
+      if (!conversationItems || !conversationMetadata) return;
 
-      const history = chatData.chat.history;
-      const messages = createMessagesList(history, history.currentId);
-      const chatText = messages.reduce((a, message) => {
-        return `${a}### ${message.role.toUpperCase()}\n${message.content}\n\n`;
+      const formatMessageContent = (
+        message: ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall | ConversationReasoning
+      ) => {
+        switch (message.type) {
+          case ConversationTypes.MESSAGE:
+            return message.content.map((content) => content.text || "").join("\n");
+          case ConversationTypes.WEB_SEARCH_CALL:
+            return message.action.query;
+          case ConversationTypes.REASONING:
+            return message.content;
+          default:
+            return "";
+        }
+      };
+
+      const chatText = conversationItems.data.reduce((a, message) => {
+        return `${a}### ${message?.role ? message.role.toUpperCase() : "SYSTEM"}\n${formatMessageContent(message)}\n\n`;
       }, "");
 
       const blob = new Blob([chatText.trim()], {
         type: "text/plain",
       });
-      FileSaver.saveAs(blob, `chat-${chatData.chat.title}.txt`);
-      toast.info("Download TXT - coming soon");
+      FileSaver.saveAs(blob, `chat-${conversationMetadata.metadata.title}.txt`);
+      toast.success(t("Download TXT successfully"));
     } catch (error) {
       console.error("Failed to download TXT:", error);
     }
@@ -59,28 +82,27 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
   const downloadAsPDF = async () => {
     try {
-      const chatData = await chatClient.getChatById(chatId);
-      if (!chatData) return;
+      const [conversationMetadata, conversationItems] = await Promise.all([
+        chatClient.getConversation(chatId),
+        chatClient.getConversationItems(chatId),
+      ]);
+      if (!conversationItems || !conversationMetadata) return;
       const containerElement = document.getElementById("messages-container");
 
       if (containerElement) {
         const isDarkMode = settings.theme === "dark";
 
-        // Define a fixed virtual screen size
         const virtualWidth = 1024;
         const virtualHeight = 1400;
 
-        // Clone the container to avoid layout shifts
         const clonedElement = containerElement.cloneNode(true) as HTMLElement;
         clonedElement.style.width = `${virtualWidth}px`;
         clonedElement.style.height = "auto";
 
         document.body.appendChild(clonedElement);
 
-        // Render to canvas with predefined width
         const canvas = await html2canvas(clonedElement, {
-          backgroundColor: "var(--background)",
-          // backgroundColor: isDarkMode ? "black" : "white",
+          backgroundColor: "#f5f8f9",
           useCORS: true,
           scale: 2,
           width: virtualWidth,
@@ -103,7 +125,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
         // Set page background for dark mode
         if (isDarkMode) {
-          pdf.setFillColor(0, 0, 0);
+          pdf.setFillColor(245, 248, 249);
           pdf.rect(0, 0, imgWidth, pageHeight, "F");
         }
 
@@ -124,8 +146,8 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
           heightLeft -= pageHeight;
         }
 
-        pdf.save(`chat-${chatData.chat.title}.pdf`);
-        toast.info("Download PDF - coming soon");
+        pdf.save(`chat-${conversationMetadata.metadata.title}.pdf`);
+        toast.success(t("Download PDF successfully"));
       }
     } catch (error) {
       console.error("Error generating PDF:", error);
