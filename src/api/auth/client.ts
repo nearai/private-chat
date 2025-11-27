@@ -47,20 +47,18 @@ class AuthClient extends ApiClient {
     const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
-    if (!token) {
-      throw new Error("No token found");
-    }
-    return this.post("/auth/logout",
+    if (!token) throw new Error("No token found");
+
+    await this.post(
+      "/auth/logout",
+      { session_id: sessionId },
       {
-        session_id: sessionId,
-      }, 
-      { 
         apiVersion: "v2",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       }
     );
+
+    return;
   }
 
   async updateProfile(token: string, name: string, profileImageUrl: string) {
