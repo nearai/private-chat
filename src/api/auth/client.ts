@@ -45,7 +45,7 @@ class AuthClient extends ApiClient {
 
   async signOut(): Promise<void> {
     const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
-    return this.post("/auth/logout", {
+    return this.post("/auths/logout", {
       session_id: sessionId,
     });
   }
