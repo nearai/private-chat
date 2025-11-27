@@ -24,7 +24,6 @@ const ChatVerifier: React.FC = () => {
   const { selectedModels } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
   const conversationImportAt = conversationData?.metadata?.imported_at;
-  console.log(conversationImportAt)
 
   const {
     isRightSidebarOpen,
@@ -104,20 +103,31 @@ const ChatVerifier: React.FC = () => {
     setModelVerificationStatus(status);
   };
 
-  const renderContent = () => {
-    if (modelVerificationStatus?.error && conversationImportAt) {
-      return (
-        <div className="flex flex-col p-2">
-          <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-            <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
-            <span className="flex-1 text-destructive text-sm">
-              Verification detail is not available for imported chat.
-            </span>
-          </div>
+  const renderError = () => {
+    if (!modelVerificationStatus?.error) return null;
+    if (conversationImportAt) return null;
+    return (
+      <>
+        <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+          <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
+          <span className="text-destructive text-sm">{modelVerificationStatus.error}</span>
         </div>
-      );
-    }
+        <Button
+          onClick={() => setModelVerificationStatus(null)}
+          disabled={!selectedModels[0]}
+          variant="secondary"
+          className="w-full"
+          size="small"
+        >
+          {t("Retry Verification")}
+        </Button>
+      </>
+    )
+  }
 
+  console.log(modelVerificationStatus)
+
+  const renderContent = () => {
     return (
       <div className="flex flex-col gap-6 overflow-hidden">
         <div className="flex w-full flex-col gap-6 p-2">
@@ -127,21 +137,7 @@ const ChatVerifier: React.FC = () => {
               <span className="ml-3 text-sm">{t("Verifying confidentiality...")}</span>
             </div>
           ) : modelVerificationStatus?.error ? (
-            <>
-              <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-                <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
-                <span className="text-destructive text-sm">{modelVerificationStatus.error}</span>
-              </div>
-              <Button
-                onClick={() => setModelVerificationStatus(null)}
-                disabled={!selectedModels[0]}
-                variant="secondary"
-                className="w-full"
-                size="small"
-              >
-                {t("Retry Verification")}
-              </Button>
-            </>
+            renderError()
           ) : modelVerificationStatus?.isVerified ? (
             <>
               {selectedModels.length > 0 && (
@@ -174,7 +170,7 @@ const ChatVerifier: React.FC = () => {
           )}
         </div>
 
-        {chatId && <MessagesVerifier history={history} />}
+        {chatId && <MessagesVerifier conversation={conversationData} history={history} />}
       </div>
     );
   }

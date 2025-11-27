@@ -8,8 +8,11 @@ export type ExtendedMessageSignature = MessageSignature & {
 
 interface MessagesSignaturesState {
   messagesSignatures: Record<string, ExtendedMessageSignature>;
+  messagesSignaturesErrors: Record<string, string>;
   setMessageSignature: (chatCompletionId: string, signature: ExtendedMessageSignature) => void;
+  setMessageSignatureError: (chatCompletionId: string, error: string) => void;
   removeMessageSignature: (chatCompletionId: string) => void;
+  removeMessageSignatureError: (chatCompletionId: string) => void;
   clearAllSignatures: () => void;
 }
 
@@ -17,6 +20,7 @@ export const useMessagesSignaturesStore = create<MessagesSignaturesState>()(
   persist(
     (set) => ({
       messagesSignatures: {},
+      messagesSignaturesErrors: {},
       setMessageSignature: (chatCompletionId: string, signature: MessageSignature) =>
         set((state) => ({
           messagesSignatures: {
@@ -30,7 +34,20 @@ export const useMessagesSignaturesStore = create<MessagesSignaturesState>()(
           delete newSignatures[chatCompletionId];
           return { messagesSignatures: newSignatures };
         }),
-      clearAllSignatures: () => set({ messagesSignatures: {} }),
+      clearAllSignatures: () => set({ messagesSignatures: {}, messagesSignaturesErrors: {} }),
+      setMessageSignatureError: (chatCompletionId: string, error: string) =>
+        set((state) => ({
+          messagesSignaturesErrors: {
+            ...state.messagesSignaturesErrors,
+            [chatCompletionId]: error,
+          },
+        })),
+      removeMessageSignatureError: (chatCompletionId: string) =>
+        set((state) => {
+          const newErrors = { ...state.messagesSignaturesErrors };
+          delete newErrors[chatCompletionId];
+          return { messagesSignaturesErrors: newErrors };
+        }),
     }),
     {
       name: "messages-signatures-storage",

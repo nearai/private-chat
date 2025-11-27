@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { nearAIClient } from "@/api/nearai/client";
 import { Button } from "@/components/ui/button";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { cn } from "@/lib/time";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
 import {
+  type ConversationInfo,
   type ConversationModelOutput,
   ConversationTypes,
   type ConversationUserInput,
@@ -19,6 +20,7 @@ import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
 
 interface MessageVerifierProps {
+  conversation?: ConversationInfo;
   message: {
     content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
     chatCompletionId: string;
@@ -27,24 +29,28 @@ interface MessageVerifierProps {
   isLastIndex: boolean;
 }
 
-const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLastIndex }) => {
+const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message, index, isLastIndex }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const { messagesSignatures, setMessageSignature } = useMessagesSignaturesStore();
+  const { messagesSignatures, messagesSignaturesErrors, setMessageSignature, setMessageSignatureError, removeMessageSignatureError } = useMessagesSignaturesStore();
   const { selectedMessageIdForVerifier, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails } =
     useViewStore();
 
   const isSelected = useMemo(() => {
     return selectedMessageIdForVerifier === message.chatCompletionId;
   }, [selectedMessageIdForVerifier, message.chatCompletionId]);
+  const isImportedConversation = useMemo(() => {
+    return !!conversation?.metadata?.imported_at;
+  }, [conversation?.metadata]);
 
   const messageRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showVerifySignatureDialog, setShowVerifySignatureDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
   const signature = messagesSignatures[message.chatCompletionId];
+  const signatureError = messagesSignaturesErrors[message.chatCompletionId];
 
   const content = message.content
     .filter((item) => item.type === ConversationTypes.MESSAGE)
@@ -58,7 +64,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
     if (signature) return;
 
     setIsLoading(true);
-    setError(null);
+    removeMessageSignatureError(message.chatCompletionId);
 
     try {
       const model = message.content[0].model;
@@ -66,7 +72,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
 
       if (!data || !data.signature) {
         const errorMsg = data?.detail || data?.message || "No signature data found for this message";
-        setError(errorMsg);
+        setMessageSignatureError(message.chatCompletionId, errorMsg);
         return;
       }
 
@@ -81,7 +87,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
     } catch (err) {
       console.error("Error fetching message signature:", err);
       const errorMsg = err instanceof Error ? err.message : "Failed to fetch message signature";
-      setError(errorMsg);
+      setMessageSignatureError(message.chatCompletionId, errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -97,10 +103,10 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
           setMessageSignature(message.chatCompletionId, { ...signature, verified: isValid });
         }
       }
-    } else if (!signature && !isLoading && !error) {
+    } else if (!signature && !isLoading && !signatureError) {
       fetchSignature();
     }
-  }, [signature, message.chatCompletionId, isVerified, isLoading, error, fetchSignature, setMessageSignature]);
+  }, [signature, message.chatCompletionId, isVerified, isLoading, signatureError, fetchSignature, setMessageSignature]);
 
   useEffect(() => {
     if (isSelected) {
@@ -158,14 +164,57 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
     setShowVerifySignatureDialog(false);
   };
 
+  const renderErrorDetails = () => {
+    if (!showDetails) return null;
+    if (!signatureError) return null;
+
+    if (isImportedConversation) {
+      return (
+        <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-blue-400/10 p-3">
+          <p
+            className="flex-1 text-blue-600 text-xs leading-[160%]"
+            title={IMPORTED_MESSAGE_SIGNATURE_TIP}
+          >
+            {IMPORTED_MESSAGE_SIGNATURE_TIP}
+          </p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-destructive/5 p-3">
+        <p
+          className="max-w-[150px] flex-1 truncate whitespace-nowrap text-destructive text-xs leading-[160%]"
+          title={signatureError}
+        >
+          {signatureError}
+        </p>
+        <Button
+          variant="ghost"
+          size="icon"
+          title={t("Retry")}
+          onClick={(e) => {
+            e.stopPropagation();
+            fetchSignature();
+          }}
+        >
+          <ArrowPathIcon className="h-3.5 w-3.5 text-destructive" />
+        </Button>
+      </div>
+    );
+  }
+
+  console.log(signature)
+
   return (
     <div
       ref={messageRef}
       className={cn(
         "flex flex-col items-start gap-6 rounded-xl p-2 transition-colors",
         showDetails && "bg-card/30 dark:bg-card",
-        (isVerified === false || error) && !isLoading && "bg-destructive/10",
-        isSelected && "ring ring-border"
+        (isVerified === false || signatureError) && !isLoading && "bg-destructive/10",
+        isSelected && "ring ring-border",
+        signatureError && isImportedConversation && 'bg-blue-400/10!',
       )}
       data-message-id={message.chatCompletionId}
     >
@@ -183,7 +232,9 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
             {t("Message")} {index + 1} {isLastIndex ? " (latest)" : ""}
           </p>
         </div>
-        <p className="line-clamp-2 max-w-[230px] font-normal text-sm leading-[140%] opacity-80">{content}</p>
+        <p className="line-clamp-2 max-w-[230px] font-normal text-sm leading-[140%] opacity-80">
+          {content}
+        </p>
       </div>
 
       {isLoading ? (
@@ -195,26 +246,8 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ message, index, isLas
 
       {showDetails && (
         <>
-          {error ? (
-            <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-destructive/5 p-3">
-              <p
-                className="max-w-[150px] flex-1 truncate whitespace-nowrap text-destructive text-xs leading-[160%]"
-                title={error}
-              >
-                {error}
-              </p>
-              <Button
-                variant="ghost"
-                size="icon"
-                title={t("Retry")}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fetchSignature();
-                }}
-              >
-                <ArrowPathIcon className="h-3.5 w-3.5 text-destructive" />
-              </Button>
-            </div>
+          {signatureError ? (
+            renderErrorDetails()
           ) : (
             <>
               <button
