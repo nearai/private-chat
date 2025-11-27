@@ -91,6 +91,28 @@ export interface CombinedResponse {
   status: MessageStatusType;
 }
 
+export const findLastResponseId = (history: { messages: Record<string, CombinedResponse> }, rootNode: string) => {
+  let maxDepth = 0;
+  let currentId: string | null = null;
+
+  function traverse(node: string, depth: number) {
+    const current = history.messages[node];
+    if (!current) return;
+    if (depth > maxDepth) {
+      maxDepth = depth;
+      currentId = node;
+    }
+    if (current.nextResponseIds) {
+      for (const next of current.nextResponseIds) {
+        traverse(next, depth + 1);
+      }
+    }
+  }
+
+  if (rootNode) traverse(rootNode, 0);
+  return currentId;
+};
+
 export const combineMessagesById = (messages: ConversationItem[]) => {
   const history: { messages: Record<string, CombinedResponse> } = {
     messages: {},
@@ -145,24 +167,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
     }
   }
 
-  let maxDepth = 0;
-  let currentId: string | null = null;
-
-  function traverse(node: string, depth: number) {
-    const current = history.messages[node];
-    if (!current) return;
-    if (depth > maxDepth) {
-      maxDepth = depth;
-      currentId = node;
-    }
-    if (current.nextResponseIds) {
-      for (const next of current.nextResponseIds) {
-        traverse(next, depth + 1);
-      }
-    }
-  }
-
-  if (rootNode) traverse(rootNode, 0);
+  const currentId = rootNode ? findLastResponseId(history, rootNode) : null;
 
   return { history, allMessages, currentId: currentId ?? rootNode };
 };

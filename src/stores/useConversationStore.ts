@@ -1,35 +1,26 @@
 import { produce } from "immer";
 import { create } from "zustand";
 
-import { type CombinedResponse, combineMessagesById, extractBatchFromHistory } from "@/lib";
+import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, findLastResponseId } from "@/lib";
 import type { Conversation, ConversationItem } from "@/types";
 
 export type ConversationDerivedState = {
+  conversationId: string;
   conversation: Conversation;
   history: {
     messages: Record<string, CombinedResponse>;
   };
   allMessages: Record<string, ConversationItem>;
-  currentId: string | null;
-  currentMessageId: string | null;
+  lastResponseId: string | null;
   batches: string[];
 };
 
 interface ConversationStoreState {
-  conversations: Record<string, ConversationDerivedState>;
-  setConversationData: (
-    conversationId: string,
-    conversation: Conversation | undefined,
-    overrideCurrentMessageId?: string | null
-  ) => void;
-  updateConversation: (
-    conversationId: string,
-    updater: (draft: Conversation) => void,
-    options?: { overrideCurrentMessageId?: string | null; baseConversation?: Conversation }
-  ) => void;
-  setCurrentMessageId: (conversationId: string, nextId: string | null) => void;
-  resetConversation: (conversationId: string) => void;
-  clear: () => void;
+  conversation: ConversationDerivedState | null;
+  setConversationData: (conversation: Conversation) => void;
+  updateConversation: (updater: (draft: Conversation) => void) => void;
+  setLastResponseId: (nextId: string) => void;
+  resetConversation: () => void;
 }
 
 const createEmptyConversation = (conversationId: string): Conversation => ({
@@ -45,107 +36,64 @@ const createEmptyConversation = (conversationId: string): Conversation => ({
   object: "list",
 });
 
-const buildConversationEntry = (
-  conversation: Conversation,
-  previous?: ConversationDerivedState,
-  overrideCurrentMessageId?: string | null
-): ConversationDerivedState => {
+const buildConversationEntry = (conversation: Conversation): ConversationDerivedState => {
   const { history, allMessages, currentId } = combineMessagesById(conversation.data ?? []);
-
-  let resolvedCurrentMessageId = overrideCurrentMessageId ?? previous?.currentMessageId ?? null;
-  if (resolvedCurrentMessageId && !history.messages[resolvedCurrentMessageId]) {
-    resolvedCurrentMessageId = null;
-  }
-  if (!resolvedCurrentMessageId) {
-    resolvedCurrentMessageId = currentId;
-  }
-
-  const batches = extractBatchFromHistory(history, resolvedCurrentMessageId);
+  const batches = extractBatchFromHistory(history, currentId);
 
   return {
+    conversationId: conversation.id,
     conversation,
     history,
     allMessages,
-    currentId,
-    currentMessageId: resolvedCurrentMessageId,
+    lastResponseId: currentId,
     batches,
   };
 };
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
-  conversations: {},
-  setConversationData: (conversationId, conversation, overrideCurrentMessageId) =>
+  conversation: null,
+  setConversationData: (conversation) =>
     set((state) => {
       if (!conversation) return state;
-      const nextEntry = buildConversationEntry(
-        conversation,
-        state.conversations[conversationId],
-        overrideCurrentMessageId
+      const nextEntry = buildConversationEntry(conversation);
+      return {
+        conversation: nextEntry,
+      };
+    }),
+
+  updateConversation: (updater) =>
+    set((state) => {
+      if (!state.conversation) return state;
+      const nextConversation = produce(
+        state.conversation?.conversation ?? createEmptyConversation(state.conversation?.conversationId ?? ""),
+        (draft) => {
+          updater(draft);
+        }
       );
+      return { conversation: buildConversationEntry(nextConversation) };
+    }),
+
+  setLastResponseId: (nextId) =>
+    set((state) => {
+      if (!state.conversation) return state;
+
+      const lastResponseId = findLastResponseId(state.conversation.history, nextId);
+
+      const batches = extractBatchFromHistory(state.conversation.history, lastResponseId ?? nextId);
+
       return {
-        conversations: {
-          ...state.conversations,
-          [conversationId]: nextEntry,
+        conversation: {
+          ...state.conversation,
+          lastResponseId: lastResponseId ?? nextId,
+          batches,
         },
       };
     }),
-  updateConversation: (conversationId, updater, options) =>
+  resetConversation: () =>
     set((state) => {
-      const previous = state.conversations[conversationId];
-      const baseConversation =
-        previous?.conversation ?? options?.baseConversation ?? createEmptyConversation(conversationId);
-      const nextConversation = produce(baseConversation, (draft) => {
-        updater(draft);
-      });
-
-      const nextEntry = buildConversationEntry(nextConversation, previous, options?.overrideCurrentMessageId ?? null);
-
-      return {
-        conversations: {
-          ...state.conversations,
-          [conversationId]: nextEntry,
-        },
-      };
+      if (!state.conversation) return state;
+      return { conversation: null, lastResponseId: null, batches: [], allMessages: {}, history: { messages: {} } };
     }),
-  setCurrentMessageId: (conversationId, nextId) =>
-    set((state) => {
-      const existing = state.conversations[conversationId];
-
-      if (!existing) {
-        const baseConversation = createEmptyConversation(conversationId);
-        const entry = buildConversationEntry(baseConversation, undefined, nextId);
-        return {
-          conversations: {
-            ...state.conversations,
-            [conversationId]: entry,
-          },
-        };
-      }
-
-      const candidateCurrentId = nextId ?? existing.currentMessageId ?? existing.currentId;
-      const hasNode = candidateCurrentId ? Boolean(existing.history.messages[candidateCurrentId]) : false;
-      const batches = hasNode ? extractBatchFromHistory(existing.history, candidateCurrentId) : existing.batches;
-
-      return {
-        conversations: {
-          ...state.conversations,
-          [conversationId]: {
-            ...existing,
-            currentMessageId: candidateCurrentId,
-            batches,
-          },
-        },
-      };
-    }),
-  resetConversation: (conversationId) =>
-    set((state) => {
-      if (!state.conversations[conversationId]) return state;
-      const { [conversationId]: _removed, ...rest } = state.conversations;
-      return {
-        conversations: rest,
-      };
-    }),
-  clear: () => set({ conversations: {} }),
 }));
 
 export { createEmptyConversation };

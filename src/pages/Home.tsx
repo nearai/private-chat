@@ -39,10 +39,10 @@ const Home = ({
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
   const setConversationData = useConversationStore((state) => state.setConversationData);
-  const conversationState = useConversationStore((state) => (chatId ? state.conversations[chatId] : undefined));
+  const conversationState = useConversationStore((state) => state.conversation);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState, chatId);
+  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
 
   const handleSendMessage = useCallback(
     async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
@@ -82,7 +82,7 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId || !conversationData) return;
-    setConversationData(chatId, conversationData);
+    setConversationData(conversationData);
   }, [chatId, conversationData, setConversationData]);
 
   // Sync selected model with latest conversation
@@ -107,7 +107,6 @@ const Home = ({
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
-  console.log("batches", batches, history, allMessages, currentMessages);
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
 

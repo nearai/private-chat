@@ -12,6 +12,7 @@ import { type CombinedResponse, cn, MessageStatus } from "@/lib";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
+import { useConversationStore } from "@/stores/useConversationStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -55,6 +56,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   showNextMessage,
   siblings,
 }) => {
+  console.log("siblings", siblings, batchId);
+  const { setLastResponseId } = useConversationStore();
   const { webSearchEnabled } = useChatStore();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { settings } = useSettingsStore();
@@ -270,7 +273,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 variant="ghost"
                 className="text-muted-foreground"
                 onClick={() => {
-                  showPreviousMessage();
+                  if (siblings[siblings.indexOf(batch.responseId) - 1]) {
+                    setLastResponseId(siblings[siblings.indexOf(batch.responseId) - 1]);
+                  }
                 }}
               >
                 <svg
@@ -294,7 +299,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 variant="ghost"
                 className="text-muted-foreground"
                 onClick={() => {
-                  showNextMessage();
+                  if (siblings[siblings.indexOf(batch.responseId) + 1]) {
+                    setLastResponseId(siblings[siblings.indexOf(batch.responseId) + 1]);
+                  }
                 }}
               >
                 <svg

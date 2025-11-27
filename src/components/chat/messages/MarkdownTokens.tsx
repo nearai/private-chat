@@ -106,8 +106,6 @@ const MarkdownInlineTokens: React.FC<{ tokens?: Token[]; id: string }> = ({ toke
 export const MarkDown = ({ messageContent, batchId }: { messageContent: string; batchId: string }) => {
   const tokens = useMemo(() => {
     if (!messageContent) return [];
-    console.log("start render markdown for", messageContent.slice(0, 10), Date.now());
-
     marked.use(markedKatexExtension());
     marked.use(markedExtension());
     const processedContent = replaceTokens(processResponseContent(messageContent), [], undefined, undefined);

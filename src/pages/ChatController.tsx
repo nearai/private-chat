@@ -41,30 +41,26 @@ export default function ChatController({ children }: { children?: React.ReactNod
         previous_response_id:
           previous_response_id ||
           (existingData?.data.at(-1)?.response_id ??
-            useConversationStore.getState().conversations[conversationId]?.conversation?.data.at(-1)?.response_id),
+            useConversationStore.getState().conversation?.conversation?.data.at(-1)?.response_id),
       };
 
-      updateConversation(
-        conversationId,
-        (draft) => {
-          const lastResponseId = userMessage.previous_response_id || draft.data.at(-1)?.response_id;
-          if (lastResponseId) {
-            const lastResponse = draft.data.find((item) => item.response_id === lastResponseId);
-            if (lastResponse) {
-              lastResponse.next_response_ids = [tempId];
-            }
+      updateConversation((draft) => {
+        const lastResponseId = userMessage.previous_response_id || draft.data.at(-1)?.response_id;
+        if (lastResponseId) {
+          const lastResponse = draft.data.find((item) => item.response_id === lastResponseId);
+          if (lastResponse) {
+            lastResponse.next_response_ids = [tempId];
           }
-          draft.data = [...(draft.data ?? []), userMessage];
-          draft.last_id = userMessage.id;
-          if (!draft.first_id) {
-            draft.first_id = userMessage.id;
-          }
-        },
-        { overrideCurrentMessageId: tempId, baseConversation: existingData }
-      );
+        }
+        draft.data = [...(draft.data ?? []), userMessage];
+        draft.last_id = userMessage.id;
+        if (!draft.first_id) {
+          draft.first_id = userMessage.id;
+        }
+      });
 
       return (
-        useConversationStore.getState().conversations[conversationId]?.conversation ??
+        useConversationStore.getState().conversation?.conversation ??
         existingData ??
         createEmptyConversation(conversationId)
       );
