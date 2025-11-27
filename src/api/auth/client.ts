@@ -45,12 +45,20 @@ class AuthClient extends ApiClient {
 
   async signOut(): Promise<void> {
     const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+
+    if (!token) {
+      throw new Error("No token found");
+    }
     return this.post("/auth/logout",
       {
         session_id: sessionId,
       }, 
       { 
-        apiVersion: "v2"
+        apiVersion: "v2",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
     );
   }
