@@ -243,6 +243,7 @@ const Home = ({
               return (
                 <ResponseMessage
                   key={msg.id || out.id}
+                  conversation={conversationData}
                   message={out}
                   siblings={[]}
                   isLastMessage={isLast}

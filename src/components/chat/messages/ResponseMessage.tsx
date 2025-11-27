@@ -14,7 +14,7 @@ import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import type { ConversationModelOutput } from "@/types";
+import type { ConversationInfo, ConversationModelOutput } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 
 // import Citations from "./Citations";
@@ -24,8 +24,11 @@ import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
 // import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
+import { CompactTooltip } from "@/components/ui/tooltip";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
 
 interface ResponseMessageProps {
+  conversation?: ConversationInfo;
   message: ConversationModelOutput;
   siblings: string[];
   isLastMessage: boolean;
@@ -39,6 +42,7 @@ interface ResponseMessageProps {
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
+  conversation,
   message,
   isLastMessage,
   readOnly,
@@ -51,7 +55,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { settings } = useSettingsStore();
-  const { messagesSignatures } = useMessagesSignaturesStore();
+  const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
   const { models } = useChatStore();
 
@@ -71,6 +75,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   };
 
   const signature = messagesSignatures[messageId];
+  const signatureError = messagesSignaturesErrors[messageId];
   const isMessageCompleted = message.status === "completed";
 
   const verificationStatus = useMemo(() => {
@@ -82,6 +87,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     // If no signature yet, show "Verifying"
     const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
     if (!hasSignature) {
+      if (signatureError && conversation?.metadata?.imported_at) {
+        return "imported";
+      }
       return "verifying";
     }
 
@@ -92,7 +100,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, isMessageCompleted]);
+  }, [signature, signatureError, isMessageCompleted]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === message.model)?.metadata?.modelIcon;
@@ -194,7 +202,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
                 <span className="font-medium text-muted-foreground text-xs">{t("Verifying")}</span>
               </div>
-            ) : verificationStatus === "verified" ? (
+            ) : verificationStatus === "imported" ? (
+              <CompactTooltip
+                content={IMPORTED_MESSAGE_SIGNATURE_TIP}
+                align="start"
+              >
+                <div className="flex items-center gap-1 rounded border border-blue-500 bg-blue-50 px-1.5 py-0.5">
+                  <span className="font-medium text-blue-500 text-xs">{t("Imported")}</span>
+                </div>
+              </CompactTooltip>
+            ): verificationStatus === "verified" ? (
               <button
                 onClick={handleVerificationBadgeClick}
                 className="text-green transition-opacity hover:opacity-80"
