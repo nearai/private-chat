@@ -29,7 +29,6 @@ const ChatVerifier: React.FC = () => {
   const { selectedModels } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
   const conversationImportAt = conversationData?.metadata?.imported_at;
-  console.log(conversationImportAt)
 
   const {
     isRightSidebarOpen,
