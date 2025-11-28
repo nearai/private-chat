@@ -132,12 +132,8 @@ export default function NewChat({
       if (selectedDefaultModel) {
         setSelectedModels([selectedDefaultModel.modelId]);
       }
-      modelInitializedRef.current = true;
     }
-
-    return () => {
-      modelInitializedRef.current = false;
-    };
+    modelInitializedRef.current = true;
   }, [selectedModels, models, setSelectedModels]);
 
   return (

@@ -48,6 +48,11 @@ class AuthClient extends ApiClient {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     if (!token) throw new Error("No token found");
+    if (!sessionId) {
+      // if no sessionId, allow sign out to proceed (clean local state) for API compatibility
+      console.warn("No session ID found, proceeding with sign out");
+      return;
+    }
 
     await this.post(
       "/auth/logout",
@@ -57,8 +62,6 @@ class AuthClient extends ApiClient {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-
-    return;
   }
 
   async updateProfile(token: string, name: string, profileImageUrl: string) {
