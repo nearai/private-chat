@@ -25,6 +25,7 @@ import type {
 
 import { ConversationRoles } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
+import { DEFAULT_MODEL } from "@/api/constants";
 
 const MessageStatus = {
   CREATED: "created",
@@ -106,10 +107,11 @@ const Home = ({
   const [inputValue, setInputValue] = useState("");
   const [modelInitialized, setModelInitialized] = useState(false);
 
-  const { selectedModels, setSelectedModels } = useChatStore();
+  const { models, selectedModels, setSelectedModels } = useChatStore();
   const selectedModelsRef = useRef(selectedModels);
-
   selectedModelsRef.current = selectedModels;
+  const modelsRef = useRef(models);
+  modelsRef.current = models;
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
 
@@ -174,8 +176,16 @@ const Home = ({
 
     const lastMsg = conversationData.data.at(-1);
     const newModels = [...selectedModelsRef.current];
-    newModels[0] = lastMsg?.model ?? newModels[0] ?? "";
-
+    const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
+    let msgModel = lastMsg?.model;
+    if (msgModel) {
+      const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
+      msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
+    } else {
+      msgModel = defaultModel?.modelId;
+    }
+    
+    newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
     setModelInitialized(true);
   }, [conversationData?.data, modelInitialized, setSelectedModels]);
@@ -243,6 +253,7 @@ const Home = ({
               return (
                 <ResponseMessage
                   key={msg.id || out.id}
+                  conversation={conversationData}
                   message={out}
                   siblings={[]}
                   isLastMessage={isLast}
