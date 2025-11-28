@@ -54,7 +54,7 @@ export default function Citations({
           })}
         </div>
       ) : (
-        <Collapsible title="View all citations" grow>
+        <Collapsible title="References from" grow>
           <div className="flex flex-wrap font-medium text-xs">
             {citationsArray.map((citation, idx) => {
               return (

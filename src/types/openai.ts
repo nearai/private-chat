@@ -1,3 +1,5 @@
+import type { ResponseOutputText } from "openai/resources/responses/responses.mjs";
+
 export type FileContentItem =
   | { type: "input_file" | "input_audio"; id: string; name: string }
   | { type: "input_image"; id: string; name: string; image_url: string };
@@ -35,9 +37,16 @@ export const extractMessageContent = (
   return content.map((item) => (item.type === type ? item.text || "" : "")).join("");
 };
 
-export const extractCitations = (content: ContentItem[]): string[] => {
+export const extractCitations = (
+  content: ContentItem[]
+): Array<
+  | ResponseOutputText.FileCitation
+  | ResponseOutputText.URLCitation
+  | ResponseOutputText.ContainerFileCitation
+  | ResponseOutputText.FilePath
+> => {
   return content
-    .filter((item) => item.type === "input_text" && item.annotations)
+    .filter((item) => item.type === "output_text" && item.annotations)
     .flatMap((item) => item.annotations || []);
 };
 
@@ -70,5 +79,10 @@ export type ContentItem = {
   file_id?: string;
   audio_file_id?: string;
   image_url?: string;
-  annotations?: string[];
+  annotations?: Array<
+    | ResponseOutputText.FileCitation
+    | ResponseOutputText.URLCitation
+    | ResponseOutputText.ContainerFileCitation
+    | ResponseOutputText.FilePath
+  >;
 };

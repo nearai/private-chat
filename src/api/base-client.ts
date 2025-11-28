@@ -262,9 +262,7 @@ export class ApiClient {
                               type: "output_text",
                               text: "text" in item ? String(item.text) : "",
                               annotations:
-                                "annotations" in item && Array.isArray(item.annotations)
-                                  ? (item.annotations as string[])
-                                  : [],
+                                "annotations" in item && Array.isArray(item.annotations) ? item.annotations : [],
                             };
                           }
                         }
