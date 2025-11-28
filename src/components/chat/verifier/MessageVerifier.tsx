@@ -205,8 +205,6 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     );
   }
 
-  console.log(signature)
-
   return (
     <div
       ref={messageRef}

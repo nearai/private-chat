@@ -145,8 +145,6 @@ const ChatVerifier: React.FC = () => {
     )
   }
 
-  console.log(modelVerificationStatus)
-
   const renderContent = () => {
     return (
       <div className="flex flex-col gap-6 overflow-hidden">
