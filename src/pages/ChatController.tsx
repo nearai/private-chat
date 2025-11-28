@@ -57,20 +57,16 @@ export default function ChatController({ children }: { children?: React.ReactNod
           previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
         };
 
-        draft.conversation.conversation.data.push(userMessage);
-        const lastResponseParentId =
-          draft.conversation.history.messages[previous_response_id ?? draft.conversation.lastResponseId ?? ""]
-            ?.parentResponseId;
+        console.log(
+          "initial",
+          userMessage,
+          previous_response_id,
+          draft.conversation.lastResponseId,
+          draft.conversation.conversation.data
+        );
 
-        if (lastResponseParentId) {
-          const lastResponseParent = draft.conversation.history.messages[lastResponseParentId];
-          if (lastResponseParent) {
-            // Add tempId because we don't have responseId yet
-            if (!lastResponseParent.nextResponseIds.includes(tempId)) {
-              lastResponseParent.nextResponseIds = [...lastResponseParent.nextResponseIds, tempId];
-            }
-          }
-        }
+        draft.conversation.conversation.data.push(userMessage);
+        const lastResponseParentId = previous_response_id ?? draft.conversation.lastResponseId;
 
         // update conversation entry for rendering
         const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
@@ -82,6 +78,18 @@ export default function ChatController({ children }: { children?: React.ReactNod
         draft.conversation.lastResponseId = lastResponseId;
         draft.conversation.batches = batches;
 
+        //Don't change the order
+        if (lastResponseParentId) {
+          const lastResponseParent = draft.conversation.history.messages[lastResponseParentId];
+          if (lastResponseParent) {
+            // Add tempId because we don't have responseId yet
+            if (!lastResponseParent.nextResponseIds.includes(TEMP_RESPONSE_ID)) {
+              lastResponseParent.nextResponseIds = [...lastResponseParent.nextResponseIds, TEMP_RESPONSE_ID];
+            }
+          }
+        }
+
+        console.log("lastResponseParentId", history, allMessages, lastResponseId, batches);
         draft.conversation.conversation.last_id = userMessage.id;
         if (!draft.conversation.conversation.first_id) {
           draft.conversation.conversation.first_id = userMessage.id;

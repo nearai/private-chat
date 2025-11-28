@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
-import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_MESSAGE_ID, TEMP_RESPONSE_ID } from "./constants";
+import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 
 export interface ApiClientOptions {
@@ -215,22 +215,16 @@ export class ApiClient {
           case "response.created":
             updateConversationData((draft) => {
               const tempUserMessage = draft.conversation?.conversation.data?.find(
-                (item) => item.id === TEMP_MESSAGE_ID
+                (item) => item.response_id === TEMP_RESPONSE_ID
               );
 
               if (tempUserMessage) {
                 tempUserMessage.response_id = data.response.id;
-                const lastResponseParentId =
-                  draft.conversation?.history.messages[tempUserMessage.previous_response_id ?? ""]?.parentResponseId;
-                if (lastResponseParentId) {
-                  const lastResponseParent = draft.conversation?.history.messages[lastResponseParentId];
-                  if (lastResponseParent) {
-                    lastResponseParent.nextResponseIds = [
-                      ...lastResponseParent.nextResponseIds,
-                      data.response.id,
-                    ].filter((id: string) => id !== TEMP_RESPONSE_ID);
-                  }
-                }
+                console.log(
+                  draft.conversation!.conversation.data.map((item) => {
+                    return { id: item.id, response_id: item.response_id };
+                  })
+                );
                 const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
                   draft.conversation!.conversation,
                   data.response.id
@@ -239,6 +233,24 @@ export class ApiClient {
                 draft.conversation!.allMessages = allMessages;
                 draft.conversation!.lastResponseId = lastResponseId;
                 draft.conversation!.batches = batches;
+                //Order is important
+                if (tempUserMessage.previous_response_id) {
+                  const lastResponseParent = draft.conversation?.history.messages[tempUserMessage.previous_response_id];
+                  const userInputMessage = draft.conversation?.conversation.data?.find(
+                    (item) => item.id === lastResponseParent?.userPromptId
+                  );
+                  if (lastResponseParent) {
+                    lastResponseParent.nextResponseIds = [
+                      ...lastResponseParent.nextResponseIds,
+                      data.response.id,
+                    ].filter((id: string) => id !== TEMP_RESPONSE_ID);
+                  }
+                  // This is optimistical update
+                  if (userInputMessage) {
+                    userInputMessage.next_response_ids.push(data.response.id);
+                  }
+                }
+                console.log("response.created", batches, history, allMessages, lastResponseId);
               }
               return draft;
             });
@@ -259,12 +271,7 @@ export class ApiClient {
               draft.conversation!.history = history;
               //Optimize adding content only on needed message
               draft.conversation!.allMessages = allMessages;
-              console.log(
-                "update with output_text.delta",
-                history,
-                history,
-                history.messages[draft.conversation!.lastResponseId ?? ""].status
-              );
+
               return draft;
             });
             break;
@@ -360,13 +367,6 @@ export class ApiClient {
               );
               draft.conversation!.history = history;
               draft.conversation!.allMessages = allMessages;
-
-              console.log(
-                "update with output_item.added",
-                history,
-                allMessages,
-                history.messages[draft.conversation!.lastResponseId ?? ""].status
-              );
               return draft;
             });
             break;

@@ -151,7 +151,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       case MessageStatus.REASONING: {
         const latest = batch.reasoningMessagesIds.at(-1);
         const latestReasoning = allMessages[latest ?? ""] as ConversationReasoning | undefined;
-        const q = latestReasoning?.summary ? `Reasoning: ${latestReasoning.summary}` : "Reasoning";
+        const q = latestReasoning?.summary ? `Reasoning: ${latestReasoning.content}` : "Reasoning";
         return <MessageSkeleton key={latest ?? `reasoning-${batch.responseId}`} message={q} />;
       }
 

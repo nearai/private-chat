@@ -16,7 +16,7 @@ export type ConversationDerivedState = {
 
 export interface ConversationStoreState {
   conversation: ConversationDerivedState | null;
-  setConversationData: (conversation: Conversation) => void;
+  setConversationData: (conversation: Conversation, previous_response_id?: string | null) => void;
   updateConversation: (updater: (state: ConversationStoreState) => ConversationStoreState) => void;
   setLastResponseId: (nextId: string) => void;
   resetConversation: () => void;
@@ -55,10 +55,10 @@ export const buildConversationEntry = (
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
   conversation: null,
-  setConversationData: (conversation) =>
+  setConversationData: (conversation: Conversation, previous_response_id?: string | null) =>
     set((state) => {
       if (!conversation) return state;
-      const nextEntry = buildConversationEntry(conversation);
+      const nextEntry = buildConversationEntry(conversation, previous_response_id ?? null);
       return {
         conversation: nextEntry,
       };

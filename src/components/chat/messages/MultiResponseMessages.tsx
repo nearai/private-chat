@@ -60,7 +60,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
     },
     {} as Record<string, CombinedResponse>
   );
-
   const groupedBatchIds = useMemo(
     () =>
       parent?.nextResponseIds.reduce(
@@ -85,7 +84,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         },
         {} as Record<string, { batchIds: string[]; currentIdx: number }>
       ) ?? {},
-    [parent?.nextResponseIds, history.messages, allMessages, currentBatchBundleObj]
+    [parent, history.messages, allMessages, currentBatchBundleObj]
   );
 
   // const groupedMessageIdsIdx =

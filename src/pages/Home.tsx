@@ -77,8 +77,8 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId || !conversationData) return;
-    setConversationData(conversationData);
-  }, [chatId, conversationData, setConversationData]);
+    if (conversationState?.conversationId !== chatId) setConversationData(conversationData);
+  }, [chatId, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
   useEffect(() => {
