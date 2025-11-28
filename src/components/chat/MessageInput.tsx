@@ -655,15 +655,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         <Button
                           id="send-message-button"
                           className="size-10 rounded-full"
-                          type="submit"
+                          type={isMessageCompleted ? "submit" : "button"}
                           title={isMessageCompleted ? "Send" : "Stop"}
                           disabled={isMessageCompleted && prompt === "" && files.length === 0}
                           size="icon"
+                          onClick={isMessageCompleted ? undefined : stopResponse}
                         >
                           {isMessageCompleted ? (
                             <SendMessageIcon className="size-5" />
                           ) : (
-                            // TODO: stop message
+                            // TODO: use /responses/{response_id}/cancel api to cancel bg streaming response
                             <StopMessageIcon className="size-5" />
                           )}
                         </Button>
