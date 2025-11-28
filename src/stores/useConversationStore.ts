@@ -1,6 +1,5 @@
 import { produce } from "immer";
 import { create } from "zustand";
-
 import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, findLastResponseId } from "@/lib";
 import type { Conversation, ConversationItem } from "@/types";
 
@@ -15,15 +14,15 @@ export type ConversationDerivedState = {
   batches: string[];
 };
 
-interface ConversationStoreState {
+export interface ConversationStoreState {
   conversation: ConversationDerivedState | null;
   setConversationData: (conversation: Conversation) => void;
-  updateConversation: (updater: (draft: Conversation) => void) => void;
+  updateConversation: (updater: (state: ConversationStoreState) => ConversationStoreState) => void;
   setLastResponseId: (nextId: string) => void;
   resetConversation: () => void;
 }
 
-const createEmptyConversation = (conversationId: string): Conversation => ({
+export const createEmptyConversation = (conversationId: string): Conversation => ({
   id: conversationId,
   created_at: Date.now(),
   metadata: {
@@ -36,16 +35,20 @@ const createEmptyConversation = (conversationId: string): Conversation => ({
   object: "list",
 });
 
-const buildConversationEntry = (conversation: Conversation): ConversationDerivedState => {
+export const buildConversationEntry = (
+  conversation: Conversation,
+  preserveLastResponseId?: string | null
+): ConversationDerivedState => {
   const { history, allMessages, currentId } = combineMessagesById(conversation.data ?? []);
-  const batches = extractBatchFromHistory(history, currentId);
+  const lastResponseId = preserveLastResponseId ?? currentId;
+  const batches = extractBatchFromHistory(history, lastResponseId);
 
   return {
     conversationId: conversation.id,
     conversation,
     history,
     allMessages,
-    lastResponseId: currentId,
+    lastResponseId,
     batches,
   };
 };
@@ -63,16 +66,8 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
 
   updateConversation: (updater) =>
     set((state) => {
-      if (!state.conversation) return state;
-      const nextConversation = produce(
-        state.conversation?.conversation ?? createEmptyConversation(state.conversation?.conversationId ?? ""),
-        (draft) => {
-          updater(draft);
-        }
-      );
-      return { conversation: buildConversationEntry(nextConversation) };
+      return produce(state, updater);
     }),
-
   setLastResponseId: (nextId) =>
     set((state) => {
       if (!state.conversation) return state;
@@ -95,5 +90,3 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
       return { conversation: null, lastResponseId: null, batches: [], allMessages: {}, history: { messages: {} } };
     }),
 }));
-
-export { createEmptyConversation };

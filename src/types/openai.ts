@@ -55,7 +55,10 @@ export const extractFiles = (content: ContentItem[], type: "input_file" | "outpu
 };
 
 export const getModelAndCreatedTimestamp = (batch: CombinedResponse, allMessages: Record<string, ConversationItem>) => {
-  const messageId = batch.outputMessagesIds || batch.webSearchMessagesIds || batch.reasoningMessagesIds;
+  const messageId =
+    [batch.outputMessagesIds, batch.webSearchMessagesIds, batch.reasoningMessagesIds].find((ids) => ids.length > 0) ??
+    null;
+
   const latestMessageId = messageId?.at(-1);
   if (!latestMessageId || !allMessages[latestMessageId]) return { model: null, createdTimestamp: null };
   const latestMessage = allMessages[latestMessageId];

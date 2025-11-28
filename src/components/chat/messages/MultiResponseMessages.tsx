@@ -61,8 +61,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
     {} as Record<string, CombinedResponse>
   );
 
-  console.log("currentBatchBundle", currentBatchBundle);
-
   const groupedBatchIds = useMemo(
     () =>
       parent?.nextResponseIds.reduce(
@@ -80,7 +78,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           acc[model].batchIds.push(id);
           // Set current index according to current batch bundle
           if (currentBatchBundleObj[id]) {
-            console.log("update index!!!!");
             acc[model].currentIdx = acc[model].batchIds.length - 1;
           }
 

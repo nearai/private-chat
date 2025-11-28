@@ -108,10 +108,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   // const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
-  const messageContent = useMemo(
-    () => outputMessages.map(({ content }) => extractMessageContent(content, "output_text")).join(""),
-    [outputMessages]
-  );
+  const messageContent = useMemo(() => {
+    return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
+  }, [outputMessages, batch]);
 
   const citations = useMemo(() => outputMessages.flatMap(({ content }) => extractCitations(content)), [outputMessages]);
 

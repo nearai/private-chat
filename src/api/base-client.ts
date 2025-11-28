@@ -4,17 +4,17 @@ import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { useConversationStore } from "@/stores/useConversationStore";
+import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
-  Conversation,
   ConversationInfo,
   ConversationModelOutput,
+  ConversationReasoning,
   ConversationWebSearchCall,
   SearchAction,
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
-import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_MESSAGE_ID } from "./constants";
+import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_MESSAGE_ID, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 
 export interface ApiClientOptions {
@@ -201,37 +201,78 @@ export class ApiClient {
 
       function onParse(event: EventSourceMessage) {
         if (!options.queryClient) return;
-        const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
-        const conversationId = (body as { conversation?: string })?.conversation || "";
-
-        function updateConversationData(updater: (draft: Conversation) => void) {
-          useConversationStore.getState().updateConversation(conversationId, (draft) => {
-            updater(draft);
-            (draft as Conversation & { lastUpdatedAt?: number }).lastUpdatedAt = Date.now();
-          });
-        }
-
+        const data:
+          | Responses.ResponseStreamEvent
+          | {
+              type: "response.reasoning.delta";
+              item_id: string;
+              delta: string;
+            } = JSON.parse(event.data);
+        const updateConversationData = useConversationStore.getState().updateConversation;
         const model = (body as { model?: string })?.model || "";
 
         switch (data.type) {
           case "response.created":
             updateConversationData((draft) => {
-              const tempUserMessage = draft.data?.find((item) => item.id === TEMP_MESSAGE_ID);
+              const tempUserMessage = draft.conversation?.conversation.data?.find(
+                (item) => item.id === TEMP_MESSAGE_ID
+              );
 
               if (tempUserMessage) {
                 tempUserMessage.response_id = data.response.id;
-                const prevResponse = draft.data?.find(
-                  (item) => item.response_id === tempUserMessage.previous_response_id
-                );
-                if (prevResponse) {
-                  prevResponse.next_response_ids = [data.response.id];
+                const lastResponseParentId =
+                  draft.conversation?.history.messages[tempUserMessage.previous_response_id ?? ""]?.parentResponseId;
+                if (lastResponseParentId) {
+                  const lastResponseParent = draft.conversation?.history.messages[lastResponseParentId];
+                  if (lastResponseParent) {
+                    lastResponseParent.nextResponseIds = [
+                      ...lastResponseParent.nextResponseIds,
+                      data.response.id,
+                    ].filter((id: string) => id !== TEMP_RESPONSE_ID);
+                  }
                 }
+                const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
+                  draft.conversation!.conversation,
+                  data.response.id
+                );
+                draft.conversation!.history = history;
+                draft.conversation!.allMessages = allMessages;
+                draft.conversation!.lastResponseId = lastResponseId;
+                draft.conversation!.batches = batches;
               }
+              return draft;
+            });
+            break;
+
+          case "response.reasoning.delta":
+            updateConversationData((draft) => {
+              const currentConversationData = draft.conversation?.conversation.data?.find(
+                (item) => item.id === data.item_id
+              );
+              if (currentConversationData?.type === ConversationTypes.REASONING) {
+                currentConversationData.content = data.delta;
+              }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              //Optimize adding content only on needed message
+              draft.conversation!.allMessages = allMessages;
+              console.log(
+                "update with output_text.delta",
+                history,
+                history,
+                history.messages[draft.conversation!.lastResponseId ?? ""].status
+              );
+              return draft;
             });
             break;
           case "response.output_text.delta":
             updateConversationData((draft) => {
-              const currentConversationData = draft.data?.find((item) => item.id === data.item_id);
+              const currentConversationData = draft.conversation?.conversation.data?.find(
+                (item) => item.id === data.item_id
+              );
               if (
                 currentConversationData?.type === ConversationTypes.MESSAGE &&
                 currentConversationData.role === ConversationRoles.ASSISTANT
@@ -251,11 +292,22 @@ export class ApiClient {
                   }
                 }
               }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              //Optimize adding content only on needed message
+              draft.conversation!.allMessages = allMessages;
+
+              return draft;
             });
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
-              const currentConversationData = draft.data?.find((item) => item.id === data.item.id);
+              const currentConversationData = draft.conversation?.conversation.data?.find(
+                (item) => item.id === data.item.id
+              );
               switch (data.item.type) {
                 case "message":
                   if (currentConversationData && currentConversationData.type === ConversationTypes.MESSAGE) {
@@ -284,7 +336,10 @@ export class ApiClient {
                   }
                   break;
                 case "reasoning":
-                  draft.data = draft.data?.filter((item) => item.id !== data.item.id);
+                  //INVESTIGATE
+                  draft.conversation!.conversation.data = draft.conversation!.conversation.data?.filter(
+                    (item) => item.id !== data.item.id
+                  );
                   break;
                 case "web_search_call":
                   if (currentConversationData && currentConversationData.type === ConversationTypes.WEB_SEARCH_CALL) {
@@ -299,17 +354,54 @@ export class ApiClient {
                 default:
                   break;
               }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              draft.conversation!.allMessages = allMessages;
+
+              console.log(
+                "update with output_item.added",
+                history,
+                allMessages,
+                history.messages[draft.conversation!.lastResponseId ?? ""].status
+              );
+              return draft;
             });
             break;
           case "response.output_item.added":
             updateConversationData((draft) => {
-              const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
+              // const prevMessage = draft.conversation?.conversation.data?.find(
+              //   (item) => item.id === draft.conversation?.conversation.last_id
+              // );
               switch (data.item.type) {
-                case "reasoning":
-                  // Reasoning items are not in the new interfaces, skip them
+                case "reasoning": {
+                  draft.conversation!.conversation.last_id = data.item.id;
+                  const extendedData = data.item as Responses.ResponseReasoningItem & {
+                    created_at: number;
+                    response_id: string;
+                  };
+                  const reasoningItem: ConversationReasoning = {
+                    id: data.item.id,
+                    type: ConversationTypes.REASONING,
+                    response_id: extendedData.response_id,
+                    next_response_ids: [],
+                    created_at: extendedData.created_at,
+                    status: "pending",
+                    role: ConversationRoles.ASSISTANT,
+                    content: "",
+                    summary: "",
+                    model,
+                  };
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    reasoningItem,
+                  ];
                   break;
+                }
                 case "web_search_call": {
-                  draft.last_id = data.item.id;
+                  draft.conversation!.conversation.last_id = data.item.id;
                   const extendedData = data.item as Responses.ResponseFunctionWebSearch & {
                     action: SearchAction;
                     created_at: number;
@@ -326,13 +418,17 @@ export class ApiClient {
                     action: extendedData.action,
                     model,
                   };
-                  draft.data = [...(draft.data ?? []), webSearchItem];
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    webSearchItem,
+                  ];
                   break;
                 }
                 case "message": {
-                  if (prevMessage?.status === "pending") {
-                    break;
-                  }
+                  // if (prevMessage?.status === "pending") {
+                  //   break;
+                  // }
+                  //INVESTIGATE
                   const extendedData = data.item as Responses.ResponseOutputMessage & {
                     created_at: number;
                     response_id: string;
@@ -348,13 +444,23 @@ export class ApiClient {
                     content: [],
                     model,
                   };
-                  draft.data = [...(draft.data ?? []), messageItem];
-                  draft.last_id = data.item.id;
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    messageItem,
+                  ];
+                  draft.conversation!.conversation.last_id = data.item.id;
                   break;
                 }
                 default:
                   break;
               }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              draft.conversation!.allMessages = allMessages;
+              return draft;
             });
             break;
         }
