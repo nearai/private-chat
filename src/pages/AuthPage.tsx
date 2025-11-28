@@ -79,7 +79,7 @@ const AuthPage: React.FC = () => {
     };
 
     run();
-  }, [token]);
+  }, [token, sessionId, isNewUser, queryClient, navigate]);
 
   if (!config) {
     return (
@@ -157,7 +157,7 @@ const AuthPage: React.FC = () => {
                     className="underline hover:text-blue-600"
                     href="https://near.ai/terms-of-service/"
                     target="_blank"
-                    rel="noopener"
+                    rel="noopener noreferrer"
                   >
                     Terms of Service
                   </a>
@@ -166,7 +166,7 @@ const AuthPage: React.FC = () => {
                     className="underline hover:text-blue-600"
                     href="https://near.ai/privacy-policy/"
                     target="_blank"
-                    rel="noopener"
+                    rel="noopener noreferrer"
                   >
                     Privacy Policy
                   </a>
