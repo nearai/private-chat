@@ -41,13 +41,12 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   }, [selectedMessageIdForVerifier, message.chatCompletionId]);
   const isImportedConversation = useMemo(() => {
     return !!conversation?.metadata?.imported_at;
-  }, [conversation?.metadata]);
+  }, [conversation?.metadata?.imported_at]);
 
   const messageRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showVerifySignatureDialog, setShowVerifySignatureDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  // const [error, setError] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
   const signature = messagesSignatures[message.chatCompletionId];
@@ -203,7 +202,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
         </Button>
       </div>
     );
-  }
+  };
 
   return (
     <div

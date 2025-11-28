@@ -143,7 +143,7 @@ const ChatVerifier: React.FC = () => {
         </Button>
       </>
     )
-  }
+  };
 
   const renderContent = () => {
     return (
@@ -191,7 +191,7 @@ const ChatVerifier: React.FC = () => {
         {chatId && <MessagesVerifier conversation={conversationData} history={history} />}
       </div>
     );
-  }
+  };
 
   useEffect(() => {
     if (!isRightSidebarOpen) {

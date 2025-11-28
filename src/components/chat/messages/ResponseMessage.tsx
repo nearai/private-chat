@@ -100,7 +100,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted]);
+  }, [signature, signatureError, isMessageCompleted, conversation]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === message.model)?.metadata?.modelIcon;
@@ -211,7 +211,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   <span className="font-medium text-blue-500 text-xs">{t("Imported")}</span>
                 </div>
               </CompactTooltip>
-            ): verificationStatus === "verified" ? (
+            ) : verificationStatus === "verified" ? (
               <button
                 onClick={handleVerificationBadgeClick}
                 className="text-green transition-opacity hover:opacity-80"
