@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
-import { DEFAULT_MODEL, TEMP_MESSAGE_ID, TEMP_RESPONSE_ID } from "@/api/constants";
+import { DEFAULT_MODEL, TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
@@ -31,7 +31,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
     (conversationId: string, contentItems: ContentItem[], previous_response_id?: string) => {
-      const tempId = TEMP_MESSAGE_ID; // TODO: support multiple models
+      // Generate unique temp ID to prevent collisions in regenerate/branch scenarios
+      const tempId = `temp-message-${crypto.randomUUID()}`;
 
       const updatedConversation = (draft: ConversationStoreState) => {
         if (!draft.conversation) {

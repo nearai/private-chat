@@ -8,5 +8,4 @@ export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY || "";
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || "";
 export const DEFAULT_MODEL = import.meta.env.VITE_DEFAULT_MODEL || "zai-org/GLM-4.6";
 
-export const TEMP_MESSAGE_ID = "temp-message-id";
 export const TEMP_RESPONSE_ID = "temp-response-id";
