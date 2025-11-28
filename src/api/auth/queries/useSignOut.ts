@@ -16,6 +16,7 @@ export const useSignOut = () => {
       setUser(null);
       posthogReset();
       localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
       navigate(APP_ROUTES.AUTH);
     },
   });

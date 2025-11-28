@@ -2,8 +2,14 @@ import { ArchiveBoxIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/outl
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useArchiveChat, useCloneChat, useDeleteChat, usePinConversationById, useUnpinConversationById } from "@/api/chat/queries";
-import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
+import {
+  useArchiveChat,
+  // useCloneChat,
+  useDeleteChat,
+  usePinConversationById,
+  useUnpinConversationById,
+} from "@/api/chat/queries";
+// import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
 import PencilIcon from "@/assets/icons/pen.svg?react";
 
 import PinIcon from "@/assets/icons/pin.svg?react";
@@ -34,7 +40,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   const { reloadConversations } = useConversation();
   const { mutate: pinConversationById } = usePinConversationById();
   const { mutate: unpinConversationById } = useUnpinConversationById();
-  const { mutate: cloneChatById } = useCloneChat();
+  // const { mutate: cloneChatById } = useCloneChat();
   const { mutate: archiveChatById } = useArchiveChat({ onSuccess: () => {
     toast.success(t("Chat archived"));
     reloadConversations();
@@ -52,9 +58,9 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
     isPinned ? unpinConversationById({ id: chat.id }) : pinConversationById({ id: chat.id });
   };
 
-  const handleClone = () => {
-    cloneChatById({ id: chat.id });
-  };
+  // const handleClone = () => {
+  //   cloneChatById({ id: chat.id });
+  // };
 
   const handleArchive = () => {
     archiveChatById({ id: chat.id });
@@ -115,10 +121,10 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
             <span>{t("Rename")}</span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
+          {/* <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
             <ClipboardIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Clone")}</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
           <DropdownMenuItem
             className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
