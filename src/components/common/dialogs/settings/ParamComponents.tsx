@@ -202,9 +202,9 @@ export const SwitchParam = ({
 }) => {
   return (
     <div className="flex w-full items-center justify-between py-0.5">
-      <div className="flex flex-col items-start gap-1 self-center font-medium text-base">
+      <div className="flex flex-col items-start gap-1 self-center font-medium text-sm">
         {label}
-        {description && <div className="font-normal text-sm">{description}</div>}
+        {description && <div className="font-light text-sm">{description}</div>}
       </div>
       <Switch checked={value} onCheckedChange={onChange} />
     </div>
@@ -226,9 +226,9 @@ export const SelectParam = ({
 }) => {
   return (
     <div className="flex w-full items-center justify-between py-0.5">
-      <div className="flex grow flex-col items-start gap-1 self-center font-medium text-base">
+      <div className="flex grow flex-col items-start gap-1 self-center font-medium text-sm">
         {label}
-        {description && <div className="font-normal text-sm">{description}</div>}
+        {description && <div className="font-light text-sm">{description}</div>}
       </div>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger>

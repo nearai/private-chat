@@ -247,7 +247,7 @@ const GeneralSettings = () => {
   return (
     <div className="flex h-full flex-col justify-between text-sm">
       <div className="max-h-112 overflow-y-auto pr-2 lg:max-h-full">
-        <div className="flex flex-col gap-9">
+        <div className="flex flex-col gap-5">
           <div className="font-bold text-base">{t("General")}</div>
 
           <SelectParam
@@ -255,6 +255,17 @@ const GeneralSettings = () => {
             value={lang}
             onChange={(value) => handleLanguageChange(value)}
             options={languages.map((language) => ({ value: language.code, label: language.title }))}
+          />
+
+          <SelectParam
+            label={t("Appearance")}
+            value={theme}
+            onChange={(value) => setTheme(value as "dark" | "light" | "system")}
+            options={[
+              { value: "dark", label: t("Dark") },
+              { value: "light", label: t("Light") },
+              { value: "system", label: t("System") },
+            ]}
           />
 
           <SwitchParam
@@ -271,28 +282,17 @@ const GeneralSettings = () => {
             onChange={() => setWebSearchEnabled(!webSearchEnabled)}
           />
 
-          <SelectParam
-            label={t("Appearance")}
-            value={theme}
-            onChange={(value) => setTheme(value as "dark" | "light" | "system")}
-            options={[
-              { value: "dark", label: t("Dark") },
-              { value: "light", label: t("Light") },
-              { value: "system", label: t("System") },
-            ]}
-          />
-
           <hr className="my-2 border-border" />
 
           <div className="flex w-full flex-col items-start gap-6">
-            <div className="flex grow flex-col items-start gap-1 font-medium text-base">
+            <div className="flex grow flex-col items-start gap-1 font-medium text-sm">
               {t("System Prompt")}
-              <div className="font-normal text-sm">{t("System Prompt Description")}</div>
+              <div className="font-light text-sm">{t("System Prompt Description")}</div>
             </div>
             <textarea
               value={system}
               onChange={(e) => setSystem(e.target.value)}
-              className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-zinc-200 bg-white/10 p-4 font-['Inter'] font-normal text-base placeholder:opacity-40"
+              className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-zinc-200 bg-white/10 p-4 font-['Inter'] font-normal text-sm placeholder:opacity-40"
               rows={4}
               placeholder={t("Enter system prompt here")}
             />
