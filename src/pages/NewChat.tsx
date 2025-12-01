@@ -20,8 +20,10 @@ import { DEFAULT_MODEL } from "@/api/constants";
 
 export default function NewChat({
   startStream,
+  stopResponse,
 }: {
   startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
+  stopResponse?: () => void;
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
@@ -155,6 +157,7 @@ export default function NewChat({
             fullWidth={false}
             prompt={inputValue}
             setPrompt={setInputValue}
+            stopResponse={stopResponse}
           />
           <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
             <div className="mx-5">

@@ -6,13 +6,14 @@ import { useChatStore } from "@/stores/useChatStore";
 
 interface MessageSkeletonProps {
   message?: string;
-
   model?: string;
+  animate?: boolean;
 }
 
 const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
   message = "Encrypting & fetching messages ...",
   model = "Assistant",
+  animate = true,
 }) => {
   const { models } = useChatStore();
 
@@ -39,10 +40,14 @@ const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
           </div>
         </div>
 
-        <div className={`markdown-prose w-full min-w-full`}>
+        <div className="markdown-prose w-full min-w-full">
           <div>
             <div className="relative flex w-full flex-col" id="response-content-container">
-              <div className="shimmer text-muted-foreground">{message !== undefined ? message : "Processing..."}</div>
+              <div
+                className={`${animate ? "shimmer" : ""} text-muted-foreground`}
+              >
+                {message ?? "Processing..."}
+              </div>
             </div>
           </div>
         </div>
