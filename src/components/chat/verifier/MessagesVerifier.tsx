@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import type {
+  ConversationInfo,
   ConversationModelOutput,
   ConversationReasoning,
   ConversationUserInput,
@@ -13,6 +14,7 @@ import type {
 import MessageVerifier from "./MessageVerifier";
 
 interface MessagesVerifierProps {
+  conversation?: ConversationInfo;
   history: {
     messages: Record<
       string,
@@ -30,7 +32,7 @@ interface MessagesVerifierProps {
   };
 }
 
-const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
+const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures } = useMessagesSignaturesStore();
 
@@ -68,6 +70,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
           if (!isCompleted) return null;
           return (
             <MessageVerifier
+              conversation={conversation}
               message={message}
               key={`message-verification-${message.chatCompletionId}-${index}`}
               index={reversedIndex}
