@@ -3,7 +3,7 @@ import { useViewStore } from "@/stores/useViewStore";
 
 const BREAKPOINT = 768;
 
-export type Theme = "dark" | "light" | "system";
+export type Theme = "Dark" | "Light" | "System";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -17,7 +17,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "system",
+  theme: "System",
   setTheme: () => null,
 };
 
@@ -25,7 +25,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export const ThemeProvider = ({
   children,
-  defaultTheme = "light",
+  defaultTheme = "Light",
   storageKey = "near-ai-theme",
   ...props
 }: ThemeProviderProps) => {
@@ -37,14 +37,14 @@ export const ThemeProvider = ({
 
     root.classList.remove("light", "dark");
 
-    if (theme === "system") {
+    if (theme === "System") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
       root.classList.add(systemTheme);
       return;
     }
 
-    root.classList.add(theme);
+    root.classList.add(theme.toLowerCase());
   }, [theme]);
 
   useEffect(() => {

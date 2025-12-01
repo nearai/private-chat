@@ -270,11 +270,11 @@ const GeneralSettings = () => {
           <SelectParam
             label={t("Appearance")}
             value={formAppearance}
-            onChange={(value) => setFormAppearance(value as "dark" | "light" | "system")}
+            onChange={(value) => setFormAppearance(value as "Dark" | "Light" | "System")}
             options={[
-              { value: "dark", label: t("Dark") },
-              { value: "light", label: t("Light") },
-              { value: "system", label: t("System") },
+              { value: "Dark", label: t("Dark") },
+              { value: "Light", label: t("Light") },
+              { value: "System", label: t("System") },
             ]}
           />
 
