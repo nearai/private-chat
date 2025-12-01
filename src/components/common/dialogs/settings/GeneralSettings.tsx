@@ -125,7 +125,7 @@ const GeneralSettings = () => {
 
     setNotificationEnabled(remoteSettings.settings.notification);
     setSystem(remoteSettings.settings.system_prompt || "");
-    setFormAppearance((remoteSettings.settings.appearance as Theme) || "system");
+    setFormAppearance((remoteSettings.settings.appearance as Theme) || "System");
     setFormWebSearchEnabled(remoteSettings.settings.web_search || false);
   }, [remoteSettings]);
 
@@ -270,7 +270,7 @@ const GeneralSettings = () => {
           <SelectParam
             label={t("Appearance")}
             value={formAppearance}
-            onChange={(value) => setFormAppearance(value as "Dark" | "Light" | "System")}
+            onChange={(value) => setFormAppearance(value as Theme)}
             options={[
               { value: "Dark", label: t("Dark") },
               { value: "Light", label: t("Light") },

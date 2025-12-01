@@ -418,7 +418,7 @@ export interface UserSettingsPayload {
   notification: boolean;
   system_prompt: string;
   web_search: boolean;
-  appearance: string;
+  appearance: "Dark" | "Light" | "System";
 }
 
 export interface UserSettingsResponse {
