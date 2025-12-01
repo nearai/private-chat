@@ -1,15 +1,14 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { useTranslation } from "react-i18next";
 import { chatClient, isUploadError } from "@/api/chat/client";
 
-import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
-import { compressImage } from "@/lib/image";
 import Spinner from "@/components/common/Spinner";
+import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -83,7 +82,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const { isEditingChatName, webSearchEnabled, setWebSearchEnabled } = useChatStore();
+  const { isEditingChatName, webSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
@@ -257,7 +256,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
       stopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
-      setWebSearchEnabled(false);
       setImageGenerationEnabled(false);
     }
 
@@ -628,18 +626,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                 </span>
                               </button>
                             )}
-
-                            <Button
-                              variant={webSearchEnabled ? "blue" : "ghost"}
-                              onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                              type="button"
-                              className="flex h-auto max-w-full items-center gap-1.5 overflow-hidden rounded-full px-2 py-0.5 font-medium text-xs transition-colors duration-300"
-                            >
-                              <GlobeIcon className="size-5" strokeWidth="1.75" stroke="currentColor" />
-                              <span className="translate-y-[0.5px] overflow-hidden text-ellipsis whitespace-nowrap">
-                                Web Search
-                              </span>
-                            </Button>
                           </div>
                         </>
                       )}

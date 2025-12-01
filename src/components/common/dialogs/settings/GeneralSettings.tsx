@@ -1,18 +1,18 @@
-import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useUpdateUserSettings, useUserSettings } from "@/api/users/queries";
-import Collapsible from "@/components/common/Collapsible";
+
 import { useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
-import { SelectNative } from "@/components/ui/select-native";
+
 import { changeLanguage, getLanguages } from "@/i18n";
+import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useUserStore } from "@/stores/useUserStore";
 import type { Settings } from "@/types";
 import AdvancedParams from "./AdvancedParams";
-import { CycleParam, ParamControl, TextInput } from "./ParamComponents";
+import { CycleParam, ParamControl, SelectParam, SwitchParam, TextInput } from "./ParamComponents";
 
 interface Language {
   code: string;
@@ -32,6 +32,7 @@ const GeneralSettings = () => {
   const [lang, setLang] = useState(i18n.language || "en-US");
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [system, setSystem] = useState("");
+  const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
@@ -145,11 +146,6 @@ const GeneralSettings = () => {
     setRequestFormat(newFormat);
   };
 
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-  };
-
   const handleLanguageChange = (newLang: string) => {
     setLang(newLang);
     changeLanguage(newLang);
@@ -251,50 +247,56 @@ const GeneralSettings = () => {
   return (
     <div className="flex h-full flex-col justify-between text-sm">
       <div className="max-h-112 overflow-y-auto pr-2 lg:max-h-full">
-        <div>
-          <div className="mb-1 font-medium text-sm">{t("WebUI Settings")}</div>
-          {/* Language Selector */}
-          <div className="flex w-full justify-between">
-            <div className="self-center font-medium text-xs">{t("Language")}</div>
-            <div className="relative flex items-center">
-              <SelectNative
-                className="w-fit rounded-sm bg-secondary/30 px-2 py-2 pr-8 text-right text-xs outline-none"
-                value={lang}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-              >
-                {languages.map((language) => (
-                  <option key={language.code} value={language.code}>
-                    {language.title}
-                  </option>
-                ))}
-              </SelectNative>
-            </div>
-          </div>
-          {/* Notifications Toggle */}
-          <CycleParam
-            label={t("Notifications")}
-            value={notificationEnabled ? t("On") : t("Off")}
-            onCycle={toggleNotification}
+        <div className="flex flex-col gap-5">
+          <div className="font-bold text-base">{t("General")}</div>
+
+          <SelectParam
+            label={t("Language")}
+            value={lang}
+            onChange={(value) => handleLanguageChange(value)}
+            options={languages.map((language) => ({ value: language.code, label: language.title }))}
           />
-          {/* Dark Theme Toggle */}
-          <CycleParam
-            label={"Dark Theme"}
-            value={theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-            onCycle={toggleTheme}
+
+          <SelectParam
+            label={t("Appearance")}
+            value={theme}
+            onChange={(value) => setTheme(value as "dark" | "light" | "system")}
+            options={[
+              { value: "dark", label: t("Dark") },
+              { value: "light", label: t("Light") },
+              { value: "system", label: t("System") },
+            ]}
+          />
+
+          <SwitchParam
+            label={t("Notifications")}
+            description={t("Notifications Description")}
+            value={notificationEnabled}
+            onChange={toggleNotification}
+          />
+
+          <SwitchParam
+            label={t("Web Search")}
+            value={webSearchEnabled}
+            description={t("Web Search Description")}
+            onChange={() => setWebSearchEnabled(!webSearchEnabled)}
           />
 
           <hr className="my-2 border-border" />
-          <Collapsible title={"System Prompt"} className="w-full">
-            <div className="mt-2">
-              <textarea
-                value={system}
-                onChange={(e) => setSystem(e.target.value)}
-                className="w-full resize-none rounded-md bg-secondary/30 p-1.5 text-xs outline-hidden"
-                rows={4}
-                placeholder={"Enter system prompt"}
-              />
+
+          <div className="flex w-full flex-col items-start gap-6">
+            <div className="flex grow flex-col items-start gap-1 font-medium text-sm">
+              {t("System Prompt")}
+              <div className="font-light text-sm">{t("System Prompt Description")}</div>
             </div>
-          </Collapsible>
+            <textarea
+              value={system}
+              onChange={(e) => setSystem(e.target.value)}
+              className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-zinc-200 bg-white/10 p-4 font-['Inter'] font-normal text-sm placeholder:opacity-40"
+              rows={4}
+              placeholder={t("Enter system prompt here")}
+            />
+          </div>
         </div>
 
         {/* Admin/Permission-based settings */}

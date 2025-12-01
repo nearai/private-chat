@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
+import { Button } from "@/components/ui/button";
 import { verifySignature } from "@/lib/signature";
 import { cn, formatDate } from "@/lib/time";
 import markedExtension from "@/lib/utils/extension";
@@ -14,15 +15,11 @@ import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import type { ConversationInfo, ConversationModelOutput } from "@/types";
-import { extractMessageContent } from "@/types/openai";
-
-// import Citations from "./Citations";
-
-import { Button } from "@/components/ui/button";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-// import Citations from "./Citations";
+import type { ConversationInfo, ConversationModelOutput } from "@/types";
+import { extractCitations, extractMessageContent } from "@/types/openai";
+import Citations from "./Citations";
 import MarkdownTokens from "./MarkdownTokens";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
@@ -62,15 +59,11 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const [edit, setEdit] = useState(false);
   const [editedContent, setEditedContent] = useState("");
 
-  // Get message ID for verification
   const messageId = message.response_id || message.id;
 
   const handleVerificationBadgeClick = () => {
-    // Set flag to scroll to signature details
     setShouldScrollToSignatureDetails(true);
-    // Set the message ID to be selected in the verifier
     setSelectedMessageIdForVerifier(messageId);
-    // Open the verification sidebar
     setIsRightSidebarOpen(true);
   };
 
@@ -79,12 +72,10 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const isMessageCompleted = message.status === "completed";
 
   const verificationStatus = useMemo(() => {
-    // If message is not completed, don't show verification status
     if (!isMessageCompleted) {
       return null;
     }
 
-    // If no signature yet, show "Verifying"
     const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
     if (!hasSignature) {
       if (signatureError && conversation?.metadata?.imported_at) {
@@ -93,7 +84,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       return "verifying";
     }
 
-    // Verify the signature
     try {
       const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
       return isValid ? "verified" : "failed";
@@ -116,7 +106,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   }, [edit]);
 
   const messageContent = extractMessageContent(message.content, "output_text");
-  // const citations = extractCitations(message.content);
+  const citations = extractCitations(message.content);
+
   const extendedMessageResponse = {
     ...message,
     modelName: message.model || "",
@@ -392,7 +383,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           </div>
         )}
 
-        {/* <Citations citations={citations} /> */}
+        <Citations citations={citations} />
       </div>
     </div>
   );
