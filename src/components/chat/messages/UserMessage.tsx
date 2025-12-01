@@ -11,6 +11,7 @@ import { extractFiles, extractMessageContent } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedExtension from "@/lib/utils/extension";
+import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 
 interface UserMessageProps {
   message: ConversationUserInput;
@@ -83,13 +84,14 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
   };
 
   const tokens = useMemo(() => {
-      if (!message?.content) return [];
-  
-      marked.use(markedExtension());
-      const processedContent = replaceTokens(processResponseContent(messageContent), [], undefined, undefined);
-  
-      return marked.lexer(processedContent);
-    }, [messageContent, message]);
+    if (!message?.content) return [];
+
+    marked.use(markedKatexExtension());
+    marked.use(markedExtension());
+    const processedContent = replaceTokens(processResponseContent(messageContent), [], undefined, undefined);
+
+    return marked.lexer(processedContent);
+  }, [messageContent, message]);
 
   if (!message) return null;
 
