@@ -36,7 +36,7 @@ const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
-      toast.error("You must agree to the Terms of Service, Privacy Policy, and Cookie Policy to proceed.");
+      toast.error("You must agree to the Terms of Service, Privacy Policy to proceed.");
       return false;
     }
     return true;
@@ -168,13 +168,8 @@ const AuthPage: React.FC = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Privacy Policy
+                    Privacy Policy.
                   </a>
-                  {" and "}
-                  <a className="underline hover:text-blue-600" href="/privacy-cookie">
-                    Cookie Policy
-                  </a>
-                  .
                 </div>
               </label>
             </div>
