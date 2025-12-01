@@ -51,6 +51,9 @@ export const useMessagesSignaturesStore = create<MessagesSignaturesState>()(
     }),
     {
       name: "messages-signatures-storage",
+      partialize: (state) => ({
+        messagesSignatures: state.messagesSignatures,
+      }),
     }
   )
 );

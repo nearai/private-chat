@@ -12,6 +12,7 @@ import type {
 } from "@/types";
 
 import MessageVerifier from "./MessageVerifier";
+import { useStreamStore } from "@/stores/useStreamStore";
 
 interface MessagesVerifierProps {
   conversation?: ConversationInfo;
@@ -35,6 +36,7 @@ interface MessagesVerifierProps {
 const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures } = useMessagesSignaturesStore();
+  const { activeStreams } = useStreamStore();
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
@@ -68,6 +70,13 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
           const reversedIndex = array.length - 1 - index;
           const isCompleted = message.content.every((item) => item.status === "completed");
           if (!isCompleted) return null;
+
+          if (conversation) {
+            if (activeStreams.get(conversation.id)) {
+              return null;
+            }
+          }
+
           return (
             <MessageVerifier
               conversation={conversation}
