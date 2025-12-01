@@ -36,7 +36,7 @@ interface MessagesVerifierProps {
 const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures } = useMessagesSignaturesStore();
-  const { activeStreams } = useStreamStore();
+  const { isStreamActive } = useStreamStore();
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
@@ -71,10 +71,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
           const isCompleted = message.content.every((item) => item.status === "completed");
           if (!isCompleted) return null;
 
-          if (conversation) {
-            if (activeStreams.get(conversation.id)) {
-              return null;
-            }
+          if (conversation && isStreamActive(conversation.id)) {
+            return null;
           }
 
           return (
