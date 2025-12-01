@@ -417,6 +417,8 @@ export interface Settings {
 export interface UserSettingsPayload {
   notification: boolean;
   system_prompt: string;
+  web_search: boolean;
+  appearance: string;
 }
 
 export interface UserSettingsResponse {

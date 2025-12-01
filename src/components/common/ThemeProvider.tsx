@@ -3,7 +3,7 @@ import { useViewStore } from "@/stores/useViewStore";
 
 const BREAKPOINT = 768;
 
-type Theme = "dark" | "light" | "system";
+export type Theme = "dark" | "light" | "system";
 
 type ThemeProviderProps = {
   children: React.ReactNode;

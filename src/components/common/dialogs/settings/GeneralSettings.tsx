@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useUpdateUserSettings, useUserSettings } from "@/api/users/queries";
 
-import { useTheme } from "@/components/common/ThemeProvider";
+import { useTheme, type Theme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 
 import { changeLanguage, getLanguages } from "@/i18n";
@@ -34,6 +34,8 @@ const GeneralSettings = () => {
   const [system, setSystem] = useState("");
   const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
 
+  const [formAppearance, setFormAppearance] = useState<Theme>(theme);
+  const [formWebSearchEnabled, setFormWebSearchEnabled] = useState(webSearchEnabled); 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
   const [keepAlive, setKeepAlive] = useState<string | null>(null);
@@ -123,6 +125,8 @@ const GeneralSettings = () => {
 
     setNotificationEnabled(remoteSettings.settings.notification);
     setSystem(remoteSettings.settings.system_prompt || "");
+    setFormAppearance((remoteSettings.settings.appearance as Theme) || "system");
+    setFormWebSearchEnabled(remoteSettings.settings.web_search || false);
   }, [remoteSettings]);
 
   const toggleNotification = async () => {
@@ -220,9 +224,15 @@ const GeneralSettings = () => {
     // });
 
     try {
+      // update local storage
+      setWebSearchEnabled(formWebSearchEnabled);
+      setTheme(formAppearance);
+      // update remote settings
       await updateUserSettings({
         notification: notificationEnabled,
         system_prompt: system || "",
+        appearance: formAppearance,
+        web_search: formWebSearchEnabled,
       });
       toast.success(t("Settings saved successfully!"));
     } catch (error) {
@@ -259,8 +269,8 @@ const GeneralSettings = () => {
 
           <SelectParam
             label={t("Appearance")}
-            value={theme}
-            onChange={(value) => setTheme(value as "dark" | "light" | "system")}
+            value={formAppearance}
+            onChange={(value) => setFormAppearance(value as "dark" | "light" | "system")}
             options={[
               { value: "dark", label: t("Dark") },
               { value: "light", label: t("Light") },
@@ -277,9 +287,9 @@ const GeneralSettings = () => {
 
           <SwitchParam
             label={t("Web Search")}
-            value={webSearchEnabled}
+            value={formWebSearchEnabled}
             description={t("Web Search Description")}
-            onChange={() => setWebSearchEnabled(!webSearchEnabled)}
+            onChange={() => setFormWebSearchEnabled(!formWebSearchEnabled)}
           />
 
           <hr className="my-2 border-border" />
