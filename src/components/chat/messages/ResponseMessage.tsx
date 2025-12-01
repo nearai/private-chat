@@ -195,7 +195,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
               </div>
             ) : verificationStatus === "imported" ? (
               <CompactTooltip
-                content={IMPORTED_MESSAGE_SIGNATURE_TIP}
+                content={t(IMPORTED_MESSAGE_SIGNATURE_TIP)}
                 align="start"
               >
                 <div className="flex items-center gap-1 rounded border border-blue-500 bg-blue-50 px-1.5 py-0.5">

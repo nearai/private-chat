@@ -8,4 +8,4 @@ export const LOCAL_STORAGE_KEYS = {
 
 export const DEFAULT_SIGNING_ALGO = "ecdsa";
 
-export const IMPORTED_MESSAGE_SIGNATURE_TIP = "Verification is not available for imported chat";
+export const IMPORTED_MESSAGE_SIGNATURE_TIP = "Verification is not available for imported chats";

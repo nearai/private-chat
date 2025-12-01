@@ -28,7 +28,7 @@ const ChatVerifier: React.FC = () => {
   const { chatId } = useParams();
   const { selectedModels } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
-  const conversationImportAt = conversationData?.metadata?.imported_at;
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const {
     isRightSidebarOpen,
@@ -125,7 +125,7 @@ const ChatVerifier: React.FC = () => {
 
   const renderError = () => {
     if (!modelVerificationStatus?.error) return null;
-    if (conversationImportAt) return null;
+    if (conversationImportedAt) return null;
     return (
       <>
         <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">

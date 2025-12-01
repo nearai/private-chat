@@ -173,9 +173,9 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
         <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-blue-400/10 p-3">
           <p
             className="flex-1 text-blue-600 text-xs leading-[160%]"
-            title={IMPORTED_MESSAGE_SIGNATURE_TIP}
+            title={t(IMPORTED_MESSAGE_SIGNATURE_TIP)}
           >
-            {IMPORTED_MESSAGE_SIGNATURE_TIP}
+            {t(IMPORTED_MESSAGE_SIGNATURE_TIP)}
           </p>
         </div>
       );
