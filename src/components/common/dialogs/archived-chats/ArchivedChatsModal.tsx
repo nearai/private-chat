@@ -243,7 +243,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                         </TableCell>
 
                         <TableCell className="hidden px-3 py-1 md:table-cell">
-                          {dayjs(chat.metadata.archived_at! * 1000).format(
+                          {dayjs(Number(chat.metadata.archived_at!) * 1000).format(
                             "LLL"
                           )}
                         </TableCell>

@@ -26,8 +26,8 @@ export interface ConversationInfo {
   created_at: number;
   metadata: {
     title: string;
-    pinned_at?: number;
-    archived_at?: number;
+    pinned_at?: string;
+    archived_at?: string;
     imported_at?: string;
   };
 }
