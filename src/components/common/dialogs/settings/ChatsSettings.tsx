@@ -41,10 +41,9 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         const batchSize = 20;
         for (let i = 0; i < conv.items.length; i += batchSize) {
           const batch = conv.items.slice(i, i + batchSize) as ResponseInputItem[];
-
           await addItemsToConversation.mutateAsync({
             conversationId: newConversation.id,
-            items: batch
+            items: batch,
           });
         }
       }
