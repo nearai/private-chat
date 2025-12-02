@@ -4,6 +4,7 @@ export const LOCAL_STORAGE_KEYS = {
   CONVERSATIONS: "conversations",
   AGREED_TERMS: "agreedTerms",
   WELCOME_PAGE_PROMPT: "welcomePagePrompt",
+  IMPORT_GUIDE_BANNER_CLOSED: "importGuideBannerClosed",
 };
 
 export const DEFAULT_SIGNING_ALGO = "ecdsa";
