@@ -105,7 +105,7 @@ const Home = ({
   const queryClient = useQueryClient();
 
   const [inputValue, setInputValue] = useState("");
-  const [modelInitialized, setModelInitialized] = useState(false);
+  const modelInitializedRef = useRef(false);
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const selectedModelsRef = useRef(selectedModels);
@@ -168,27 +168,33 @@ const Home = ({
   }, []);
 
   // Reset model initialization when switching conversations
-  useEffect(() => setModelInitialized(false), [conversationData?.id]);
+  useEffect(() => {
+    modelInitializedRef.current = false;
+  }, [conversationData?.id]);
 
   // Sync selected model with latest conversation
   useEffect(() => {
-    if (!conversationData?.data || modelInitialized) return;
+    if (!conversationData?.id || modelInitializedRef.current) return;
 
-    const lastMsg = conversationData.data.at(-1);
-    const newModels = [...selectedModelsRef.current];
-    const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
-    let msgModel = lastMsg?.model;
-    if (msgModel) {
-      const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
-      msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
-    } else {
-      msgModel = defaultModel?.modelId;
+    if (!selectedModelsRef.current.length) {
+      const lastMsg = conversationData.data.at(-1);
+      const newModels = [...selectedModelsRef.current];
+      const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
+      let msgModel = lastMsg?.model;
+      if (msgModel) {
+        const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
+        msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
+      } else {
+        msgModel = defaultModel?.modelId;
+      }
+      
+      newModels[0] = msgModel ?? newModels[0] ?? "";
+      setSelectedModels(newModels);
+      console.log('sssss', newModels)
     }
     
-    newModels[0] = msgModel ?? newModels[0] ?? "";
-    setSelectedModels(newModels);
-    setModelInitialized(true);
-  }, [conversationData?.data, modelInitialized, setSelectedModels]);
+    modelInitializedRef.current = true;
+  }, [conversationData?.id, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
