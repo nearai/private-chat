@@ -29,6 +29,7 @@ export interface ConversationInfo {
     pinned_at?: string;
     archived_at?: string;
     imported_at?: string;
+    initial_created_at?: string;
   };
 }
 

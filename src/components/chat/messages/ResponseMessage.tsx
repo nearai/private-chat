@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
+// import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   readOnly,
   webSearchEnabled,
   saveMessage,
-  regenerateResponse,
+  // regenerateResponse,
   showPreviousMessage,
   showNextMessage,
   siblings,
@@ -55,6 +55,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
   const { models } = useChatStore();
+  const conversationImportedAt = conversation?.metadata?.imported_at;
 
   const [edit, setEdit] = useState(false);
   const [editedContent, setEditedContent] = useState("");
@@ -78,7 +79,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
     const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
     if (!hasSignature) {
-      if (signatureError && conversation?.metadata?.imported_at) {
+      if (signatureError && conversationImportedAt) {
         return "imported";
       }
       return "verifying";
@@ -90,7 +91,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, conversation]);
+  }, [signature, signatureError, isMessageCompleted, conversationImportedAt]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === message.model)?.metadata?.modelIcon;
@@ -369,7 +370,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   </svg>
                 </Button>
 
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="icon"
                   className={cn("text-muted-foreground", isLastMessage ? "visible" : "invisible group-hover:visible")}
@@ -377,7 +378,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   title="Regenerate"
                 >
                   <RegenerateIcon />
-                </Button>
+                </Button> */}
               </>
             )}
           </div>
