@@ -43,7 +43,7 @@ If you're a user of the old version of Private Chat, you can follow these steps 
 3. Go to the **Chats** tab in the popup Settings dialog.
 4. Click on **Import Chats** button and select the JSON file you exported in Step 1. ![Import Chats](${importChatsImage})
 5. Wait until the import is completed - you'll see your conversations imported in the left sidebar. ![Imported Chats](${importedChatsImage})
-6. The imported conversations will be tagged as "Imported". ![Imported Chat](${importedChatImage})
+6. The imported messages will be tagged as "**Imported**". ![Imported Chat](${importedChatImage})
 
 ---
 
