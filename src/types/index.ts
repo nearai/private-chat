@@ -29,7 +29,7 @@ export interface ConversationInfo {
     pinned_at?: number;
     archived_at?: number;
     imported_at?: string;
-    timestamp?: string;
+    initial_created_at?: string;
   };
 }
 

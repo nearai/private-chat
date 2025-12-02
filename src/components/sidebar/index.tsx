@@ -48,7 +48,7 @@ const LeftSidebar: React.FC = () => {
   const chatsGrouped = useMemo(() => {
     return Object.entries(
       unpinned.reduce((acc, chat) => {
-        const timeRange = getTimeRange(chat.metadata?.timestamp ? Number(chat.metadata.timestamp) : chat.created_at);
+        const timeRange = getTimeRange(chat.metadata?.initial_created_at ? Number(chat.metadata.initial_created_at) : chat.created_at);
         acc[timeRange] = [...(acc[timeRange] || []), chat];
         return acc;
       }, {} as Record<string, ConversationInfo[]>)

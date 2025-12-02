@@ -33,7 +33,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         metadata: {
           title: conv.title || "Imported Chat",
           imported_at: dayjs().valueOf().toString(),
-          timestamp: String(conv.timestamp),
+          initial_created_at: String(conv.timestamp),
         },
       });
       if (!newConversation.id) {
