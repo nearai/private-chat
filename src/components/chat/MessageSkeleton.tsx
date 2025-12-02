@@ -17,7 +17,9 @@ const MessageSkeleton: React.FC<MessageSkeletonProps> = ({
   const { models } = useChatStore();
 
   const modelIcon = useMemo(() => {
-    return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
+    const modelParts = model.split("/") || [];
+    const modelSuffix = modelParts[modelParts.length - 1] || model;
+    return models.find((m) => m.modelId.includes(modelSuffix))?.metadata?.modelIcon;
   }, [models, model]);
 
   return (

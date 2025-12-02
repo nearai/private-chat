@@ -1,4 +1,4 @@
-import * as v from 'valibot';
+import * as v from "valibot";
 
 export type Conversation = {
   title: string;
@@ -9,13 +9,13 @@ export type Conversation = {
 type Item = InputMessage;
 
 type InputMessage = {
-  type: 'message';
+  type: "message";
   role: InputMessageRole;
   content: InputMessageContent[];
   model?: string;
 };
 
-type InputMessageRole = 'user' | 'assistant' | 'system' | 'developer';
+type InputMessageRole = "user" | "assistant" | "system" | "developer";
 
 type InputMessageContent =
   | InputTextContent
@@ -24,35 +24,35 @@ type InputMessageContent =
   | OutputTextContent;
 
 type InputTextContent = {
-  type: 'input_text';
+  type: "input_text";
   text: string;
 };
 
 type InputImageContent = {
-  type: 'input_image';
+  type: "input_image";
   image_url: string;
 };
 
 type InputFileContent = {
-  type: 'input_file';
+  type: "input_file";
   filename: string;
   file_data: string;
 };
 
 type OutputTextContent = {
-  type: 'output_text';
+  type: "output_text";
   text: string;
 };
 
 const chatHistoryRoleSchema = v.union([
-  v.literal('user'),
-  v.literal('assistant'),
-  v.literal('system'),
-  v.literal('developer'),
+  v.literal("user"),
+  v.literal("assistant"),
+  v.literal("system"),
+  v.literal("developer"),
 ]);
 
 const chatHistoryFileSchema = v.object({
-  type: v.literal('file'),
+  type: v.literal("file"),
   file: v.object({
     filename: v.string(),
     data: v.object({
@@ -62,7 +62,7 @@ const chatHistoryFileSchema = v.object({
 });
 
 const chatHistoryImageSchema = v.object({
-  type: v.literal('image'),
+  type: v.literal("image"),
   url: v.pipe(v.string(), v.url()),
 });
 
@@ -70,7 +70,7 @@ const chatHistoryMessageSchema = v.object({
   role: chatHistoryRoleSchema,
   content: v.string(),
   files: v.optional(
-    v.array(v.union([chatHistoryFileSchema, chatHistoryImageSchema])),
+    v.array(v.union([chatHistoryFileSchema, chatHistoryImageSchema]))
   ),
   model: v.optional(v.string()),
   models: v.optional(v.array(v.string())),
@@ -89,7 +89,7 @@ const chatHistorySchema = v.object({
 type ChatHistory = v.InferOutput<typeof chatHistorySchema>;
 
 export function historiesToConversations(
-  unknownHistories: unknown,
+  unknownHistories: unknown
 ): Conversation[] {
   const schema = v.array(chatHistorySchema);
 
@@ -119,11 +119,11 @@ function historyToConversation(history: ChatHistory): Conversation {
     const model = message.models?.[0] ?? message.model;
 
     const textItem: Item = {
-      type: 'message',
+      type: "message",
       role: message.role,
       content: [
         {
-          type: message.role === 'user' ? 'input_text' : 'output_text',
+          type: message.role === "user" ? "input_text" : "output_text",
           text: message.content,
         },
       ],
@@ -134,13 +134,13 @@ function historyToConversation(history: ChatHistory): Conversation {
 
     if (message.files) {
       const fileItems = message.files.map<Item>((file) => {
-        if (file.type === 'file') {
+        if (file.type === "file") {
           return {
-            type: 'message',
+            type: "message",
             role: message.role,
             content: [
               {
-                type: 'input_file',
+                type: "input_file",
                 filename: file.file.filename,
                 file_data: file.file.data.content,
               },
@@ -149,11 +149,11 @@ function historyToConversation(history: ChatHistory): Conversation {
           };
         } else {
           return {
-            type: 'message',
+            type: "message",
             role: message.role,
             content: [
               {
-                type: 'input_image',
+                type: "input_image",
                 image_url: file.url,
               },
             ],
