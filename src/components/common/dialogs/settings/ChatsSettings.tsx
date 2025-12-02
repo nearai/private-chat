@@ -6,6 +6,8 @@ import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { type Conversation, historiesToConversations } from "@/lib/utils/transform-chat-history";
 import dayjs from "dayjs";
+import { useChatStore } from "@/stores/useChatStore";
+import { DEFAULT_MODEL } from "@/api/constants";
 
 interface ImportConversationResult {
   success: boolean;
@@ -21,6 +23,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
   const [importing, setImporting] = useState(false);
   const { refetch } = useGetConversations();
+  const { models } = useChatStore();
   const { createConversation, addItemsToConversation } = useConversation();
 
   const handleImportConversation = async (conv: Conversation): Promise<ImportConversationResult> => {
@@ -30,6 +33,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         metadata: {
           title: conv.title || "Imported Chat",
           imported_at: dayjs().valueOf().toString(),
+          timestamp: String(conv.timestamp),
         },
       });
       if (!newConversation.id) {
@@ -39,10 +43,22 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       if (conv.items && conv.items.length > 0) {
         const batchSize = 20;
         for (let i = 0; i < conv.items.length; i += batchSize) {
-          const batch = conv.items.slice(i, i + batchSize) as ResponseInputItem[];
+          const batch = conv.items.slice(i, i + batchSize);
+
           await addItemsToConversation.mutateAsync({
             conversationId: newConversation.id,
-            items: batch,
+            items: batch.map((item) => {
+              let model = item.model
+              if (!model) {
+                model = DEFAULT_MODEL
+              } else {
+                model = models.find(m => m.modelId.toLowerCase().includes(model!.toLowerCase()))?.modelId || item.model
+              }
+              return {
+                ...item,
+                model,
+              }
+            }) as ResponseInputItem[],
           });
         }
       }

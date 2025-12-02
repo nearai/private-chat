@@ -21,7 +21,7 @@ interface UserMessageProps {
   deleteMessage: (messageId: string) => void;
 }
 
-const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessage, deleteMessage }) => {
+const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteMessage }) => {
   const { settings } = useSettingsStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -38,10 +38,10 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
     }
   }, [edit]);
 
-  const handleEdit = () => {
-    setEdit(true);
-    setEditedContent(messageContent || "");
-  };
+  // const handleEdit = () => {
+  //   setEdit(true);
+  //   setEditedContent(messageContent || "");
+  // };
   const handleSave = () => {
     if (editedContent.trim() !== messageContent) {
       editMessage(message.id, editedContent.trim());
@@ -155,7 +155,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
                   </div>
 
                   <div className="flex justify-end text-muted-foreground">
-                    {!readOnly && (
+                    {/* {!readOnly && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -178,7 +178,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
                           />
                         </svg>
                       </Button>
-                    )}
+                    )} */}
 
                     <Button
                       variant="ghost"

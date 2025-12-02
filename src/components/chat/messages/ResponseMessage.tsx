@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
+// import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   readOnly,
   webSearchEnabled,
   saveMessage,
-  regenerateResponse,
+  // regenerateResponse,
   showPreviousMessage,
   showNextMessage,
   siblings,
@@ -370,7 +370,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   </svg>
                 </Button>
 
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="icon"
                   className={cn("text-muted-foreground", isLastMessage ? "visible" : "invisible group-hover:visible")}
@@ -378,7 +378,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                   title="Regenerate"
                 >
                   <RegenerateIcon />
-                </Button>
+                </Button> */}
               </>
             )}
           </div>
