@@ -214,7 +214,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
             ) : null}
           </div>
 
-          {extendedMessageResponse.timestamp && !conversationImportedAt && (
+          {extendedMessageResponse.timestamp && (
             <div className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
               <span className="line-clamp-1">{formatDate(extendedMessageResponse.timestamp)}</span>
             </div>
