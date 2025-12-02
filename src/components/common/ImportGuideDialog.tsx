@@ -64,7 +64,7 @@ If you're a user of the old version of Private Chat, you can follow these steps 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import Chat History in Three Steps</DialogTitle>
+          <DialogTitle>Import Chat History in Two Steps</DialogTitle>
         </DialogHeader>
         <div className="markdown-prose w-full">
           <div className="markdown-content [&_img]:mx-auto [&_img]:max-w-md [&_img]:rounded-lg [&_img]:shadow-md">
