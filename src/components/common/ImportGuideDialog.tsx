@@ -38,7 +38,7 @@ If you're a user of the old version of Private Chat, you can follow these steps 
 
 #### Step 2: Import Chats in New Private Chat
 
-1. Navigate to [https://private.near.ai](https://private.near.ai). You should have already logged in as you can read this guide :)
+1. Navigate to [https://private.near.ai](https://private.near.ai). You should already be logged in since you can read this guide :)
 2. Click on your user avatar in the bottom left corner and select **Settings** option from the dropdown menu.
 3. Go to the **Chats** tab in the popup Settings dialog.
 4. Click on **Import Chats** button and select the JSON file you exported in Step 1. ![Import Chats](${importChatsImage})

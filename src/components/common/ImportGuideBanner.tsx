@@ -1,26 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowUpOnSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import ImportGuideDialog from "./ImportGuideDialog";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 const ImportGuideBanner = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isClosed, setIsClosed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem(LOCAL_STORAGE_KEYS.IMPORT_GUIDE_BANNER_CLOSED) === "true";
-    }
-    return false;
-  });
+  const [isClosed, setIsClosed] = useState(false);
+
+  useEffect(() => {
+    setIsClosed(localStorage.getItem(LOCAL_STORAGE_KEYS.IMPORT_GUIDE_BANNER_CLOSED) === "true");
+  }, []);
+
+  if (isClosed) {
+    return null;
+  }
 
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsClosed(true);
     localStorage.setItem(LOCAL_STORAGE_KEYS.IMPORT_GUIDE_BANNER_CLOSED, "true");
   };
-
-  if (isClosed) {
-    return <ImportGuideDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} />;
-  }
 
   return (
     <>
