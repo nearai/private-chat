@@ -30,9 +30,7 @@ If you're a user of the old version of Private Chat, you can follow these steps 
 2. Once logged in, click on your user avatar in the bottom left corner and select **Settings** option from the dropdown menu.
 3. Go to the **Chats** tab in the popup Settings dialog.
 4. Click on **Export Chats** button to download your chat history as a JSON file.
-5. Wait a while for the export to complete. This may take some time depending on the size of your chat history.
-
-![Export Chats](${exportChatsImage})
+5. Wait a while for the export to complete. This may take some time depending on the size of your chat history. ![Export Chats](${exportChatsImage})
 
 ---
 
