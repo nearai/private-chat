@@ -55,6 +55,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
   const { models } = useChatStore();
+  const conversationImportedAt = conversation?.metadata?.imported_at;
 
   const [edit, setEdit] = useState(false);
   const [editedContent, setEditedContent] = useState("");
@@ -78,7 +79,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
     const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
     if (!hasSignature) {
-      if (signatureError && conversation?.metadata?.imported_at) {
+      if (signatureError && conversationImportedAt) {
         return "imported";
       }
       return "verifying";
@@ -90,7 +91,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, conversation]);
+  }, [signature, signatureError, isMessageCompleted, conversationImportedAt]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === message.model)?.metadata?.modelIcon;
@@ -213,7 +214,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
             ) : null}
           </div>
 
-          {extendedMessageResponse.timestamp && (
+          {extendedMessageResponse.timestamp && !conversationImportedAt && (
             <div className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
               <span className="line-clamp-1">{formatDate(extendedMessageResponse.timestamp)}</span>
             </div>
