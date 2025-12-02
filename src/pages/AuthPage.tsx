@@ -36,7 +36,7 @@ const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
-      toast.error("You must agree to the Terms of Service, Privacy Policy and Cooke Policy to proceed.");
+      toast.error("You must agree to the Terms of Service, Privacy Policy and Cookie Policy to proceed.");
       return false;
     }
     return true;
