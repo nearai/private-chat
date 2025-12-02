@@ -88,6 +88,20 @@ const chatHistorySchema = v.object({
 
 type ChatHistory = v.InferOutput<typeof chatHistorySchema>;
 
+function convertModelId(model: string): string {
+  switch (model) {
+    case "gpt-oss-120b":
+    case "nearai/gpt-oss-120b":
+      return "openai/gpt-oss-120b";
+    case "deepseek-v3.1":
+      return "deepseek-ai/DeepSeek-V3.1";
+    case "qwen3-30b-a3b-instruct-2507":
+      return "Qwen/Qwen3-30B-A3B-Instruct-2507";
+    default:
+      return model;
+  }
+}
+
 export function historiesToConversations(
   unknownHistories: unknown
 ): Conversation[] {
@@ -116,7 +130,7 @@ function historyToConversation(history: ChatHistory): Conversation {
   >((message) => {
     const totalItems: Item[] = [];
 
-    const model = message.models?.[0] ?? message.model;
+    const model = convertModelId(message.models?.[0] ?? message.model ?? "");
 
     const textItem: Item = {
       type: "message",

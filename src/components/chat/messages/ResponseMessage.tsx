@@ -94,9 +94,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   }, [signature, signatureError, isMessageCompleted, conversationImportedAt]);
 
   const modelIcon = useMemo(() => {
-    const modelParts = message.model?.split("/") || [];
-    const modelSuffix = modelParts[modelParts.length - 1] || message.model;
-    return models.find((m) => m.modelId.includes(modelSuffix))?.metadata?.modelIcon;
+    return models.find((m) => m.modelId === message.model)?.metadata?.modelIcon;
   }, [models, message.model]);
 
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
