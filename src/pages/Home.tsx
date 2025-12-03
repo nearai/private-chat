@@ -100,7 +100,7 @@ const Home = ({
 }: {
   startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
 }) => {
-  const [searchParams] = useSearchParams()
+  const [searchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const queryClient = useQueryClient();
@@ -171,7 +171,7 @@ const Home = ({
   // Sync selected model with latest conversation
   useEffect(() => {
     if (!conversationData?.id) return;
-    if (modelInitializedRef.current[conversationData.id]) return
+    if (modelInitializedRef.current[conversationData.id]) return;
     const isNewChat = searchParams.get("new") === "1";
     if (isNewChat) {
       modelInitializedRef.current[conversationData.id] = true;
