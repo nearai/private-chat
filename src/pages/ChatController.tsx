@@ -5,6 +5,8 @@ import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
 import { DEFAULT_MODEL, TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
+
+import { useUserSettings } from "@/api/users/queries/useUserSettings";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import {
@@ -27,6 +29,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { selectedModels } = useChatStore();
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
   const updateConversation = useConversationStore((state) => state.updateConversation);
+  const userSettings = useUserSettings();
 
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
@@ -128,6 +131,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
         previous_response_id: previous_response_id,
+        systemPrompt: userSettings.data?.settings.system_prompt,
       });
 
       addStream(conversationLocalId, streamPromise);
@@ -145,7 +149,16 @@ export default function ChatController({ children }: { children?: React.ReactNod
           queryClient.invalidateQueries({ queryKey: queryKeys.conversation.byId(conversationLocalId) });
         });
     },
-    [selectedModels, queryClient, pushResponse, addStream, markStreamComplete, removeStream, params.chatId]
+    [
+      selectedModels,
+      queryClient,
+      pushResponse,
+      addStream,
+      markStreamComplete,
+      removeStream,
+      params.chatId,
+      userSettings,
+    ]
   );
 
   // Determine which component to render based on route
