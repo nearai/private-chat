@@ -89,6 +89,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         queryClient,
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
+        systemPrompt: userSettings.data?.settings.system_prompt,
       });
 
       addStream(conversationId, streamPromise, initialData);
@@ -114,6 +115,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       location.pathname,
       params.chatId,
       settings.notificationEnabled,
+      userSettings,
     ]
   );
 
@@ -121,9 +123,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
   // Accepts optional conversationId - if not provided, gets from route params
   const startStreamWrapper = useCallback(
     async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => {
-      if (userSettings.data?.settings.system_prompt) {
-        contentItems.push({ type: "input_text", text: userSettings.data?.settings.system_prompt });
-      }
       const finalConversationId = conversationId || params.chatId;
       if (!finalConversationId) {
         console.error("Conversation ID not available");
@@ -131,7 +130,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       }
       return startStream(contentItems, webSearchEnabled, finalConversationId);
     },
-    [startStream, params.chatId, userSettings]
+    [startStream, params.chatId]
   );
 
   // Determine which component to render based on route
