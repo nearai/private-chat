@@ -34,19 +34,21 @@ export default function Citations({
   return (
     <div className="-mx-0.5 flex flex-wrap items-center gap-1 py-0.5">
       {citationsArray.length < 3 ? (
-        <div className="flex flex-wrap font-medium text-xs">
+        <div className="flex flex-wrap gap-1 font-medium text-xs">
           {citationsArray.map((citation, idx) => {
             return (
               <a
                 key={idx}
                 id={`source-${idx}-${idx + 1}`}
-                className="no-toggle flex max-w-96 rounded-xl bg-white p-1 outline-hidden dark:bg-gray-900 dark:text-gray-300"
+                className="no-toggle flex max-w-96 rounded-xl bg-white p-1 outline-hidden dark:bg-gray-800 dark:text-gray-300"
                 href={citation.url}
                 target="_blank"
               >
-                <div className="size-4 rounded-full bg-gray-50 dark:bg-gray-800">{idx + 1}</div>
+                <div className="flex size-4 items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800">
+                  {idx + 1}
+                </div>
 
-                <div className="mx-1 flex-1 truncate text-black/60 transition hover:text-black">
+                <div className="mx-1 flex-1 gap-1 truncate text-black/60 transition hover:text-black dark:text-gray-200">
                   {decodeString(citation.url)}
                 </div>
               </a>
@@ -55,13 +57,13 @@ export default function Citations({
         </div>
       ) : (
         <Collapsible title="References from" grow>
-          <div className="flex flex-wrap font-medium text-xs">
+          <div className="mt-1 flex flex-wrap gap-1 font-medium text-xs">
             {citationsArray.map((citation, idx) => {
               return (
                 <a
                   key={idx}
                   id={`source-${idx}-${idx + 1}`}
-                  className="no-toggle flex max-w-96 rounded-xl bg-white p-1 outline-hidden dark:bg-gray-900 dark:text-gray-300"
+                  className="no-toggle flex max-w-96 rounded-xl bg-white p-1 outline-hidden dark:bg-gray-800 dark:text-gray-200"
                   href={citation.url}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -72,7 +74,7 @@ export default function Citations({
                     {idx + 1}
                   </div>
 
-                  <div className="mx-1 flex-1 truncate text-black/60 transition hover:text-black">
+                  <div className="mx-1 flex-1 gap-1 truncate text-black/60 transition hover:text-black dark:text-gray-200">
                     {decodeString(citation.url)}
                   </div>
                 </a>
