@@ -121,7 +121,7 @@ export const TextInput = <T extends string | number = string | number>({
   return (
     <div className="mt-0.5 flex">
       <input
-        className="w-full rounded-lg border border-border bg-input px-4 py-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:border-border dark:bg-input dark:placeholder:opacity-60"
+        className="w-full rounded-lg border border-border bg-input px-4 py-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
         type={type}
         placeholder={placeholder}
         value={value}
