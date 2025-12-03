@@ -16,6 +16,7 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import { DEPRECATED_API_BASE_URL, CHAT_API_BASE_URL } from "./constants";
 import { queryKeys } from "./query-keys";
+import { eventEmitter } from "@/lib/event";
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -90,6 +91,10 @@ export class ApiClient {
 
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 401) {
+          eventEmitter.emit('logout');
+        }
+
         throw error;
       }
 
