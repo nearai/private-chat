@@ -121,7 +121,7 @@ export const TextInput = <T extends string | number = string | number>({
   return (
     <div className="mt-0.5 flex">
       <input
-        className="w-full rounded-lg px-4 py-2 text-sm outline-none"
+        className="w-full rounded-lg border border-border bg-input px-4 py-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
         type={type}
         placeholder={placeholder}
         value={value}
@@ -157,7 +157,7 @@ export const ToggleSwitch = ({
             onChange={(e) => onChange(e.target.checked)}
             className="peer sr-only"
           />
-          <div className="peer h-5 w-9 rounded-full bg-secondary/30 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
+          <div className="peer h-5 w-9 rounded-full bg-secondary/30 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-primary-foreground peer-focus:outline-none dark:after:bg-card dark:peer-checked:after:bg-primary-foreground" />
         </label>
       </div>
     </div>
