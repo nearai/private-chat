@@ -302,7 +302,7 @@ const GeneralSettings = () => {
             <textarea
               value={system}
               onChange={(e) => setSystem(e.target.value)}
-              className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-zinc-200 bg-white/10 p-4 font-['Inter'] font-normal text-sm placeholder:opacity-40"
+              className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-border bg-input p-4 font-['Inter'] font-normal text-sm placeholder:text-muted-foreground placeholder:opacity-40 dark:border-border dark:bg-input dark:placeholder:opacity-60"
               rows={4}
               placeholder={t("Enter system prompt here")}
             />
@@ -319,7 +319,7 @@ const GeneralSettings = () => {
               <textarea
                 value={system}
                 onChange={(e) => setSystem(e.target.value)}
-                className="w-full resize-none rounded-md border border-border bg-secondary/30 p-2 text-sm outline-none"
+                className="w-full resize-none rounded-md border border-border bg-input p-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:border-border dark:bg-input dark:placeholder:opacity-60"
                 rows={4}
                 placeholder={t("Enter system prompt here")}
               />
@@ -365,7 +365,7 @@ const GeneralSettings = () => {
                     >
                       <div className="mt-0.5 flex">
                         <textarea
-                          className="w-full rounded-md border border-border bg-secondary/30 p-2 text-sm outline-none"
+                          className="w-full rounded-md border border-border bg-input p-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:border-border dark:bg-input dark:placeholder:opacity-60"
                           placeholder={t('e.g. "json" or a JSON schema')}
                           value={requestFormat || ""}
                           onChange={(e) => setRequestFormat(e.target.value)}
