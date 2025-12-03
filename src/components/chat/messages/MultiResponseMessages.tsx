@@ -103,14 +103,15 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
       >
         {Object.values(groupedBatchIds).map(({ batchIds, currentIdx }) => {
           const isCurrentMessage = currentBatchBundleObj[batchIds[currentIdx]] !== undefined;
+          const isSeveralModels = Object.keys(groupedBatchIds).length > 1;
           const borderClass = isCurrentMessage
-            ? `border-gray-100 dark:border-gray-850 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-80"}`
-            : `border-gray-100 dark:border-gray-850 border-dashed ${isMobile ? "min-w-full" : "min-w-80"}`;
+            ? `border border-gray-300 dark:border-gray-700 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-80"}`
+            : `border border-gray-300 dark:border-gray-700 border-dashed ${isMobile ? "min-w-full" : "min-w-80"}`;
 
           return (
             <div
               key={batchIds[currentIdx]}
-              className={`m-1 w-full max-w-full snap-center border ${borderClass} cursor-pointer rounded-2xl p-5 transition-all`}
+              className={`m-1 w-full max-w-full snap-center ${isSeveralModels && borderClass} cursor-pointer rounded-2xl p-5 transition-all`}
               onClick={() => console.log(batchIds[currentIdx])}
             >
               {history.messages[batchIds[currentIdx]] && (
