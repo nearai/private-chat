@@ -4,6 +4,7 @@ import { useLocation, useParams } from "react-router";
 
 import { chatClient } from "@/api/chat/client";
 import { DEFAULT_MODEL } from "@/api/constants";
+import { useUserSettings } from "@/api/users/queries/useUserSettings";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -20,6 +21,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { selectedModels } = useChatStore();
   const { settings } = useSettingsStore();
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
+  const userSettings = useUserSettings();
 
   const initializeCache = useCallback(
     (conversationId: string, contentItems: ContentItem[]) => {
@@ -87,6 +89,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         queryClient,
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
+        systemPrompt: userSettings.data?.settings.system_prompt,
       });
 
       addStream(conversationId, streamPromise, initialData);
@@ -112,6 +115,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       location.pathname,
       params.chatId,
       settings.notificationEnabled,
+      userSettings,
     ]
   );
 
@@ -119,7 +123,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
   // Accepts optional conversationId - if not provided, gets from route params
   const startStreamWrapper = useCallback(
     async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => {
-      // Use provided conversationId or get from route params
       const finalConversationId = conversationId || params.chatId;
       if (!finalConversationId) {
         console.error("Conversation ID not available");
