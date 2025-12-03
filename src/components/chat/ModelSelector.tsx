@@ -136,7 +136,8 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  const disabledAdd = selectedModels.length >= models.length;
+  // const disabledAdd = selectedModels.length >= models.length;
+  const disabledAdd = true; // temporarily disable adding more models
 
   return (
     <div className="flex w-full flex-col items-start">

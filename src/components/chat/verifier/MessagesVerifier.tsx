@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import type {
+  ConversationInfo,
   ConversationModelOutput,
   ConversationReasoning,
   ConversationUserInput,
@@ -11,8 +12,10 @@ import type {
 } from "@/types";
 
 import MessageVerifier from "./MessageVerifier";
+import { useStreamStore } from "@/stores/useStreamStore";
 
 interface MessagesVerifierProps {
+  conversation?: ConversationInfo;
   history: {
     messages: Record<
       string,
@@ -30,9 +33,10 @@ interface MessagesVerifierProps {
   };
 }
 
-const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
+const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures } = useMessagesSignaturesStore();
+  const { isStreamActive } = useStreamStore();
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
@@ -62,12 +66,18 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
       <div className="pointer-events-none absolute bottom-0 left-0 z-10 h-4 w-full bg-linear-to-t from-input via-50% via-input to-transparent" />
 
       <div className="scrollbar-none flex flex-1 flex-col gap-y-2 overflow-y-auto px-1 py-4">
-        {[...chatCompletions].reverse().map((message, index, array) => {
+        {[...chatCompletions].map((message, index, array) => {
           const reversedIndex = array.length - 1 - index;
           const isCompleted = message.content.every((item) => item.status === "completed");
           if (!isCompleted) return null;
+
+          if (conversation && isStreamActive(conversation.id)) {
+            return null;
+          }
+
           return (
             <MessageVerifier
+              conversation={conversation}
               message={message}
               key={`message-verification-${message.chatCompletionId}-${index}`}
               index={reversedIndex}

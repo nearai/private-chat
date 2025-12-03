@@ -1,17 +1,17 @@
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { useViewStore } from "@/stores/useViewStore";
 import { Button } from "../ui/button";
-import ChatOptions from "./ChatOptions";
+// import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
 
 export default function Navbar() {
   const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
 
   const navigate = useNavigate();
-  const { chatId } = useParams();
+  // const { chatId } = useParams();
 
   const handleNewChat = async () => {
     try {
@@ -63,7 +63,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex h-fit items-center gap-2">
-            {chatId && <ChatOptions chatId={chatId} />}
+            {/* {chatId && <ChatOptions chatId={chatId} />} */}
             {!isRightSidebarOpen && (
               <Button
                 variant="ghost"

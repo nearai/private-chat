@@ -29,8 +29,10 @@ function TabbedContent<T extends ReadonlyArray<TabLike>>({ tabs, defaultTab, cla
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex min-w-fit items-center gap-2 rounded-[0.75rem] p-[8px] outline-none ring-none transition-colors hover:text-foreground",
-              activeTab === tab.id ? "bg-[#E3EBED] font-medium text-foreground" : "text-muted-foreground"
+              "flex min-w-fit items-center gap-2 rounded-[0.75rem] p-2 outline-none ring-none transition-colors hover:text-foreground",
+              activeTab === tab.id
+                ? "bg-[#E3EBED] font-medium text-foreground dark:bg-[#1E293B] dark:text-white"
+                : "text-muted-foreground"
             )}
           >
             <tab.icon className="h-4 w-4" />

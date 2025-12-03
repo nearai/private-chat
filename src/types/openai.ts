@@ -39,7 +39,14 @@ export const extractMessageContent = (
   return content.map((item) => (item.type === type ? item.text || "" : "")).join("");
 };
 
-export const extractCitations = (content: ContentItem[]) => {
+export const extractCitations = (
+  content: ContentItem[]
+): Array<
+  | ResponseOutputText.FileCitation
+  | ResponseOutputText.URLCitation
+  | ResponseOutputText.ContainerFileCitation
+  | ResponseOutputText.FilePath
+> => {
   return content
     .filter((item) => item.type === "output_text" && item.annotations)
     .flatMap((item) => item.annotations || []);

@@ -98,6 +98,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
       try {
         const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         const maxFileSize = 10 * 1024 * 1024;
+        if (file.type === "application/pdf") {
+          toast.error("PDF files are not supported yet.");
+          return;
+        }
 
         if (file.size > maxFileSize) {
           toast.error(`File size should not exceed 10 MB.`);
@@ -249,6 +253,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       stopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
+      // setImageGenerationEnabled(false);
     }
 
     if (isCtrlPressed && e.key === "Enter" && e.shiftKey) {

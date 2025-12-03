@@ -1,5 +1,6 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { marked } from "marked";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileDialog from "@/components/common/dialogs/FileDialog";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,10 @@ import { cn } from "@/lib";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationUserInput } from "@/types";
 import { extractFiles, extractMessageContent } from "@/types/openai";
+import MarkdownTokens from "./MarkdownTokens";
+import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
+import markedExtension from "@/lib/utils/extension";
+import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 
 interface UserMessageProps {
   message: ConversationUserInput;
@@ -16,7 +21,7 @@ interface UserMessageProps {
   deleteMessage: (messageId: string) => void;
 }
 
-const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessage, deleteMessage }) => {
+const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteMessage }) => {
   const { settings } = useSettingsStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -33,10 +38,10 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
     }
   }, [edit]);
 
-  const handleEdit = () => {
-    setEdit(true);
-    setEditedContent(messageContent || "");
-  };
+  // const handleEdit = () => {
+  //   setEdit(true);
+  //   setEditedContent(messageContent || "");
+  // };
   const handleSave = () => {
     if (editedContent.trim() !== messageContent) {
       editMessage(message.id, editedContent.trim());
@@ -77,6 +82,16 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
       toast.error("Failed to copy to clipboard");
     }
   };
+
+  const tokens = useMemo(() => {
+    if (!message?.content) return [];
+
+    marked.use(markedKatexExtension());
+    marked.use(markedExtension());
+    const processedContent = replaceTokens(processResponseContent(messageContent), [], undefined, undefined);
+
+    return marked.lexer(processedContent);
+  }, [messageContent, message]);
 
   if (!message) return null;
 
@@ -131,12 +146,16 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
                 <div className="w-full">
                   <div className="flex w-full justify-end pb-1">
                     <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">
-                      {messageContent && <div className="whitespace-pre-wrap">{messageContent}</div>}
+                      {messageContent && (
+                        <div className="markdown-content">
+                          <MarkdownTokens tokens={tokens} id={`message-${message.id}`} />
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex justify-end text-muted-foreground">
-                    {!readOnly && (
+                    {/* {!readOnly && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -159,7 +178,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, readOnly, editMessag
                           />
                         </svg>
                       </Button>
-                    )}
+                    )} */}
 
                     <Button
                       variant="ghost"

@@ -2,6 +2,7 @@ import type React from "react";
 import { Outlet } from "react-router";
 import ChatVerifier from "@/components/chat/verifier/ChatVerifier";
 import LeftSidebar from "@/components/sidebar";
+import ImportGuideBanner from "@/components/common/ImportGuideBanner";
 
 const Layout: React.FC = () => {
   return (
@@ -11,6 +12,7 @@ const Layout: React.FC = () => {
         <Outlet />
       </div>
       <ChatVerifier />
+      <ImportGuideBanner />
     </div>
   );
 };

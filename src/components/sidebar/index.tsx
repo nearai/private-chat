@@ -43,10 +43,17 @@ const LeftSidebar: React.FC = () => {
   }, [conversations]);
 
   const chatsGrouped = useMemo(() => {
+    const list = unpinned.sort((a, b) => {
+      const aTime = a.metadata?.initial_created_at ? Number(a.metadata.initial_created_at) : a.created_at;
+      const bTime = b.metadata?.initial_created_at ? Number(b.metadata.initial_created_at) : b.created_at;
+      return bTime - aTime;
+    });
     return Object.entries(
-      unpinned.reduce(
+      list.reduce(
         (acc, chat) => {
-          const timeRange = getTimeRange(chat.created_at);
+          const timeRange = getTimeRange(
+            chat.metadata?.initial_created_at ? Number(chat.metadata.initial_created_at) : chat.created_at
+          );
           acc[timeRange] = [...(acc[timeRange] || []), chat];
           return acc;
         },

@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 export type Conversation = {
   title: string;
+  timestamp: number;
   items: Item[];
 };
 
@@ -69,7 +70,7 @@ const chatHistoryMessageSchema = v.object({
   role: chatHistoryRoleSchema,
   content: v.string(),
   files: v.optional(
-    v.array(v.union([chatHistoryFileSchema, chatHistoryImageSchema])),
+    v.array(v.union([chatHistoryFileSchema, chatHistoryImageSchema]))
   ),
   model: v.optional(v.string()),
   models: v.optional(v.array(v.string())),
@@ -78,6 +79,7 @@ const chatHistoryMessageSchema = v.object({
 const chatHistorySchema = v.object({
   chat: v.object({
     title: v.string(),
+    timestamp: v.number(),
     history: v.object({
       messages: v.record(v.string(), chatHistoryMessageSchema),
     }),
@@ -86,8 +88,22 @@ const chatHistorySchema = v.object({
 
 type ChatHistory = v.InferOutput<typeof chatHistorySchema>;
 
+function convertModelId(model: string): string {
+  switch (model) {
+    case "gpt-oss-120b":
+    case "nearai/gpt-oss-120b":
+      return "openai/gpt-oss-120b";
+    case "deepseek-v3.1":
+      return "deepseek-ai/DeepSeek-V3.1";
+    case "qwen3-30b-a3b-instruct-2507":
+      return "Qwen/Qwen3-30B-A3B-Instruct-2507";
+    default:
+      return model;
+  }
+}
+
 export function historiesToConversations(
-  unknownHistories: unknown,
+  unknownHistories: unknown
 ): Conversation[] {
   const schema = v.array(chatHistorySchema);
 
@@ -107,13 +123,14 @@ export function historiesToConversations(
 
 function historyToConversation(history: ChatHistory): Conversation {
   const title = history.chat.title;
+  const timestamp = Math.floor(history.chat.timestamp / 1000);
 
   const itemsList: Item[][] = Object.values(history.chat.history.messages).map<
     Item[]
   >((message) => {
     const totalItems: Item[] = [];
 
-    const model = message.models?.[0] ?? message.model;
+    const model = convertModelId(message.models?.[0] ?? message.model ?? "");
 
     const textItem: Item = {
       type: "message",
@@ -167,6 +184,7 @@ function historyToConversation(history: ChatHistory): Conversation {
 
   return {
     title,
+    timestamp,
     items: itemsList.reduce<Item[]>((pre, cur) => pre.concat(cur), []),
   };
 }

@@ -4,11 +4,14 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router";
 import { toast } from "sonner";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import RegenerateIcon from "@/assets/icons/regenerate-icon.svg?react";
 import NearAIIcon from "@/assets/images/near-icon.svg?react";
 import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
+import { CompactTooltip } from "@/components/ui/tooltip";
 import { type CombinedResponse, cn, MessageStatus } from "@/lib";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -43,6 +46,7 @@ interface ResponseMessageProps {
   ) => Promise<void>;
   showPreviousMessage: () => void;
   showNextMessage: () => void;
+  saveMessage: (messageId: string, content: string) => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -53,33 +57,44 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   readOnly,
   regenerateResponse,
   siblings,
+  saveMessage,
 }) => {
   const { setLastResponseId } = useConversationStore();
   const { webSearchEnabled } = useChatStore();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { settings } = useSettingsStore();
-  const { messagesSignatures } = useMessagesSignaturesStore();
+  const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
   const { setIsRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails } = useViewStore();
   const { chatId } = useParams<{ chatId: string }>();
   const { models } = useChatStore();
+  const { data: conversationData } = useGetConversation(chatId);
 
+  // const [edit, setEdit] = useState(false);
+  // const [editedContent, setEditedContent] = useState("");
   const batch = history.messages[batchId];
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
+
+  const messageId = batch.responseId;
+  const signature = messagesSignatures[messageId];
+  const signatureError = messagesSignaturesErrors[messageId];
+  const isMessageCompleted = batch.status === MessageStatus.OUTPUT;
 
   const handleVerificationBadgeClick = () => {
     setShouldScrollToSignatureDetails(true);
-    setSelectedMessageIdForVerifier(batch.responseId);
+    setSelectedMessageIdForVerifier(messageId);
     setIsRightSidebarOpen(true);
   };
-
-  const signature = messagesSignatures[batch.responseId];
-  const isMessageCompleted = batch.status === MessageStatus.OUTPUT;
   const verificationStatus = useMemo(() => {
-    if (!isMessageCompleted || !batch.responseId) {
+    if (!isMessageCompleted) {
       return null;
     }
 
-    const hasSignature = signature?.signature && signature.signing_address && signature.text;
+    const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
+
     if (!hasSignature) {
+      if (signatureError && conversationImportedAt) {
+        return "imported";
+      }
       return "verifying";
     }
 
@@ -89,7 +104,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, isMessageCompleted, batch.responseId]);
+  }, [signature, signatureError, isMessageCompleted, conversationImportedAt]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
@@ -110,7 +125,20 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const messageContent = useMemo(() => {
     return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
-  }, [outputMessages, batch]);
+  }, [outputMessages]);
+
+  // const handleSave = () => {
+  //   if (editedContent.trim() !== messageContent) {
+  //     saveMessage(messageId, editedContent.trim());
+  //   }
+  //   setEdit(false);
+  //   setEditedContent("");
+  // };
+
+  // const handleCancel = () => {
+  //   setEdit(false);
+  //   setEditedContent("");
+  // };
 
   const citations = useMemo(() => outputMessages.flatMap(({ content }) => extractCitations(content)), [outputMessages]);
 
@@ -203,6 +231,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
                 <span className="font-medium text-muted-foreground text-xs">{t("Verifying")}</span>
               </div>
+            ) : verificationStatus === "imported" ? (
+              <CompactTooltip content={t(IMPORTED_MESSAGE_SIGNATURE_TIP)} align="start">
+                <div className="flex items-center gap-1 rounded border border-blue-500 bg-blue-50 px-1.5 py-0.5">
+                  <span className="font-medium text-blue-500 text-xs">{t("Imported")}</span>
+                </div>
+              </CompactTooltip>
             ) : verificationStatus === "verified" ? (
               <button
                 onClick={handleVerificationBadgeClick}

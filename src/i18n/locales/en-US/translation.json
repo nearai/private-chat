@@ -1230,6 +1230,7 @@
   "Verifying attestation...": "",
   "Verifying confidentiality...": "",
   "Verifying": "",
+  "Imported": "",
   "Upload": "",
   "Upload a GGUF model": "",
   "Upload directory": "",
@@ -1282,7 +1283,7 @@
   "Web": "",
   "Web API": "",
   "Web Loader Engine": "",
-  "Web Search": "",
+  "Web Search": "Web Search",
   "Web Search Description": "Enable internet search capabilities inside the chat.",
   "Web Search Engine": "",
   "Web Search in Chat": "",
@@ -1327,5 +1328,6 @@
   "Your entire contribution will go directly to the plugin developer; Open WebUI does not take any percentage. However, the chosen funding platform might have its own fees.": "",
   "Youtube": "",
   "Youtube Language": "",
-  "Youtube Proxy URL": ""
+  "Youtube Proxy URL": "",
+  "Verification is not available for imported chats": ""
 }

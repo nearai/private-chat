@@ -37,7 +37,13 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
 
   const confirmRename = () => {
     updateConversation.mutate(
-      { conversationId: chat.id, metadata: { title: renameInput } },
+      {
+        conversationId: chat.id,
+        metadata: {
+          ...chat.metadata,
+          title: renameInput,
+        }
+      },
       {
         onSuccess: () => {
           reloadConversations({

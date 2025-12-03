@@ -26,8 +26,10 @@ export interface ConversationInfo {
   created_at: number;
   metadata: {
     title: string;
-    pinned_at?: number;
-    archived_at?: number;
+    pinned_at?: string;
+    archived_at?: string;
+    imported_at?: string;
+    initial_created_at?: string;
   };
 }
 
@@ -425,6 +427,8 @@ export interface Settings {
 export interface UserSettingsPayload {
   notification: boolean;
   system_prompt: string;
+  web_search: boolean;
+  appearance: "Dark" | "Light" | "System";
 }
 
 export interface UserSettingsResponse {

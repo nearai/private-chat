@@ -26,13 +26,17 @@ const AuthPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
+  const token = searchParams.get("token");
+  const sessionId = searchParams.get("session_id");
+  const isNewUser = searchParams.get("is_new_user") === "true";
+
   const [agreedTerms, setAgreedTerms] = useState(
     localStorage.getItem(LOCAL_STORAGE_KEYS.AGREED_TERMS) === TERMS_VERSION
   );
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
-      toast.error("You must agree to the Terms of Service, Privacy Policy, and Cookie Policy to proceed.");
+      toast.error("You must agree to the Terms of Service, Privacy Policy and Cookie Policy to proceed.");
       return false;
     }
     return true;
@@ -43,26 +47,39 @@ const AuthPage: React.FC = () => {
     authClient.oauth2SignIn(provider);
   };
 
-  useEffect(() => {
-    const token = searchParams.get("token");
-    const isNewUser = searchParams.get("is_new_user") === "true";
-    if (token) {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
-      queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
 
-      usersClient.getUserData().then((u) => {
-        if (!u) return;
-        const provider = u.linked_accounts[0]?.provider || "unknown";
-        if (isNewUser) {
-          posthogOauthSignup(u.user.id, provider);
-        } else {
-          posthogOauthLogin(u.user.id, provider);
+  useEffect(() => {
+    if (!token) return;
+
+    const run = async () => {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
+        if (sessionId) {
+          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
         }
-      });
-      navigate(APP_ROUTES.HOME, { replace: true });
-    }
-  }, [searchParams, navigate, queryClient]);
+
+        queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+        const u = await usersClient.getUserData();
+        if (u) {
+          const provider = u.linked_accounts?.[0]?.provider ?? "unknown";
+          if (isNewUser) {
+            posthogOauthSignup(u.user.id, provider);
+          } else {
+            posthogOauthLogin(u.user.id, provider);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to complete login.");
+      } finally {
+        navigate(APP_ROUTES.HOME, { replace: true });
+      }
+    };
+
+    run();
+  }, [token, sessionId, isNewUser, queryClient, navigate]);
 
   if (!config) {
     return (
@@ -136,18 +153,32 @@ const AuthPage: React.FC = () => {
                 </div>
                 <div className="ml-2 inline-block flex-1 text-left">
                   {"By signing in, I agree to the "}
-                  <a className="underline hover:text-blue-600" href="/terms">
+                  <a
+                    className="underline hover:text-blue-600"
+                    href="https://near.ai/terms-of-service/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Terms of Service
                   </a>
                   {" , "}
-                  <a className="underline hover:text-blue-600" href="/privacy">
+                  <a
+                    className="underline hover:text-blue-600"
+                    href="https://near.ai/privacy-policy/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Privacy Policy
                   </a>
                   {" and "}
-                  <a className="underline hover:text-blue-600" href="/privacy-cookie">
-                    Cookie Policy
+                  <a
+                    className="underline hover:text-blue-600"
+                    href="https://near.ai/cookie-policy/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Cookie Policy.
                   </a>
-                  .
                 </div>
               </label>
             </div>
