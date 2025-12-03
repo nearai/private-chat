@@ -44,9 +44,6 @@ interface ResponseMessageProps {
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
-  showPreviousMessage: () => void;
-  showNextMessage: () => void;
-  saveMessage: (messageId: string, content: string) => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -57,7 +54,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   readOnly,
   regenerateResponse,
   siblings,
-  saveMessage,
 }) => {
   const { setLastResponseId } = useConversationStore();
   const { webSearchEnabled } = useChatStore();

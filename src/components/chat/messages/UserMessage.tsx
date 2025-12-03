@@ -1,35 +1,85 @@
-import type React from "react";
 import { marked } from "marked";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router";
 import { toast } from "sonner";
 import FileDialog from "@/components/common/dialogs/FileDialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib";
-import { useSettingsStore } from "@/stores/useSettingsStore";
-import type { ConversationUserInput } from "@/types";
-import { extractFiles, extractMessageContent } from "@/types/openai";
-import MarkdownTokens from "./MarkdownTokens";
-import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
+import { type CombinedResponse, cn } from "@/lib";
 import markedExtension from "@/lib/utils/extension";
+import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
+import { useChatStore } from "@/stores/useChatStore";
+import { useConversationStore } from "@/stores/useConversationStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import type { ConversationItem, ConversationUserInput } from "@/types";
+import { type ContentItem, extractFiles, extractMessageContent } from "@/types/openai";
+import MarkdownTokens from "./MarkdownTokens";
 
 interface UserMessageProps {
-  message: ConversationUserInput;
-  isFirstMessage: boolean;
-  readOnly: boolean;
-  editMessage: (messageId: string, content: string) => void;
-  deleteMessage: (messageId: string) => void;
+  history: { messages: Record<string, CombinedResponse> };
+  allMessages: Record<string, ConversationItem>;
+  batchId: string;
+  regenerateResponse: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
+  siblings?: string[];
 }
 
-const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteMessage }) => {
-  const { settings } = useSettingsStore();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+const UserMessage: React.FC<UserMessageProps> = ({
+  history,
+  allMessages,
+  batchId,
 
+  regenerateResponse,
+  siblings,
+}) => {
+  const { settings } = useSettingsStore();
+  const { setLastResponseId } = useConversationStore();
+  const batch = history.messages[batchId];
+  const message = batch.userPromptId ? (allMessages[batch.userPromptId] as ConversationUserInput) : null;
   const [edit, setEdit] = useState(false);
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
-  const messageContent = extractMessageContent(message.content);
-  const messageFiles = extractFiles(message.content);
+  const { webSearchEnabled } = useChatStore();
+  const { chatId } = useParams();
+  // TODO: We should filter user system prompt from the content here
+  const messageContent = extractMessageContent(message?.content ?? []);
+  const messageFiles = extractFiles(message?.content ?? []);
+
+  // Find the current index in siblings by comparing input content
+  const currentSiblingIndex = useMemo(() => {
+    if (!siblings || siblings.length <= 1) return 0;
+
+    // Compare input content to find which sibling group we belong to
+    for (let i = 0; i < siblings.length; i++) {
+      const siblingBatch = history.messages[siblings[i]];
+      if (!siblingBatch?.userPromptId) continue;
+
+      const siblingUserMessage = allMessages[siblingBatch.userPromptId] as ConversationUserInput;
+      const siblingContent = extractMessageContent(siblingUserMessage?.content ?? []);
+
+      if (siblingContent === messageContent) {
+        return i;
+      }
+    }
+
+    return 0;
+  }, [siblings, history, allMessages, messageContent]);
+
   const [editedContent, setEditedContent] = useState(messageContent || "");
+
+  const handleSave = useCallback(async () => {
+    const userPromptMesssage = allMessages[batch.userPromptId as string] as ConversationUserInput;
+    const filteredFiles = userPromptMesssage.content.filter((item) => item.type !== "input_file");
+    const contentItems: ContentItem[] = [...filteredFiles, { type: "input_text", text: editedContent.trim() }];
+
+    await regenerateResponse(contentItems, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
+    setEdit(false);
+    setEditedContent("");
+  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, editedContent]);
 
   useEffect(() => {
     if (edit && messageEditTextAreaRef.current) {
@@ -38,16 +88,9 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteM
     }
   }, [edit]);
 
-  // const handleEdit = () => {
-  //   setEdit(true);
-  //   setEditedContent(messageContent || "");
-  // };
-  const handleSave = () => {
-    if (editedContent.trim() !== messageContent) {
-      editMessage(message.id, editedContent.trim());
-    }
-    setEdit(false);
-    setEditedContent("");
+  const handleEdit = () => {
+    setEdit(true);
+    setEditedContent(messageContent || "");
   };
 
   const handleCancel = () => {
@@ -69,10 +112,10 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteM
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  const handleDelete = () => {
-    deleteMessage(message.id);
-    setShowDeleteConfirm(false);
-  };
+  // const handleDelete = () => {
+  //   deleteMessage(message.id);
+  //   setShowDeleteConfirm(false);
+  // };
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -155,7 +198,63 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteM
                   </div>
 
                   <div className="flex justify-end text-muted-foreground">
-                    {/* {!readOnly && (
+                    {siblings && siblings.length > 1 && (
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground"
+                          onClick={() => {
+                            if (currentSiblingIndex > 0) {
+                              setLastResponseId(siblings[currentSiblingIndex - 1]);
+                            }
+                          }}
+                          disabled={currentSiblingIndex === 0}
+                          title="Previous variant"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            className="size-3.5"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                          </svg>
+                        </Button>
+
+                        <div className="min-w-fit self-center font-semibold text-sm tracking-widest">
+                          {currentSiblingIndex + 1}/{siblings.length}
+                        </div>
+
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground"
+                          onClick={() => {
+                            if (currentSiblingIndex < siblings.length - 1) {
+                              setLastResponseId(siblings[currentSiblingIndex + 1]);
+                            }
+                          }}
+                          disabled={currentSiblingIndex === siblings.length - 1}
+                          title="Next variant"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            className="size-3.5"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </Button>
+                      </>
+                    )}
+
+                    {batch.parentResponseId && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -178,7 +277,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteM
                           />
                         </svg>
                       </Button>
-                    )} */}
+                    )}
 
                     <Button
                       variant="ghost"
@@ -233,7 +332,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteM
         </div>
       </div>
 
-      {showDeleteConfirm && (
+      {/* {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="mx-4 w-full max-w-md rounded-lg bg-card p-6">
             <h3 className="mb-4 font-medium text-foreground text-lg">Delete Message</h3>
@@ -254,7 +353,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ message, editMessage, deleteM
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

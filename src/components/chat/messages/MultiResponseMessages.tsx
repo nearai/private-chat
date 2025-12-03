@@ -37,8 +37,7 @@ interface MultiResponseMessagesProps {
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
-  showPreviousMessage: () => void;
-  showNextMessage: () => void;
+  responseSiblings?: string[];
 }
 
 const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
@@ -49,6 +48,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   isLastMessage,
   readOnly,
   regenerateResponse,
+  responseSiblings,
 }) => {
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
@@ -60,9 +60,13 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
     },
     {} as Record<string, CombinedResponse>
   );
+
+  // Use responseSiblings if provided, otherwise fall back to parent's nextResponseIds
+  const siblingsToGroup = responseSiblings || parent?.nextResponseIds || [];
+
   const groupedBatchIds = useMemo(
     () =>
-      parent?.nextResponseIds.reduce(
+      siblingsToGroup.reduce(
         (acc, id) => {
           const batch = history.messages[id];
           if (!batch) return acc;
@@ -84,57 +88,10 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         },
         {} as Record<string, { batchIds: string[]; currentIdx: number }>
       ) ?? {},
-    [parent, history.messages, allMessages, currentBatchBundleObj]
+    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj]
   );
 
-  // const groupedMessageIdsIdx =
-  //   parent?.models.reduce(
-  //     (acc: GroupedMessagesIdx, _model: string, modelIdx: number) => {
-  //       const idx = groupedMessageIds?.[modelIdx]?.messageIds.findIndex(
-  //         (id: string) => id === messageId
-  //       );
-  //       if (idx !== -1) {
-  //         return {
-  //           ...acc,
-  //           [modelIdx]: idx,
-  //         };
-  //       } else {
-  //         return {
-  //           ...acc,
-  //           [modelIdx]: groupedMessageIds?.[modelIdx]?.messageIds?.length - 1,
-  //         };
-  //       }
-  //     },
-  //     {} as GroupedMessagesIdx
-  //   ) ?? {};
-
-  // const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
   const { isMobile } = useViewStore();
-
-  // const parentMessage = history.messages[messageId];
-  // const responses =
-  //   parentMessage?.childrenIds
-  //     ?.map((id) => history.messages[id])
-  //     .filter(Boolean) || [];
-
-  // useEffect(() => {
-  //   if (responses.length > 0 && !currentMessageId) {
-  //     setCurrentMessageId(responses[responses.length - 1].id);
-  //   }
-  // }, [responses, currentMessageId]);
-
-  // const updateMessageHistoryCurrentId = (messageId: string) => {
-  //   console.log(messageId);
-  // };
-
-  // const allMessagesDone = !Object.keys(groupedMessageIds).find(
-  //   (modelIdxStr) => {
-  //     const modelIdx = parseInt(modelIdxStr, 10);
-  //     const { messageIds } = groupedMessageIds[modelIdx];
-  //     const _messageId = messageIds?.[groupedMessageIdsIdx[modelIdx]];
-  //     return !(history.messages[_messageId]?.done ?? false);
-  //   }
-  // );
 
   if (!parent) return null;
 
@@ -146,7 +103,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
       >
         {Object.values(groupedBatchIds).map(({ batchIds, currentIdx }) => {
           const isCurrentMessage = currentBatchBundleObj[batchIds[currentIdx]] !== undefined;
-          // history.messages[messageId]?.modelIdx === modelIdx;
           const borderClass = isCurrentMessage
             ? `border-gray-100 dark:border-gray-850 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-80"}`
             : `border-gray-100 dark:border-gray-850 border-dashed ${isMobile ? "min-w-full" : "min-w-80"}`;
@@ -166,8 +122,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
                   siblings={batchIds}
                   readOnly={readOnly}
                   regenerateResponse={regenerateResponse}
-                  showPreviousMessage={() => console.log(batchIds[currentIdx])}
-                  showNextMessage={() => console.log(batchIds[currentIdx])}
                 />
               )}
             </div>

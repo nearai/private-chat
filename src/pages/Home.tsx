@@ -9,12 +9,12 @@ import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-import { cn, combineMessages, MessageStatus } from "@/lib";
+import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { ConversationUserInput } from "@/types";
+
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
@@ -58,9 +58,6 @@ const Home = ({
     [chatId, scrollToBottom, startStream]
   );
 
-  const handleEditMessage = useCallback((id: string, c: string) => console.log("Edit:", id, c), []);
-  const handleDeleteMessage = useCallback((id: string) => console.log("Delete:", id), []);
-
   // Load welcome prompt (one-time)
   useEffect(() => {
     const welcome = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
@@ -99,16 +96,15 @@ const Home = ({
 
       newModels[0] = msgModel ?? newModels[0] ?? "";
       setSelectedModels(newModels);
-      console.log("sssss", newModels);
     }
 
     modelInitializedRef.current = true;
-  }, [conversationData?.id, setSelectedModels]);
+  }, [conversationData?.id, conversationData?.data, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
     return !last || last.role !== "assistant" || last.status === "completed";
-  }, [conversationData]);
+  }, [conversationData?.data]);
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
 
@@ -121,19 +117,16 @@ const Home = ({
     return batches.map((batch, idx) => {
       const isLast = idx === currentMessages.length - 1;
       const batchMessage = history.messages[batch];
-
-      // if (batchMessage.status === MessageStatus.CREATED || !batchMessage) {
-      //   return null;
-      // }
       if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
+        const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
         return (
           <UserMessage
             key={batchMessage.userPromptId}
-            message={allMessages[batchMessage.userPromptId] as ConversationUserInput}
-            isFirstMessage={idx === 0}
-            readOnly={false}
-            editMessage={handleEditMessage}
-            deleteMessage={handleDeleteMessage}
+            history={history}
+            allMessages={allMessages}
+            batchId={batch}
+            regenerateResponse={startStream}
+            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
           />
         );
       }
@@ -145,20 +138,26 @@ const Home = ({
         return null;
       }
       const messages = [];
+
+      // Analyze siblings to determine if they're input variants or response variants
+      const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
+
       if (batchMessage.userPromptId) {
         messages.push(
           <UserMessage
             key={batchMessage.userPromptId}
-            message={allMessages[batchMessage.userPromptId] as ConversationUserInput}
-            isFirstMessage={idx === 0}
-            readOnly={false}
-            editMessage={handleEditMessage}
-            deleteMessage={handleDeleteMessage}
+            history={history}
+            allMessages={allMessages}
+            batchId={batch}
+            regenerateResponse={startStream}
+            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
           />
         );
       }
 
-      if (batchMessage.parentResponseId && history.messages[batchMessage.parentResponseId].nextResponseIds.length > 1) {
+      // Show MultiResponseMessages if there are multiple responses for the same input
+      // This can happen even when there are input siblings
+      if (responseSiblings.length > 1) {
         messages.push(
           <MultiResponseMessages
             key={batchMessage.parentResponseId}
@@ -169,8 +168,7 @@ const Home = ({
             isLastMessage={isLast}
             readOnly={false}
             regenerateResponse={startStream}
-            showPreviousMessage={() => console.log("prev")}
-            showNextMessage={() => console.log("next")}
+            responseSiblings={responseSiblings}
           />
         );
       } else {
@@ -183,15 +181,13 @@ const Home = ({
             isLastMessage={isLast}
             readOnly={false}
             regenerateResponse={startStream}
-            showPreviousMessage={() => console.log("prev")}
-            showNextMessage={() => console.log("next")}
             siblings={[]}
           />
         );
       }
       return messages;
     });
-  }, [batches, history, allMessages, currentMessages.length, handleDeleteMessage, handleEditMessage]);
+  }, [batches, history, allMessages, currentMessages.length, startStream]);
 
   return (
     <div className="flex h-full flex-col" id="chat-container">

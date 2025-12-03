@@ -6,6 +6,7 @@ import type {
   ConversationUserInput,
   ConversationWebSearchCall,
 } from "@/types";
+import { extractMessageContent } from "@/types/openai";
 
 export const MessageStatus = {
   CREATED: "created",
@@ -81,6 +82,7 @@ export const validateJSON = (json: string): boolean => {
 };
 
 export interface CombinedResponse {
+  //TODO: add conversationId
   responseId: string;
   userPromptId: string | null;
   reasoningMessagesIds: string[];
@@ -256,3 +258,81 @@ export const getLineCount = (text: string) => {
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export const analyzeSiblings = (
+  currentBatchId: string,
+  history: { messages: Record<string, CombinedResponse> },
+  allMessages: Record<string, ConversationItem>
+): {
+  inputSiblings: string[]; // One representative batch per unique input
+  responseSiblings: string[]; // All response batches with same input as current
+} => {
+  const currentBatch = history.messages[currentBatchId];
+
+  if (!currentBatch?.parentResponseId) {
+    return { inputSiblings: [], responseSiblings: [] };
+  }
+
+  const parent = history.messages[currentBatch.parentResponseId];
+  if (!parent || parent.nextResponseIds.length <= 1) {
+    return { inputSiblings: [], responseSiblings: [] };
+  }
+
+  // Get current user input content
+  const currentUserPromptId = currentBatch.userPromptId;
+  if (!currentUserPromptId) {
+    return { inputSiblings: [], responseSiblings: [] };
+  }
+
+  const currentUserMessage = allMessages[currentUserPromptId] as ConversationUserInput;
+  const currentContent = extractMessageContent(currentUserMessage?.content ?? []);
+
+  // Group siblings by their user input content
+  const inputSiblingsMap: Record<string, string[]> = {};
+
+  for (const siblingId of parent.nextResponseIds) {
+    const siblingBatch = history.messages[siblingId];
+    if (!siblingBatch?.userPromptId) continue;
+
+    const siblingUserMessage = allMessages[siblingBatch.userPromptId] as ConversationUserInput;
+    const siblingContent = extractMessageContent(siblingUserMessage?.content ?? []);
+
+    if (!inputSiblingsMap[siblingContent]) {
+      inputSiblingsMap[siblingContent] = [];
+    }
+    inputSiblingsMap[siblingContent].push(siblingId);
+  }
+
+  // Determine if siblings are input variants or response variants
+  const inputVariants = Object.keys(inputSiblingsMap);
+
+  if (inputVariants.length > 1) {
+    const seenInputs = new Set<string>();
+    const inputSiblings: string[] = [];
+
+    for (const siblingId of parent.nextResponseIds) {
+      const siblingBatch = history.messages[siblingId];
+      if (!siblingBatch?.userPromptId) continue;
+
+      const siblingUserMessage = allMessages[siblingBatch.userPromptId] as ConversationUserInput;
+      const siblingContent = extractMessageContent(siblingUserMessage?.content ?? []);
+
+      if (!seenInputs.has(siblingContent)) {
+        seenInputs.add(siblingContent);
+        inputSiblings.push(siblingId);
+      }
+    }
+
+    const responseSiblings = inputSiblingsMap[currentContent] || [];
+
+    return {
+      inputSiblings,
+      responseSiblings,
+    };
+  }
+
+  return {
+    inputSiblings: [],
+    responseSiblings: inputSiblingsMap[currentContent] || [],
+  };
+};
