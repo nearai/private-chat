@@ -2,7 +2,7 @@ import { NearConnector } from "@hot-labs/near-connect";
 import { useQueryClient } from "@tanstack/react-query";
 import { fromHotConnect, generateNonce, Near } from "near-kit";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
@@ -28,6 +28,7 @@ const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const connectorRef = useRef<NearConnector | null>(null);
 
   const token = searchParams.get("token");
   const sessionId = searchParams.get("session_id");
@@ -54,11 +55,13 @@ const AuthPage: React.FC = () => {
     if (!checkAgreeTerms()) return;
 
     try {
-      // Initialize HOT connector
-      const connector = new NearConnector({ network: "mainnet" });
+      // Initialize HOT connector (reuse same instance to avoid stacking listeners)
+      const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
+      connectorRef.current = connector;
 
-      // Set up sign-in handler
-      connector.on("wallet:signIn", async () => {
+      // Ensure only a single sign-in handler is active
+      connector.removeAllListeners("wallet:signIn");
+      connector.once("wallet:signIn", async () => {
         try {
           // Create Near instance with HOT wallet
           const near = new Near({
@@ -91,9 +94,24 @@ const AuthPage: React.FC = () => {
           localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, response.token);
           localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, response.session_id);
 
-          // Invalidate queries and redirect
+          // Invalidate queries
           queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
           queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+          // PostHog analytics tracking for NEAR login/signup
+          try {
+            const u = await usersClient.getUserData();
+            if (u) {
+              const provider: OAuth2Provider = "near";
+              if (response.is_new_user) {
+                posthogOauthSignup(u.user.id, provider);
+              } else {
+                posthogOauthLogin(u.user.id, provider);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to fetch user data for NEAR tracking:", error);
+          }
 
           navigate(APP_ROUTES.HOME, { replace: true });
         } catch (error) {
@@ -109,6 +127,12 @@ const AuthPage: React.FC = () => {
       toast.error("Failed to connect to NEAR wallet");
     }
   };
+
+  useEffect(() => {
+    return () => {
+      connectorRef.current?.removeAllListeners();
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
