@@ -106,7 +106,7 @@ const Home = ({
   const queryClient = useQueryClient();
 
   const [inputValue, setInputValue] = useState("");
-  const modelInitializedRef = useRef<Record<string, boolean>>({});
+  const modelInitializedRef = useRef<boolean>(false);
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const selectedModelsRef = useRef(selectedModels);
@@ -169,16 +169,16 @@ const Home = ({
   }, []);
 
   useEffect(() => {
-    modelInitializedRef.current = {};
+    modelInitializedRef.current = false;
   }, [conversationData?.id]);
 
   // Sync selected model with latest conversation
   useEffect(() => {
     if (!conversationData?.id) return;
-    if (modelInitializedRef.current[conversationData.id]) return;
+    if (modelInitializedRef.current) return;
     const isNewChat = searchParams.has("new");
     if (isNewChat) {
-      modelInitializedRef.current[conversationData.id] = true;
+      modelInitializedRef.current = true;
       return;
     }
     
@@ -195,7 +195,7 @@ const Home = ({
     
     newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
-    modelInitializedRef.current[conversationData.id] = true;
+    modelInitializedRef.current  = true;
   }, [conversationData?.id, searchParams, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
