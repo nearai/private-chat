@@ -33,7 +33,7 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react@19.2.0)
       '@hot-labs/near-connect':
-        specifier: ^0.6.0
+        specifier: ^0.6.11
         version: 0.6.11(@walletconnect/sign-client@2.23.0(typescript@5.8.3)(zod@4.1.12))
       '@noble/hashes':
         specifier: ^1.8.0
