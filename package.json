@@ -68,7 +68,9 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "valibot": "^1.1.0",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "near-kit": "^0.5.5",
+    "@hot-labs/near-connect": "^0.6.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",

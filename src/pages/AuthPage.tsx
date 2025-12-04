@@ -1,4 +1,6 @@
+import { NearConnector } from "@hot-labs/near-connect";
 import { useQueryClient } from "@tanstack/react-query";
+import { fromHotConnect, generateNonce, Near } from "near-kit";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -11,6 +13,7 @@ import CheckIcon from "@/assets/icons/check-icon.svg?react";
 import GitHubIcon from "@/assets/icons/github-icon.svg?react";
 import GoogleIcon from "@/assets/icons/google-icon.svg?react";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
+import NearIcon from "@/assets/icons/near-icon-green.svg?react";
 import { Button } from "@/components/ui/button";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
@@ -47,6 +50,65 @@ const AuthPage: React.FC = () => {
     authClient.oauth2SignIn(provider);
   };
 
+  const handleNearLogin = async () => {
+    if (!checkAgreeTerms()) return;
+
+    try {
+      // Initialize HOT connector
+      const connector = new NearConnector({ network: "mainnet" });
+
+      // Set up sign-in handler
+      connector.on("wallet:signIn", async () => {
+        try {
+          // Create Near instance with HOT wallet
+          const near = new Near({
+            network: "mainnet",
+            wallet: fromHotConnect(connector),
+          });
+
+          // Generate nonce and sign message
+          const nonce = generateNonce();
+          const recipient = window.location.host;
+          const message = `Sign in to ${config?.name || "NEAR AI"}`;
+
+          const signedMessage = await near.signMessage({
+            message,
+            recipient,
+            nonce,
+          });
+
+          // Send to backend
+          const response = await authClient.sendNearAuth({
+            accountId: signedMessage.accountId,
+            publicKey: signedMessage.publicKey,
+            signature: signedMessage.signature,
+            message,
+            nonce,
+            recipient,
+          });
+
+          // Store the token and session
+          localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, response.token);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, response.session_id);
+
+          // Invalidate queries and redirect
+          queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+          queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+          navigate(APP_ROUTES.HOME, { replace: true });
+        } catch (error) {
+          console.error("NEAR sign message failed:", error);
+          toast.error("Failed to sign in with NEAR wallet");
+        }
+      });
+
+      // Trigger wallet connection
+      connector.connect();
+    } catch (error) {
+      console.error("NEAR login failed:", error);
+      toast.error("Failed to connect to NEAR wallet");
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -128,6 +190,10 @@ const AuthPage: React.FC = () => {
                 <Button onClick={() => handleOAuthLogin("github")} className="rounded-full" variant="secondary">
                   <GitHubIcon className="mr-3 h-6 w-6" />
                   <span>Continue with GitHub</span>
+                </Button>
+                <Button onClick={handleNearLogin} className="rounded-full" variant="secondary">
+                  <NearIcon className="mr-3 h-6 w-6" />
+                  <span>Continue with NEAR</span>
                 </Button>
               </div>
 
