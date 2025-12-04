@@ -118,7 +118,7 @@ export default function NewChat({
       queryKey: queryKeys.conversation.all,
     });
 
-    await navigate(`/c/${newConversation.id}?new=1`);
+    await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
   };
