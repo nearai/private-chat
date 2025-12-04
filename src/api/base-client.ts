@@ -191,6 +191,14 @@ export class ApiClient {
         throw new Error("ReadableStream not supported in this browser.");
       }
 
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 401) {
+          eventEmitter.emit('logout');
+        }
+        throw error;
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       const parser = createParser({
