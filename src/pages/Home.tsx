@@ -168,6 +168,10 @@ const Home = ({
     }
   }, []);
 
+  useEffect(() => {
+    modelInitializedRef.current = {};
+  }, [conversationData?.id]);
+
   // Sync selected model with latest conversation
   useEffect(() => {
     if (!conversationData?.id) return;
