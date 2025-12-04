@@ -84,7 +84,7 @@ export default function NewChat({
         },
         {
           onSuccess: async (data) => {
-            await navigate(`/c/${data.id}?new=1`);
+            await navigate(`/c/${data.id}?new`);
           },
         }
       ),

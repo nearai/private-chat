@@ -172,7 +172,7 @@ const Home = ({
   useEffect(() => {
     if (!conversationData?.id) return;
     if (modelInitializedRef.current[conversationData.id]) return;
-    const isNewChat = searchParams.get("new") === "1";
+    const isNewChat = searchParams.has("new");
     if (isNewChat) {
       modelInitializedRef.current[conversationData.id] = true;
       return;
