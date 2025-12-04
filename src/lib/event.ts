@@ -1,7 +1,7 @@
 import mitt from 'mitt';
 
 export type Events = {
-  logout: any;
+  logout: undefined;
 };
 
 const eventEmitter = mitt<Events>();

@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useCallback, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
@@ -37,19 +37,18 @@ function App() {
     posthogPageView();
   }, [location.pathname]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setUser(null);
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
     navigate(APP_ROUTES.AUTH, { replace: true });
-  }
+  }, [navigate, setUser]);
 
   useEffect(() => {
     eventEmitter.on('logout', handleLogout);
     return () => eventEmitter.off('logout', handleLogout);
   }, [handleLogout]);
-
 
   if (!isInitialized || isAppLoading || isLoading) {
     return <LoadingScreen />;
