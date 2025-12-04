@@ -21,7 +21,12 @@ import { DEFAULT_MODEL } from "@/api/constants";
 export default function NewChat({
   startStream,
 }: {
-  startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
+  startStream: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
