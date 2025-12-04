@@ -1,6 +1,7 @@
 import { ApiClient } from "@/api/base-client";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import type { OAuth2Provider, SessionUser } from "@/types";
+import type { SignedMessage } from "near-kit";
 
 /** Response from NEAR authentication endpoint */
 export interface NearAuthResponse {
@@ -107,29 +108,23 @@ class AuthClient extends ApiClient {
   }
 
   /**
-   * Send signed NEAR message to backend for authentication
+   * Send signed NEAR message to backend for authentication (NEP-413)
    */
-  async sendNearAuth(signedMessage: {
-    accountId: string;
-    publicKey: string;
-    signature: string;
-    message: string;
-    nonce: Uint8Array;
-    recipient: string;
-  }): Promise<NearAuthResponse> {
+  async sendNearAuth(
+    signedMessage: SignedMessage,
+    payload: { message: string; nonce: Uint8Array; recipient: string }
+  ): Promise<NearAuthResponse> {
     return this.post<NearAuthResponse>(
       "/auth/near",
       {
-        account_id: signedMessage.accountId,
-        public_key: signedMessage.publicKey,
-        signature: signedMessage.signature,
-        message: signedMessage.message,
-        nonce: Array.from(signedMessage.nonce),
-        recipient: signedMessage.recipient,
+        signed_message: signedMessage,
+        payload: {
+          message: payload.message,
+          nonce: Array.from(payload.nonce),
+          recipient: payload.recipient,
+        },
       },
-      {
-        apiVersion: "v2",
-      }
+      { apiVersion: "v2" }
     );
   }
 }

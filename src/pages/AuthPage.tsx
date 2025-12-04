@@ -81,14 +81,7 @@ const AuthPage: React.FC = () => {
           });
 
           // Send to backend
-          const response = await authClient.sendNearAuth({
-            accountId: signedMessage.accountId,
-            publicKey: signedMessage.publicKey,
-            signature: signedMessage.signature,
-            message,
-            nonce,
-            recipient,
-          });
+          const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
 
           // Store the token and session
           localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, response.token);
