@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from "react";
-import { Route, Routes, useLocation } from "react-router";
+import { Route, Routes, useLocation, useNavigate } from "react-router";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import AdminLayout from "@/components/layout/AdminLayot";
@@ -17,12 +17,17 @@ import TermsPage from "@/pages/TermsPage";
 import WelcomePage from "@/pages/WelcomePage";
 import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
-import { posthogPageView } from "./lib/posthog";
+import { posthogPageView, posthogReset } from "./lib/posthog";
 import ChatController from "./pages/ChatController";
+import { useUserStore } from "./stores/useUserStore";
+import { LOCAL_STORAGE_KEYS } from "./lib/constants";
+import { eventEmitter } from "./lib/event";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
+  const { setUser } = useUserStore();
+  const navigate = useNavigate();
 
   const { isFetching: isModelsFetching } = useModels();
   const { isFetching: isUserDataFetching } = useUserData();
@@ -31,6 +36,20 @@ function App() {
   useEffect(() => {
     posthogPageView();
   }, [location.pathname]);
+
+  const handleLogout = () => {
+    setUser(null);
+    posthogReset();
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
+    navigate(APP_ROUTES.AUTH, { replace: true });
+  }
+
+  useEffect(() => {
+    eventEmitter.on('logout', handleLogout);
+    return () => eventEmitter.off('logout', handleLogout);
+  }, [handleLogout]);
+
 
   if (!isInitialized || isAppLoading || isLoading) {
     return <LoadingScreen />;
