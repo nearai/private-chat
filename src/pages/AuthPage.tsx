@@ -46,6 +46,27 @@ const AuthPage: React.FC = () => {
     return true;
   };
 
+  const completeLogin = async (token: string, sessionId: string, isNewUser: boolean) => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
+    queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+    try {
+      const u = await usersClient.getUserData();
+      if (u) {
+        const provider = u.linked_accounts?.[0]?.provider ?? "near";
+        if (isNewUser) {
+          posthogOauthSignup(u.user.id, provider);
+        } else {
+          posthogOauthLogin(u.user.id, provider);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user data for tracking:", error);
+    }
+  };
+
   const handleOAuthLogin = (provider: OAuth2Provider) => {
     if (!checkAgreeTerms()) return;
     authClient.oauth2SignIn(provider);
@@ -53,59 +74,28 @@ const AuthPage: React.FC = () => {
 
   const handleNearLogin = async () => {
     if (!checkAgreeTerms()) return;
+    if (!config) return;
 
     try {
-      // Initialize HOT connector (reuse same instance to avoid stacking listeners)
       const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
       connectorRef.current = connector;
 
-      // Ensure only a single sign-in handler is active
       connector.removeAllListeners("wallet:signIn");
       connector.once("wallet:signIn", async () => {
         try {
-          // Create Near instance with HOT wallet
           const near = new Near({
             network: "mainnet",
             wallet: fromHotConnect(connector),
           });
 
-          // Generate nonce and sign message
           const nonce = generateNonce();
           const recipient = window.location.host;
-          const message = `Sign in to ${config?.name || "NEAR AI"}`;
+          const message = `Sign in to ${config.name}`;
 
-          const signedMessage = await near.signMessage({
-            message,
-            recipient,
-            nonce,
-          });
-
-          // Send to backend
+          const signedMessage = await near.signMessage({ message, recipient, nonce });
           const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
 
-          // Store the token and session
-          localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, response.token);
-          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, response.session_id);
-
-          // Invalidate queries
-          queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-          queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
-
-          // PostHog analytics tracking for NEAR login/signup
-          try {
-            const u = await usersClient.getUserData();
-            if (u) {
-              const provider: OAuth2Provider = "near";
-              if (response.is_new_user) {
-                posthogOauthSignup(u.user.id, provider);
-              } else {
-                posthogOauthLogin(u.user.id, provider);
-              }
-            }
-          } catch (error) {
-            console.error("Failed to fetch user data for NEAR tracking:", error);
-          }
-
+          await completeLogin(response.token, response.session_id, response.is_new_user);
           navigate(APP_ROUTES.HOME, { replace: true });
         } catch (error) {
           console.error("NEAR sign message failed:", error);
@@ -113,7 +103,6 @@ const AuthPage: React.FC = () => {
         }
       });
 
-      // Trigger wallet connection
       connector.connect();
     } catch (error) {
       console.error("NEAR login failed:", error);
@@ -130,35 +119,10 @@ const AuthPage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
 
-    const run = async () => {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
-        if (sessionId) {
-          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
-        }
-
-        queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-        queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
-
-        const u = await usersClient.getUserData();
-        if (u) {
-          const provider = u.linked_accounts?.[0]?.provider ?? "unknown";
-          if (isNewUser) {
-            posthogOauthSignup(u.user.id, provider);
-          } else {
-            posthogOauthLogin(u.user.id, provider);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to complete login.");
-      } finally {
-        navigate(APP_ROUTES.HOME, { replace: true });
-      }
-    };
-
-    run();
-  }, [token, sessionId, isNewUser, queryClient, navigate]);
+    completeLogin(token, sessionId ?? "", isNewUser)
+      .catch(() => toast.error("Failed to complete login."))
+      .finally(() => navigate(APP_ROUTES.HOME, { replace: true }));
+  }, [token, sessionId, isNewUser, navigate]);
 
   if (!config) {
     return (
