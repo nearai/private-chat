@@ -35,7 +35,7 @@ interface MessagesVerifierProps {
 
 const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const { messagesSignatures } = useMessagesSignaturesStore();
+  const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
   const { isStreamActive } = useStreamStore();
 
   const chatCompletions = useMemo(() => {
@@ -71,8 +71,11 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
           const isCompleted = message.content.every((item) => item.status === "completed");
           if (!isCompleted) return null;
 
-          if (conversation && isStreamActive(conversation.id)) {
-            return null;
+          const msgHasSignature = messagesSignatures[message.chatCompletionId] || messagesSignaturesErrors[message.chatCompletionId];
+          if (!msgHasSignature) {
+            if (conversation && isStreamActive(conversation.id)) {
+              return null;
+            }
           }
 
           return (
