@@ -195,7 +195,7 @@ const Home = ({
     
     newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
-    modelInitializedRef.current  = true;
+    modelInitializedRef.current = true;
   }, [conversationData?.id, searchParams, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
