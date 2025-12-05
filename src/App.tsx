@@ -19,16 +19,21 @@ import ChatController from "./pages/ChatController";
 import { useUserStore } from "./stores/useUserStore";
 import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
+import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 
 function App() {
-  const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
+  const { isInitialized: isAppInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
   const { setUser } = useUserStore();
   const navigate = useNavigate();
+  const { isSettingsLoading } = useInitRemoteSettings();
 
   const { isFetching: isModelsFetching } = useModels();
   const { isFetching: isUserDataFetching } = useUserData();
-  const isLoading = isModelsFetching || isUserDataFetching;
+
+  const isDataLoading = isModelsFetching || isUserDataFetching;
+  const isLoading = isAppLoading || isDataLoading || isSettingsLoading;
+  const isInitialized = isAppInitialized;
 
   useEffect(() => {
     posthogPageView();
@@ -47,7 +52,7 @@ function App() {
     return () => eventEmitter.off('logout', handleLogout);
   }, [handleLogout]);
 
-  if (!isInitialized || isAppLoading || isLoading) {
+  if (!isInitialized || isLoading) {
     return <LoadingScreen />;
   }
 
