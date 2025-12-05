@@ -80,7 +80,7 @@ export class ApiClient {
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
-          throw new Error("No token found");
+          throw new Error(`No token found, ${endpoint} request aborted`);
         }
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
