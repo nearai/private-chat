@@ -65,7 +65,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       toast.loading("Importing conversations...");
       setImporting(true);
 
-      const batchSize = 2;
+      const batchSize = 10;
       for (let i = 0; i < conversions.length; i += batchSize) {
         const batch = conversions.slice(i, i + batchSize);
         const batchPromises = batch.map(async (conv) => {
