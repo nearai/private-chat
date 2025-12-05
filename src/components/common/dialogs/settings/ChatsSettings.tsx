@@ -89,14 +89,12 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         refetch();
       }
 
-      toast.dismiss();
-      setImporting(false);
       onImportFinish && onImportFinish();
     } catch (error) {
       toast.error(`Failed to import chats: ${error}`);
+    } finally {
       toast.dismiss();
       setImporting(false);
-      return;
     }
   };
 
