@@ -1,6 +1,8 @@
+import { NearConnector } from "@hot-labs/near-connect";
 import { useQueryClient } from "@tanstack/react-query";
+import { fromHotConnect, generateNonce, Near } from "near-kit";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
@@ -11,6 +13,7 @@ import CheckIcon from "@/assets/icons/check-icon.svg?react";
 import GitHubIcon from "@/assets/icons/github-icon.svg?react";
 import GoogleIcon from "@/assets/icons/google-icon.svg?react";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
+import NearIcon from "@/assets/icons/near-icon-green.svg?react";
 import { Button } from "@/components/ui/button";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
@@ -25,6 +28,7 @@ const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const connectorRef = useRef<NearConnector | null>(null);
 
   const token = searchParams.get("token");
   const sessionId = searchParams.get("session_id");
@@ -42,44 +46,69 @@ const AuthPage: React.FC = () => {
     return true;
   };
 
+  const completeLogin = async (token: string, sessionId: string, isNewUser: boolean) => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
+    queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+    try {
+      const u = await usersClient.getUserData();
+      if (u) {
+        const provider = u.linked_accounts?.[0]?.provider ?? "near";
+        if (isNewUser) {
+          posthogOauthSignup(u.user.id, provider);
+        } else {
+          posthogOauthLogin(u.user.id, provider);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user data for tracking:", error);
+    }
+  };
+
   const handleOAuthLogin = (provider: OAuth2Provider) => {
     if (!checkAgreeTerms()) return;
     authClient.oauth2SignIn(provider);
   };
 
+  const handleNearLogin = async () => {
+    if (!checkAgreeTerms()) return;
+    if (!config) return;
+
+    try {
+      const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
+      connectorRef.current = connector;
+
+      await connector.connect();
+
+      const near = new Near({
+        network: "mainnet",
+        wallet: fromHotConnect(connector),
+      });
+
+      const nonce = generateNonce();
+      const recipient = window.location.host;
+      const message = `Sign in to ${config.name}`;
+
+      const signedMessage = await near.signMessage({ message, recipient, nonce });
+      const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
+
+      await completeLogin(response.token, response.session_id, response.is_new_user);
+      navigate(APP_ROUTES.HOME, { replace: true });
+    } catch (error) {
+      console.error("NEAR login failed:", error);
+      toast.error("Failed to connect to NEAR wallet");
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
 
-    const run = async () => {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
-        if (sessionId) {
-          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
-        }
-
-        queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-        queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
-
-        const u = await usersClient.getUserData();
-        if (u) {
-          const provider = u.linked_accounts?.[0]?.provider ?? "unknown";
-          if (isNewUser) {
-            posthogOauthSignup(u.user.id, provider);
-          } else {
-            posthogOauthLogin(u.user.id, provider);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to complete login.");
-      } finally {
-        navigate(APP_ROUTES.HOME, { replace: true });
-      }
-    };
-
-    run();
-  }, [token, sessionId, isNewUser, queryClient, navigate]);
+    completeLogin(token, sessionId ?? "", isNewUser)
+      .catch(() => toast.error("Failed to complete login."))
+      .finally(() => navigate(APP_ROUTES.HOME, { replace: true }));
+  }, [token, sessionId, isNewUser, navigate]);
 
   if (!config) {
     return (
@@ -128,6 +157,10 @@ const AuthPage: React.FC = () => {
                 <Button onClick={() => handleOAuthLogin("github")} className="rounded-full" variant="secondary">
                   <GitHubIcon className="mr-3 h-6 w-6" />
                   <span>Continue with GitHub</span>
+                </Button>
+                <Button onClick={handleNearLogin} className="rounded-full" variant="secondary">
+                  <NearIcon className="mr-3 h-6 w-6" />
+                  <span>Continue with NEAR</span>
                 </Button>
               </div>
 
