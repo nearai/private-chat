@@ -13,7 +13,9 @@ export default function useInitRemoteSettings() {
     if (remoteSettings.settings.appearance) {
       setTheme(remoteSettings.settings.appearance);
     }
-    setWebSearchEnabled(remoteSettings.settings.web_search);
+    if (remoteSettings.settings.web_search !== undefined) {
+      setWebSearchEnabled(remoteSettings.settings.web_search);
+    }
   }, [remoteSettings, setTheme, setWebSearchEnabled]);
 
   return {

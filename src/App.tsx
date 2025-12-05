@@ -22,7 +22,7 @@ import { eventEmitter } from "./lib/event";
 import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 
 function App() {
-  const { isInitialized: isAppInitialized, isLoading: isAppLoading } = useAppInitialization();
+  const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
   const { setUser } = useUserStore();
   const navigate = useNavigate();
@@ -33,7 +33,6 @@ function App() {
 
   const isDataLoading = isModelsFetching || isUserDataFetching;
   const isLoading = isAppLoading || isDataLoading || isSettingsLoading;
-  const isInitialized = isAppInitialized;
 
   useEffect(() => {
     posthogPageView();
