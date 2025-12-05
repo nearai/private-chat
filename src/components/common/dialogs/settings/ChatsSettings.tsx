@@ -54,43 +54,48 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
     }
   };
 
-  const handleImport = (json: any) => {
+  const handleImport = async (json: any) => {
     try {
       const conversions = historiesToConversations(json);
       console.log("Imported JSON:", conversions);
 
       const errors: string[] = [];
       const newConversations: string[] = [];
-      const importPromises = conversions.map(async (conv) => {
-        const result = await handleImportConversation(conv);
-        if (!result.success) {
-          errors.push(`${conv.title}: ${result.message}`);
-        } else {
-          newConversations.push(conv.title);
-        }
-      });
-
+      
       toast.loading("Importing conversations...");
       setImporting(true);
-      Promise.all(importPromises)
-        .then(() => {
-          if (errors.length > 0) {
-            toast.error(`Some conversations failed to import:\n${errors.join("\n")}`);
-          } else {
-            toast.success("All conversations imported successfully");
-          }
 
-          if (newConversations.length > 0) {
-            refetch();
+      const batchSize = 2;
+      for (let i = 0; i < conversions.length; i += batchSize) {
+        const batch = conversions.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (conv) => {
+          const result = await handleImportConversation(conv);
+          if (!result.success) {
+            errors.push(`${conv.title}: ${result.message}`);
+          } else {
+            newConversations.push(conv.title);
           }
-        })
-        .finally(() => {
-          toast.dismiss();
-          setImporting(false);
-          onImportFinish && onImportFinish();
         });
+        await Promise.all(batchPromises);
+      }
+
+      if (errors.length > 0) {
+        toast.error(`Some conversations failed to import:\n${errors.join("\n")}`);
+      } else {
+        toast.success("All conversations imported successfully");
+      }
+
+      if (newConversations.length > 0) {
+        refetch();
+      }
+
+      toast.dismiss();
+      setImporting(false);
+      onImportFinish && onImportFinish();
     } catch (error) {
       toast.error(`Failed to import chats: ${error}`);
+      toast.dismiss();
+      setImporting(false);
       return;
     }
   };
