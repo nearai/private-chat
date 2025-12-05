@@ -80,41 +80,27 @@ const AuthPage: React.FC = () => {
       const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
       connectorRef.current = connector;
 
-      connector.removeAllListeners("wallet:signIn");
-      connector.once("wallet:signIn", async () => {
-        try {
-          const near = new Near({
-            network: "mainnet",
-            wallet: fromHotConnect(connector),
-          });
+      await connector.connect();
 
-          const nonce = generateNonce();
-          const recipient = window.location.host;
-          const message = `Sign in to ${config.name}`;
-
-          const signedMessage = await near.signMessage({ message, recipient, nonce });
-          const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
-
-          await completeLogin(response.token, response.session_id, response.is_new_user);
-          navigate(APP_ROUTES.HOME, { replace: true });
-        } catch (error) {
-          console.error("NEAR sign message failed:", error);
-          toast.error("Failed to sign in with NEAR wallet");
-        }
+      const near = new Near({
+        network: "mainnet",
+        wallet: fromHotConnect(connector),
       });
 
-      connector.connect();
+      const nonce = generateNonce();
+      const recipient = window.location.host;
+      const message = `Sign in to ${config.name}`;
+
+      const signedMessage = await near.signMessage({ message, recipient, nonce });
+      const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
+
+      await completeLogin(response.token, response.session_id, response.is_new_user);
+      navigate(APP_ROUTES.HOME, { replace: true });
     } catch (error) {
       console.error("NEAR login failed:", error);
       toast.error("Failed to connect to NEAR wallet");
     }
   };
-
-  useEffect(() => {
-    return () => {
-      connectorRef.current?.removeAllListeners();
-    };
-  }, []);
 
   useEffect(() => {
     if (!token) return;
