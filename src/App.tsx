@@ -1,5 +1,5 @@
-import { Suspense, useEffect } from "react";
-import { Route, Routes, useLocation } from "react-router";
+import { Suspense, useCallback, useEffect } from "react";
+import { Route, Routes, useLocation, useNavigate } from "react-router";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import AdminLayout from "@/components/layout/AdminLayot";
@@ -10,29 +10,48 @@ import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
-import CookiePrivacyPage from "@/pages/CookiePrivacyPage";
-import PrivacyPage from "@/pages/PrivacyPage";
 import { APP_ROUTES } from "@/pages/routes";
-import TermsPage from "@/pages/TermsPage";
 import WelcomePage from "@/pages/WelcomePage";
 import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
-import { posthogPageView } from "./lib/posthog";
+import { posthogPageView, posthogReset } from "./lib/posthog";
 import ChatController from "./pages/ChatController";
+import { useUserStore } from "./stores/useUserStore";
+import { LOCAL_STORAGE_KEYS } from "./lib/constants";
+import { eventEmitter } from "./lib/event";
+import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
+  const { setUser } = useUserStore();
+  const navigate = useNavigate();
+  const { isSettingsLoading } = useInitRemoteSettings();
 
   const { isFetching: isModelsFetching } = useModels();
   const { isFetching: isUserDataFetching } = useUserData();
-  const isLoading = isModelsFetching || isUserDataFetching;
+
+  const isDataLoading = isModelsFetching || isUserDataFetching;
+  const isLoading = isAppLoading || isDataLoading || isSettingsLoading;
 
   useEffect(() => {
     posthogPageView();
   }, [location.pathname]);
 
-  if (!isInitialized || isAppLoading || isLoading) {
+  const handleLogout = useCallback(() => {
+    setUser(null);
+    posthogReset();
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
+    navigate(APP_ROUTES.AUTH, { replace: true });
+  }, [navigate, setUser]);
+
+  useEffect(() => {
+    eventEmitter.on('logout', handleLogout);
+    return () => eventEmitter.off('logout', handleLogout);
+  }, [handleLogout]);
+
+  if (!isInitialized || isLoading) {
     return <LoadingScreen />;
   }
 
@@ -70,9 +89,6 @@ function App() {
 
           <Route path={APP_ROUTES.WELCOME} element={<WelcomePage />} />
           <Route path={APP_ROUTES.AUTH} element={<AuthPage />} />
-          <Route path={APP_ROUTES.TERMS} element={<TermsPage />} />
-          <Route path={APP_ROUTES.PRIVACY} element={<PrivacyPage />} />
-          <Route path={APP_ROUTES.COOKIE} element={<CookiePrivacyPage />} />
         </Routes>
       </div>
     </Suspense>

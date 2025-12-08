@@ -224,9 +224,6 @@ const GeneralSettings = () => {
     // });
 
     try {
-      // update local storage
-      setWebSearchEnabled(formWebSearchEnabled);
-      setTheme(formAppearance);
       // update remote settings
       await updateUserSettings({
         notification: notificationEnabled,
@@ -234,6 +231,9 @@ const GeneralSettings = () => {
         appearance: formAppearance,
         web_search: formWebSearchEnabled,
       });
+      // update local storage
+      setWebSearchEnabled(formWebSearchEnabled);
+      setTheme(formAppearance);
       toast.success(t("Settings saved successfully!"));
     } catch (error) {
       toast.error(t("Failed to update settings. Please try again."));

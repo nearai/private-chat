@@ -16,6 +16,7 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
+import { eventEmitter } from "@/lib/event";
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -79,7 +80,7 @@ export class ApiClient {
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
-          throw new Error("No token found");
+          throw new Error(`No token found, ${endpoint} request aborted`);
         }
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
@@ -90,6 +91,10 @@ export class ApiClient {
 
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 401) {
+          eventEmitter.emit('logout');
+        }
+
         throw error;
       }
 
@@ -195,6 +200,14 @@ export class ApiClient {
       });
       if (!response.body) {
         throw new Error("ReadableStream not supported in this browser.");
+      }
+
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 401) {
+          eventEmitter.emit('logout');
+        }
+        throw error;
       }
 
       const reader = response.body.getReader();

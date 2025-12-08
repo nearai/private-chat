@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { Tool } from "openai/resources/responses/responses.mjs";
 import type { ContentItem } from "./openai";
 
-export type OAuth2Provider = "google" | "github" | "microsoft" | "oidc";
+export type OAuth2Provider = "google" | "github" | "microsoft" | "oidc" | "near";
 
 export type UserRole = "user" | "admin" | "pending";
 

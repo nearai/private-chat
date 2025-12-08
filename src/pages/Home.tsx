@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { DEFAULT_MODEL } from "@/api/constants";
 import MessageInput from "@/components/chat/MessageInput";
@@ -27,10 +27,11 @@ const Home = ({
     previous_response_id?: string
   ) => Promise<void>;
 }) => {
+  const [searchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
-  const modelInitializedRef = useRef(false);
+  const modelInitializedRef = useRef<boolean>(false);
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const selectedModelsRef = useRef(selectedModels);
@@ -67,7 +68,6 @@ const Home = ({
     }
   }, []);
 
-  // Reset model initialization when switching conversations
   useEffect(() => {
     if (!chatId) return;
     modelInitializedRef.current = false;
@@ -80,26 +80,29 @@ const Home = ({
 
   // Sync selected model with latest conversation
   useEffect(() => {
-    if (!conversationData?.id || modelInitializedRef.current) return;
-
-    if (!selectedModelsRef.current.length) {
-      const lastMsg = conversationData.data.at(-1);
-      const newModels = [...selectedModelsRef.current];
-      const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
-      let msgModel = lastMsg?.model;
-      if (msgModel) {
-        const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
-        msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
-      } else {
-        msgModel = defaultModel?.modelId;
-      }
-
-      newModels[0] = msgModel ?? newModels[0] ?? "";
-      setSelectedModels(newModels);
+    if (!conversationData?.id) return;
+    if (modelInitializedRef.current) return;
+    const isNewChat = searchParams.has("new");
+    if (isNewChat) {
+      modelInitializedRef.current = true;
+      return;
     }
 
+    const lastMsg = conversationData.data.at(-1);
+    const newModels = [...selectedModelsRef.current];
+    const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
+    let msgModel = lastMsg?.model;
+    if (msgModel) {
+      const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
+      msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
+    } else {
+      msgModel = defaultModel?.modelId;
+    }
+
+    newModels[0] = msgModel ?? newModels[0] ?? "";
+    setSelectedModels(newModels);
     modelInitializedRef.current = true;
-  }, [conversationData?.id, conversationData?.data, setSelectedModels]);
+  }, [conversationData?.id, searchParams, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);

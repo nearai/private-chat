@@ -89,7 +89,7 @@ export default function NewChat({
         },
         {
           onSuccess: async (data) => {
-            await navigate(`/c/${data.id}`);
+            await navigate(`/c/${data.id}?new`);
           },
         }
       ),
@@ -123,7 +123,7 @@ export default function NewChat({
       queryKey: queryKeys.conversation.all,
     });
 
-    await navigate(`/c/${newConversation.id}`);
+    await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
   };
