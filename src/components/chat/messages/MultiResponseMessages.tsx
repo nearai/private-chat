@@ -1,28 +1,10 @@
-// import dayjs from "dayjs";
 import type React from "react";
-
-// import { useEffect, useState } from "react";
-
-// import { useViewStore } from "@/stores/useViewStore";
-
-// import ResponseMessage from "./ResponseMessage";
-
 import { useMemo } from "react";
 import type { CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationItem } from "@/types";
 import { type ContentItem, getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
-
-// interface GroupedMessages {
-//   [modelIdx: number]: {
-//     messageIds: string[];
-//   };
-// }
-
-// interface GroupedMessagesIdx {
-//   [modelIdx: number]: number;
-// }
 
 interface MultiResponseMessagesProps {
   history: { messages: Record<string, CombinedResponse> };
