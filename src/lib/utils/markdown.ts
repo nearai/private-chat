@@ -46,3 +46,48 @@ export const replaceTokens = (content: string, sourceIds: string[] = [], char?: 
 export function unescapeHtml(html: string): string {
   return decode(html);
 }
+
+export function repairMalformedHtml(raw: string): string {
+  let html = raw;
+
+  html = html.replace(/<>!DOCTYPE\s+html>/gi, "<!DOCTYPE html>");
+
+  // FIX OPENING TAGS LIKE <>tag → <tag>
+  html = html.replace(/<>[ ]*([a-zA-Z][\w-]*)/g, "<$1");
+
+  // FIX CLOSING TAGS LIKE </>tag → </tag>
+  html = html.replace(/<\/>[ ]*([a-zA-Z][\w-]*)/g, "</$1>");
+
+  // REMOVE ANY ISOLATED <>
+  html = html.replace(/<>/g, "");
+
+  // FIX OPEN TAG WITH EXTRA > : <tag>> → <tag>
+  html = html.replace(/<([a-zA-Z][\w-]*)([^>]*)>>/g, "<$1$2>");
+
+  // FIX <>>tag> → <tag>
+  html = html.replace(/<>+([a-zA-Z][\w-]*)>/g, "<$1>");
+
+  // FIX <html> lang="en"> → <html lang="en">
+  html = html.replace(/<html>\s+([^>]+?)>/gi, "<html $1>");
+
+  // FIX CLOSING TAGS WITH EXTRA > : </>>tag> → </tag>
+  html = html.replace(/<\/>+([a-zA-Z][\w-]*)>+/g, "</$1>");
+
+  // FIX CASES LIKE <tag ...></>tag> → <tag ...></tag>
+  html = html.replace(/<\/>[ ]*([a-zA-Z][\w-]*)>/g, "</$1>");
+
+  // FIX CASES LIKE <tag ...></>>tag> → <tag ...></tag>
+  html = html.replace(/<\/>+([a-zA-Z][\w-]*)>+/g, "</$1>");
+
+  // PREVENT "<<tag" by collapsing to "<tag"
+  html = html.replace(/<<([a-zA-Z])/g, "<$1");
+
+  // PREVENT "<!<" → "<!"
+  html = html.replace(/<!<(\w+)/g, "<!$1");
+
+  // Remove leftover sequences like "<{many}" → "<"
+  html = html.replace(/<+</g, "<");
+
+  // DO NOT trim, DO NOT collapse spaces, DO NOT remove \n
+  return html;
+}

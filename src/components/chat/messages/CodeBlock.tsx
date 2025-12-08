@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import "highlight.js/styles/github-dark.min.css";
 import CodeEditor from "@/components/common/CodeEditor";
+import { repairMalformedHtml } from "@/lib/utils/markdown";
+
 
 interface CodeBlockProps {
   lang: string;
@@ -22,7 +24,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", o
   const codeRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setEditedCode(code);
+    if (lang === 'html') {
+      const repairedCode = repairMalformedHtml(code);
+      setEditedCode(repairedCode);
+    } else {
+      setEditedCode(code);
+    }
   }, [code]);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", o
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(editedCode);
       setCopied(true);
       toast.success("Copied to clipboard");
       setTimeout(() => setCopied(false), 1000);
