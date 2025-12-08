@@ -50,44 +50,62 @@ export function unescapeHtml(html: string): string {
 export function repairMalformedHtml(raw: string): string {
   let html = raw;
 
+  // --- DOCTYPE fix ---
   html = html.replace(/<>!DOCTYPE\s+html>/gi, "<!DOCTYPE html>");
 
-  // FIX OPENING TAGS LIKE <>tag → <tag>
+  // --- COMMENT FIXES ---
+  // <>!-- Something --> → <!-- Something -->
+  html = html.replace(/<>!--/g, "<!--");
+
+  // Missing "<" before comment: "!-- Foo -->" → "<!-- Foo -->"
+  html = html.replace(/(^|\n)([ \t]*)!--/g, (_, a, spaces) => `${a}${spaces}<!--`);
+
+  // --- Opening tags: <>tag → <tag ---
   html = html.replace(/<>[ ]*([a-zA-Z][\w-]*)/g, "<$1");
 
-  // FIX CLOSING TAGS LIKE </>tag → </tag>
+  // --- Closing tags: </>tag → </tag> ---
   html = html.replace(/<\/>[ ]*([a-zA-Z][\w-]*)/g, "</$1>");
 
-  // REMOVE ANY ISOLATED <>
+  // --- Remove remaining bare "<>" safely ---
   html = html.replace(/<>/g, "");
 
-  // FIX OPEN TAG WITH EXTRA > : <tag>> → <tag>
+  // --- Fix opening tags with extra > : <tag>> ---
   html = html.replace(/<([a-zA-Z][\w-]*)([^>]*)>>/g, "<$1$2>");
 
-  // FIX <>>tag> → <tag>
+  // --- Handle <>>tag> → <tag> ---
   html = html.replace(/<>+([a-zA-Z][\w-]*)>/g, "<$1>");
 
-  // FIX <html> lang="en"> → <html lang="en">
+  // --- Fix <html> lang="en"> ---
   html = html.replace(/<html>\s+([^>]+?)>/gi, "<html $1>");
 
-  // FIX CLOSING TAGS WITH EXTRA > : </>>tag> → </tag>
+  // --- Fix closing tags like </>>div> ---
   html = html.replace(/<\/>+([a-zA-Z][\w-]*)>+/g, "</$1>");
 
-  // FIX CASES LIKE <tag ...></>tag> → <tag ...></tag>
+  // --- Fix </div>> → </div> ---
+  html = html.replace(/<\/([a-zA-Z][\w-]*)>{2,}/g, "</$1>");
+
+  // --- Fix </tag>> (clean any trailing > after closing tag) ---
+  html = html.replace(/(<\/[a-zA-Z][\w-]*>)>+/g, "$1");
+
+  // --- Fix <tag ...></>tag> → <tag ...></tag> ---
   html = html.replace(/<\/>[ ]*([a-zA-Z][\w-]*)>/g, "</$1>");
 
-  // FIX CASES LIKE <tag ...></>>tag> → <tag ...></tag>
+  // --- Fix <tag ...></>>tag> → <tag ...></tag> ---
   html = html.replace(/<\/>+([a-zA-Z][\w-]*)>+/g, "</$1>");
 
-  // PREVENT "<<tag" by collapsing to "<tag"
+  // --- Remove accidental "<<tag" → "<tag" ---
   html = html.replace(/<<([a-zA-Z])/g, "<$1");
 
-  // PREVENT "<!<" → "<!"
+  // --- Prevent "<!<" → "<!" ---
   html = html.replace(/<!<(\w+)/g, "<!$1");
 
-  // Remove leftover sequences like "<{many}" → "<"
+  // --- Reduce leftover sequences like "<{many}" → "<" ---
   html = html.replace(/<+</g, "<");
 
-  // DO NOT trim, DO NOT collapse spaces, DO NOT remove \n
+  // --- Fix start tags with closing patterns: <tag ...></>tag> ---
+  // Already handled above but ensure coverage:
+  html = html.replace(/<([a-zA-Z][\w-]*)[^>]*><\/>+\1>/g, "<$1></$1>");
+
+  // DO NOT TRIM — preserve newlines and indentation
   return html;
 }
