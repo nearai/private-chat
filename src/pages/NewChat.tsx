@@ -114,7 +114,7 @@ export default function NewChat({
 
     await navigate(`/c/${newConversation.id}?new`);
 
-    await startStream(contentItems, webSearchEnabled, newConversation.id);
+    startStream(contentItems, webSearchEnabled, newConversation.id);
 
     // wait 3 seconds before checking title generation
     setTimeout(async () => {
