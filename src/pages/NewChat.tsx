@@ -4,7 +4,6 @@ import Fuse from "fuse.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
-import { useResponse } from "@/api/chat/queries/useResponse";
 import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
@@ -28,8 +27,7 @@ export default function NewChat({
   const { selectedModels, models, setSelectedModels } = useChatStore();
   const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
-  const { createConversation, updateConversation } = useConversation();
-  const { generateChatTitle } = useResponse();
+  const { createConversation } = useConversation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -74,33 +72,22 @@ export default function NewChat({
       ...files.map((file) => generateContentFileDataForOpenAI(file)),
     ];
 
-    const [newConversation, chatTitle] = await Promise.all([
-      createConversation.mutateAsync(
-        {
-          items: [],
-          metadata: {
-            title: "Basic Conversation",
-          },
+    const newConversation = await createConversation.mutateAsync(
+      {
+        items: [],
+        metadata: {
+          title: "Basic Conversation",
         },
-        {
-          onSuccess: async (data) => {
-            await navigate(`/c/${data.id}?new`);
-          },
-        }
-      ),
-      generateChatTitle.mutateAsync({
-        prompt: content,
-        model: "openai/gpt-oss-120b",
-      }),
-    ]);
-    const responseItem = chatTitle.output.find((item) => item.type === "message");
-    const messageContent = responseItem?.content.find((item) => item.type === "output_text")?.text;
-    await updateConversation.mutateAsync({
-      conversationId: newConversation.id,
-      metadata: {
-        title: messageContent || "",
       },
-    });
+      {
+        onSuccess: async (data) => {
+          await navigate(`/c/${data.id}?new`);
+        },
+      }
+    );
+    const newConversationTitle = (newConversation.metadata as { title?: string } | undefined)?.title;
+
+    console.log("newConversationTitle", newConversationTitle);
 
     // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
@@ -108,7 +95,7 @@ export default function NewChat({
         id: newConversation.id,
         created_at: newConversation.created_at,
         metadata: {
-          title: messageContent ?? "",
+          title: newConversationTitle ?? "New Conversation",
         },
       };
       return [newConversationInfo, ...oldConversations];
@@ -119,6 +106,8 @@ export default function NewChat({
     });
 
     await navigate(`/c/${newConversation.id}?new`);
+
+    console.log('start streaming...')
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
   };
