@@ -86,8 +86,8 @@ export default function NewChat({
     );
 
     // Update conversation data
-    queryClient?.setQueryData(
-      ["conversation",  newConversation.id],
+    queryClient.setQueryData(
+      ["conversation", newConversation.id],
       (old: Conversation) => {
         return {
           ...old,
@@ -116,6 +116,7 @@ export default function NewChat({
 
     await startStream(contentItems, webSearchEnabled, newConversation.id);
 
+    // wait 3 seconds before checking title generation
     setTimeout(async () => {
       const conversation = queryClient?.getQueryData<Conversation>([
         "conversation",
@@ -126,12 +127,12 @@ export default function NewChat({
       if (!conversation?.metadata?.title 
         || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE
         || conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE) {
-        const title = await generateChatTitle.mutateAsync({ prompt: content, model: "gpt-oss-120b" });
+        const title = await generateChatTitle.mutateAsync({ prompt: content, model: "openai/gpt-oss-120b" });
         console.log('Generated a new title:', title);
   
         if (title) {
           // update the conversation details
-          updateConversation.mutateAsync({
+          await updateConversation.mutateAsync({
             conversationId: newConversation.id,
             metadata: {
               title: title,
@@ -139,7 +140,7 @@ export default function NewChat({
           });
 
           // update the conversations list
-          queryClient?.setQueryData<ConversationInfo[]>(
+          queryClient.setQueryData<ConversationInfo[]>(
             queryKeys.conversation.all,
             (oldConversations = []) =>
               oldConversations.map((conversation) =>

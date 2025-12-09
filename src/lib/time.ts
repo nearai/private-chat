@@ -63,7 +63,3 @@ export const formatDate = (inputDate: number) => {
     return `${date.format("L")} at ${date.format("LT")}`;
   }
 };
-
-export function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
