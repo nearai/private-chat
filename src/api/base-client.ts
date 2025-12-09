@@ -4,7 +4,7 @@ import { produce } from "immer";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import type {
   Conversation,
   ConversationInfo,
@@ -369,7 +369,9 @@ export class ApiClient {
             const title = data.conversation_title;
             console.log('Received conversation title updated event:', data);
 
-            if (title) {
+            // FALLBACK_CONVERSATION_TITLE is the fallback title returned by the server,
+            // which means probably the title generation failed, so we don't update the title.
+            if (title && title !== FALLBACK_CONVERSATION_TITLE) {
               // Update the detail cache
               updateConversationData((draft) => {
                 draft.metadata = {
