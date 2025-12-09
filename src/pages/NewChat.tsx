@@ -107,8 +107,6 @@ export default function NewChat({
 
     await navigate(`/c/${newConversation.id}?new`);
 
-    console.log('start streaming...')
-
     startStream(contentItems, webSearchEnabled, newConversation.id);
   };
 
