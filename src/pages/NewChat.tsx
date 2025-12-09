@@ -91,7 +91,7 @@ export default function NewChat({
       (old: Conversation) => {
         return {
           ...old,
-          conversationId: newConversation.id
+          id: newConversation.id
         };
       }
     );

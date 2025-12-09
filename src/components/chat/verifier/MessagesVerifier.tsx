@@ -72,10 +72,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
           if (!isCompleted) return null;
 
           const msgHasSignature = messagesSignatures[message.chatCompletionId] || messagesSignaturesErrors[message.chatCompletionId];
-          if (!msgHasSignature) {
-            if (conversation && isStreamActive(conversation.id)) {
-              return null;
-            }
+          if (!msgHasSignature && conversation && isStreamActive(conversation.id)) {
+            return null;
           }
 
           return (
