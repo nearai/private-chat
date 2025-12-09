@@ -9,8 +9,7 @@ import type { ConversationInfo } from "@/types";
 import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
-
-const BASIC_PLACEHOLDER = "TEMP CHAT";
+import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
 type ChatItemProps = {
   chat: ConversationInfo;
@@ -22,7 +21,7 @@ type ChatItemProps = {
 function getChatTitle(chat: ConversationInfo) {
   if (chat.metadata.title) return chat.metadata.title;
   const conv = chat as ConversationInfo;
-  return conv.metadata?.title || BASIC_PLACEHOLDER;
+  return conv.metadata?.title || DEFAULT_CONVERSATION_TITLE;
 }
 
 const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatItemProps) => {
@@ -30,7 +29,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
-  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? BASIC_PLACEHOLDER);
+  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
   const { isReloadingConversations, updateConversation, reloadConversations } = useConversation();
 
   const isRenaming = updateConversation.isPending || isReloadingConversations;

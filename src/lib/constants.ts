@@ -9,4 +9,6 @@ export const LOCAL_STORAGE_KEYS = {
 
 export const DEFAULT_SIGNING_ALGO = "ecdsa";
 
+export const DEFAULT_CONVERSATION_TITLE = "New Conversation";
+
 export const IMPORTED_MESSAGE_SIGNATURE_TIP = "Verification is not available for imported chats";

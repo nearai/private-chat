@@ -210,8 +210,6 @@ export class ApiClient {
         const data: Responses.ResponseStreamEvent | { type: "conversation.title.updated"; conversation_title?: string } =
           JSON.parse(event.data);
 
-        console.log("data in onParse", data);
-
         const conversationId = (body as { conversation?: string })?.conversation || "";
 
         function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
@@ -362,29 +360,27 @@ export class ApiClient {
               }
             });
             break;
-          case "conversation.title.updated":
-            updateConversationData((draft) => {
-              draft.metadata = {
-                ...(draft.metadata ?? {}),
-                title: data.conversation_title || draft.metadata?.title || "New Conversation",
-              };
-            });
-            options.queryClient?.setQueryData<ConversationInfo[]>(
-              queryKeys.conversation.all,
-              (oldConversations = []) =>
-                oldConversations.map((conversation) =>
-                  conversation.id === conversationId
-                    ? {
-                        ...conversation,
-                        metadata: {
-                          ...(conversation.metadata ?? {}),
-                          title: data.conversation_title || conversation.metadata?.title || "New Conversation",
-                        },
-                      }
-                    : conversation
-                )
-            );
+          case "conversation.title.updated": {
+            const title = data.conversation_title;
+            if (title) {
+              options.queryClient?.setQueryData<ConversationInfo[]>(
+                queryKeys.conversation.all,
+                (oldConversations = []) =>
+                  oldConversations.map((conversation) =>
+                    conversation.id === conversationId
+                      ? {
+                          ...conversation,
+                          metadata: {
+                            ...(conversation.metadata ?? {}),
+                            title,
+                          },
+                        }
+                      : conversation
+                  )
+              );
+            }
             break;
+          }
         }
       }
 

@@ -13,6 +13,7 @@ import type { Conversation } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
+import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -56,7 +57,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
             id: conversationId,
             created_at: Date.now(),
             metadata: {
-              title: "New Conversation",
+              title: DEFAULT_CONVERSATION_TITLE,
             },
             data: userMessage ? ([userMessage] as Conversation["data"]) : [],
             has_more: false,
