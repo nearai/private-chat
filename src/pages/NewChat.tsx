@@ -12,7 +12,7 @@ import Navbar from "@/components/chat/Navbar";
 
 import { DEFAULT_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
-import type { ConversationInfo } from "@/types";
+import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
 import { DEFAULT_MODEL } from "@/api/constants";
@@ -27,7 +27,7 @@ export default function NewChat({
   const { selectedModels, models, setSelectedModels } = useChatStore();
   const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
-  const { createConversation, updateConversation } = useConversation();
+  const { createConversation } = useConversation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -83,11 +83,16 @@ export default function NewChat({
       }
     );
 
-    // Update conversation which will refresh messages
-    await updateConversation.mutateAsync({
-      conversationId: newConversation.id,
-      metadata: {},
-    });
+    // Update conversation data
+    queryClient?.setQueryData(
+      ["conversation",  newConversation.id],
+      (old: Conversation) => {
+        return {
+          ...old,
+          conversationId: newConversation.id
+        };
+      }
+    );
 
     // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
