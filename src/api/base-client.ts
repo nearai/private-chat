@@ -31,6 +31,11 @@ export interface OpenApiEvent {
   data: string;
 }
 
+export type ConversationTitleUpdatedEvent = {
+  type: "conversation.title.updated";
+  conversation_title?: string;
+}
+
 export class ApiClient {
   protected baseURLV1: string;
   protected baseURLV2: string;
@@ -207,7 +212,7 @@ export class ApiClient {
 
       function onParse(event: EventSourceMessage) {
         if (!options.queryClient) return;
-        const data: Responses.ResponseStreamEvent | { type: "conversation.title.updated"; conversation_title?: string } =
+        const data: Responses.ResponseStreamEvent | ConversationTitleUpdatedEvent =
           JSON.parse(event.data);
 
         const conversationId = (body as { conversation?: string })?.conversation || "";

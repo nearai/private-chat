@@ -83,7 +83,7 @@ export default function NewChat({
       }
     );
 
-    // Update conversation without metadata to refresh the conversation data cache
+    // Update conversation which will refresh messages
     await updateConversation.mutateAsync({
       conversationId: newConversation.id,
       metadata: {},
