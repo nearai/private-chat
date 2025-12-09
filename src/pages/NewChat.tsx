@@ -10,7 +10,7 @@ import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
 
-import { DEFAULT_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { DEFAULT_CONVERSATION_TITLE, FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
@@ -116,14 +116,16 @@ export default function NewChat({
 
     await startStream(contentItems, webSearchEnabled, newConversation.id);
 
-    // Generate a new title if the title is still the default title
     setTimeout(async () => {
       const conversation = queryClient?.getQueryData<Conversation>([
         "conversation",
         newConversation.id,
       ]);
 
-      if (!conversation?.metadata?.title || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE) {
+      // Generate a new title if the title is still the default title or the fallback title
+      if (!conversation?.metadata?.title 
+        || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE
+        || conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE) {
         const title = await generateChatTitle.mutateAsync({ prompt: content, model: "gpt-oss-120b" });
         console.log('Generated a new title:', title);
   

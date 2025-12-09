@@ -369,8 +369,7 @@ export class ApiClient {
             const title = data.conversation_title;
             console.log('Received conversation title updated event:', data);
 
-            // If the title is not "Conversation", update the title.
-            if (title && title !== "Conversation") {
+            if (title) {
               // Update the detail cache
               updateConversationData((draft) => {
                 draft.metadata = {
