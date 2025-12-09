@@ -367,6 +367,7 @@ export class ApiClient {
             break;
           case "conversation.title.updated": {
             const title = data.conversation_title;
+            console.log('Received conversation title updated event:', data);
             if (title) {
               options.queryClient?.setQueryData<ConversationInfo[]>(
                 queryKeys.conversation.all,
