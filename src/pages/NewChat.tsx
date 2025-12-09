@@ -74,53 +74,59 @@ export default function NewChat({
       ...files.map((file) => generateContentFileDataForOpenAI(file)),
     ];
 
-    const [newConversation, chatTitle] = await Promise.all([
-      createConversation.mutateAsync(
-        {
-          items: [],
-          metadata: {
-            title: "Basic Conversation",
-          },
-        },
-        {
-          onSuccess: async (data) => {
-            await navigate(`/c/${data.id}?new`);
-          },
-        }
-      ),
-      generateChatTitle.mutateAsync({
-        prompt: content,
-        model: "openai/gpt-oss-120b",
-      }),
-    ]);
-    const responseItem = chatTitle.output.find((item) => item.type === "message");
-    const messageContent = responseItem?.content.find((item) => item.type === "output_text")?.text;
-    await updateConversation.mutateAsync({
-      conversationId: newConversation.id,
-      metadata: {
-        title: messageContent || "",
-      },
-    });
-
-    // Optimistically update the conversations list
-    queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
-      const newConversationInfo: ConversationInfo = {
-        id: newConversation.id,
-        created_at: newConversation.created_at,
+    const newConversation = await createConversation.mutateAsync(
+      {
+        items: [],
         metadata: {
-          title: messageContent ?? "",
+          title: "Basic Conversation",
         },
-      };
-      return [newConversationInfo, ...oldConversations];
-    });
-
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.conversation.all,
-    });
+      },
+      {
+        onSuccess: async (data) => {
+          await navigate(`/c/${data.id}?new`);
+        },
+      }
+    );
 
     await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
+
+    // IMPORTANT: Delay title generation to avoid 429 rate limit error
+    setTimeout(async () => {
+      try {
+        const chatTitle = await generateChatTitle.mutateAsync({
+          prompt: content,
+          model: "openai/gpt-oss-120b",
+        });
+        const responseItem = chatTitle.output.find((item) => item.type === "message");
+        const messageContent = responseItem?.content.find((item) => item.type === "output_text")?.text;
+        await updateConversation.mutateAsync({
+          conversationId: newConversation.id,
+          metadata: {
+            title: messageContent || "",
+          },
+        });
+
+        // Optimistically update the conversations list
+        queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
+          const newConversationInfo: ConversationInfo = {
+            id: newConversation.id,
+            created_at: newConversation.created_at,
+            metadata: {
+              title: messageContent ?? "",
+            },
+          };
+          return [newConversationInfo, ...oldConversations];
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.conversation.all,
+        });
+      } catch (error) {
+        console.error("Failed to generate chat title:", error);
+      }
+    }, 1500);
   };
 
   useEffect(() => {
