@@ -124,7 +124,7 @@ export default function NewChat({
       ]);
 
       if (!conversation?.metadata?.title || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE) {
-        const title = await generateChatTitle.mutateAsync({ prompt: content, model: selectedModels[0] });
+        const title = await generateChatTitle.mutateAsync({ prompt: content, model: "gpt-oss-120b" });
         console.log('Generated a new title:', title);
   
         if (title) {
