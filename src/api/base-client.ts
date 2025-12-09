@@ -306,29 +306,6 @@ export class ApiClient {
               }
             });
             break;
-          case "conversation.title.updated":
-            updateConversationData((draft) => {
-              draft.metadata = {
-                ...(draft.metadata ?? {}),
-                title: data.conversation_title || draft.metadata?.title || "New Conversation",
-              };
-            });
-            options.queryClient?.setQueryData<ConversationInfo[]>(
-              queryKeys.conversation.all,
-              (oldConversations = []) =>
-                oldConversations.map((conversation) =>
-                  conversation.id === conversationId
-                    ? {
-                        ...conversation,
-                        metadata: {
-                          ...(conversation.metadata ?? {}),
-                          title: data.conversation_title || conversation.metadata?.title || "New Conversation",
-                        },
-                      }
-                    : conversation
-                )
-            );
-            break;
           case "response.output_item.added":
             updateConversationData((draft) => {
               const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
@@ -384,6 +361,29 @@ export class ApiClient {
                   break;
               }
             });
+            break;
+          case "conversation.title.updated":
+            updateConversationData((draft) => {
+              draft.metadata = {
+                ...(draft.metadata ?? {}),
+                title: data.conversation_title || draft.metadata?.title || "New Conversation",
+              };
+            });
+            options.queryClient?.setQueryData<ConversationInfo[]>(
+              queryKeys.conversation.all,
+              (oldConversations = []) =>
+                oldConversations.map((conversation) =>
+                  conversation.id === conversationId
+                    ? {
+                        ...conversation,
+                        metadata: {
+                          ...(conversation.metadata ?? {}),
+                          title: data.conversation_title || conversation.metadata?.title || "New Conversation",
+                        },
+                      }
+                    : conversation
+                )
+            );
             break;
         }
       }

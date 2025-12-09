@@ -75,9 +75,6 @@ export default function NewChat({
     const newConversation = await createConversation.mutateAsync(
       {
         items: [],
-        metadata: {
-          title: "Basic Conversation",
-        },
       },
       {
         onSuccess: async (data) => {
@@ -85,9 +82,6 @@ export default function NewChat({
         },
       }
     );
-    const newConversationTitle = (newConversation.metadata as { title?: string } | undefined)?.title;
-
-    console.log("newConversationTitle", newConversationTitle);
 
     // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
@@ -95,7 +89,7 @@ export default function NewChat({
         id: newConversation.id,
         created_at: newConversation.created_at,
         metadata: {
-          title: newConversationTitle ?? "New Conversation",
+          title: "New Conversation",
         },
       };
       return [newConversationInfo, ...oldConversations];
