@@ -80,12 +80,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     setSelectedMessageIdForVerifier(messageId);
     setIsRightSidebarOpen(true);
   };
+
   const verificationStatus = useMemo(() => {
     if (!isMessageCompleted) {
-      return null;
+      return "verifying";
     }
 
-    const hasSignature = signature && signature.signature && signature.signing_address && signature.text;
+    const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
       if (signatureError && conversationImportedAt) {
@@ -95,6 +96,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     }
 
     try {
+      console.log(signature);
       const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
       return isValid ? "verified" : "failed";
     } catch {

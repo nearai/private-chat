@@ -13,8 +13,8 @@ import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
+import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
-
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
@@ -42,7 +42,7 @@ const Home = ({
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const conversationState = useConversationStore((state) => state.conversation);
-
+  const { clearAllSignatures } = useMessagesSignaturesStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
 
@@ -53,8 +53,8 @@ const Home = ({
         ...files.map(generateContentFileDataForOpenAI),
       ];
 
-      scrollToBottom();
       await startStream(contentItems, webSearchEnabled, chatId, previous_response_id);
+      scrollToBottom();
     },
     [chatId, scrollToBottom, startStream]
   );
@@ -75,7 +75,10 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId || !conversationData) return;
-    if (conversationState?.conversationId !== chatId) setConversationData(conversationData);
+    if (conversationState?.conversationId !== chatId) {
+      clearAllSignatures();
+      setConversationData(conversationData);
+    }
   }, [chatId, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
