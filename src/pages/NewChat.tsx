@@ -16,6 +16,7 @@ import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
 import { DEFAULT_MODEL } from "@/api/constants";
+import { useResponse } from "@/api/chat/queries/useResponse";
 
 export default function NewChat({
   startStream,
@@ -27,9 +28,10 @@ export default function NewChat({
   const { selectedModels, models, setSelectedModels } = useChatStore();
   const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
-  const { createConversation } = useConversation();
+  const { createConversation, updateConversation } = useConversation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { generateChatTitle } = useResponse();
 
   useEffect(() => {
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
@@ -112,7 +114,47 @@ export default function NewChat({
 
     await navigate(`/c/${newConversation.id}?new`);
 
-    startStream(contentItems, webSearchEnabled, newConversation.id);
+    await startStream(contentItems, webSearchEnabled, newConversation.id);
+
+    // Generate a new title if the title is still the default title
+    setTimeout(async () => {
+      const conversation = queryClient?.getQueryData<Conversation>([
+        "conversation",
+        newConversation.id,
+      ]);
+
+      if (!conversation?.metadata?.title || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE) {
+        const title = await generateChatTitle.mutateAsync({ prompt: content, model: selectedModels[0] });
+        console.log('Generated a new title:', title);
+  
+        if (title) {
+          // update the conversation details
+          updateConversation.mutateAsync({
+            conversationId: newConversation.id,
+            metadata: {
+              title: title,
+            },
+          });
+
+          // update the conversations list
+          queryClient?.setQueryData<ConversationInfo[]>(
+            queryKeys.conversation.all,
+            (oldConversations = []) =>
+              oldConversations.map((conversation) =>
+                conversation.id === newConversation.id
+                  ? {
+                      ...conversation,
+                      metadata: {
+                        ...(conversation.metadata ?? {}),
+                        title,
+                      },
+                    }
+                  : conversation
+              )
+          );
+        }
+      }
+    }, 3000);
   };
 
   useEffect(() => {

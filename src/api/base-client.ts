@@ -9,7 +9,6 @@ import type {
   Conversation,
   ConversationInfo,
   ConversationModelOutput,
-  ConversationUserInput,
   ConversationWebSearchCall,
   SearchAction,
 } from "@/types";
@@ -18,8 +17,6 @@ import type { ContentItem } from "@/types/openai";
 import { DEPRECATED_API_BASE_URL, CHAT_API_BASE_URL } from "./constants";
 import { queryKeys } from "./query-keys";
 import { eventEmitter } from "@/lib/event";
-import { chatClient } from "./chat/client";
-import { sleep } from "@/lib/time";
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -369,33 +366,11 @@ export class ApiClient {
             });
             break;
           case "conversation.title.updated": {
-            let title = data.conversation_title;
+            const title = data.conversation_title;
             console.log('Received conversation title updated event:', data);
 
-            // If the title is not "Conversation" (which means the title generation probably failed),
-            // update the title. Otherwise, generate a new title using the first message
-            if (!title || title === "Conversation") {
-              const conversation = options.queryClient?.getQueryData<Conversation>([
-                "conversation",
-                conversationId,
-              ]);
-              const message = conversation?.data?.find(
-                (item): item is ConversationUserInput =>
-                  item.type === ConversationTypes.MESSAGE && item.role === ConversationRoles.USER
-              );
-              const content =
-                message?.content?.find((c) => c.type === "input_text" && c.text)?.text || "";
-
-              if (content) {
-                await sleep(1000);
-                const res = await chatClient.generateChatTitle(content);
-                const msg = res.output?.find((item) => item.type === "message");
-                title = msg?.content?.find((c) => c.type === "output_text")?.text;
-                console.log('Generated new title:', title);
-              }
-            }
-
-            if (title) {
+            // If the title is not "Conversation", update the title.
+            if (title && title !== "Conversation") {
               // Update the detail cache
               updateConversationData((draft) => {
                 draft.metadata = {
