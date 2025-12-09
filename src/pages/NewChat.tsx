@@ -15,7 +15,7 @@ import { useChatStore } from "@/stores/useChatStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
-import { DEFAULT_MODEL } from "@/api/constants";
+import { DEFAULT_MODEL, MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
 import { useResponse } from "@/api/chat/queries/useResponse";
 
 export default function NewChat({
@@ -127,7 +127,7 @@ export default function NewChat({
       if (!conversation?.metadata?.title 
         || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE
         || conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE) {
-        const title = await generateChatTitle.mutateAsync({ prompt: content, model: "openai/gpt-oss-120b" });
+        const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
         console.log('Generated a new title:', title);
   
         if (title) {
