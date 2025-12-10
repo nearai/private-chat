@@ -9,21 +9,12 @@ interface CodeBlockProps {
   lang: string;
   code: string;
   className?: string;
-  editable?: boolean;
-  onSave?: (code: string) => void;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", onSave }) => {
+const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2" }) => {
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-
-  const [editedCode, setEditedCode] = useState(code);
-  const [saved, setSaved] = useState(false);
   const codeRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    setEditedCode(code);
-  }, [code]);
 
   useEffect(() => {
     if (codeRef.current && !collapsed) {
@@ -60,20 +51,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", o
     setCollapsed(!collapsed);
   };
 
-  const handleSave = () => {
-    if (onSave) {
-      onSave(editedCode);
-    }
-    setSaved(true);
-
-    toast.success("Code saved");
-    setTimeout(() => setSaved(false), 1000);
-  };
-
-  const handleCodeChange = (value: string) => {
-    setEditedCode(value);
-  };
-
   const lineCount = code.split("\n").length;
 
   return (
@@ -107,14 +84,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", o
           </button>
 
           <button
-            className="save-code-button rounded-md border-none bg-gray-50 bg-none px-1.5 py-0.5 transition hover:bg-gray-100 dark:bg-gray-600 dark:bg-gray-850 dark:hover:bg-gray-800"
-            onClick={handleSave}
-            title="Save"
-          >
-            <span>{saved ? "Saved" : "Save"}</span>
-          </button>
-
-          <button
             className="flex items-center gap-1 rounded-md bg-gray-50 px-1.5 py-0.5 transition hover:bg-gray-100 dark:bg-gray-600 dark:bg-gray-850 dark:hover:bg-gray-800"
             onClick={copyCode}
             title="Copy code"
@@ -132,18 +101,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2", o
         </div>
       </div>
 
-      <div className={`language-${lang} -mt-8 rounded-t-lg ${collapsed ? "rounded-b-lg" : ""} overflow-hidden`}>
+      <div className={`language-${lang} -mt-8 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800`}>
         <div className="bg-gray-50 pt-7 dark:bg-gray-700" />
 
         {!collapsed ? (
           <div className="overflow-hidden rounded-b-lg bg-gray-50 dark:bg-gray-900">
-            <CodeEditor
-              id={`code-editor-${lang}-${Date.now()}`}
-              value={editedCode}
-              lang={lang}
-              onChange={handleCodeChange}
-              onSave={handleSave}
-            />
+            <CodeEditor value={code} lang={lang} />
           </div>
         ) : (
           <div className="flex flex-col gap-2 rounded-b-lg! bg-gray-50 px-4 pt-2 pb-2 text-xs dark:bg-black">
