@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
+import { DEFAULT_MODEL } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import MessageInput from "@/components/chat/MessageInput";
 import MessageSkeleton from "@/components/chat/MessageSkeleton";
@@ -10,11 +11,10 @@ import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-
 import type {
   Conversation,
   ConversationModelOutput,
@@ -22,10 +22,8 @@ import type {
   ConversationUserInput,
   ConversationWebSearchCall,
 } from "@/types";
-
 import { ConversationRoles } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
-import { DEFAULT_MODEL } from "@/api/constants";
 
 const MessageStatus = {
   CREATED: "created",
@@ -159,15 +157,6 @@ const Home = ({
   const handleShowPrev = useCallback((m: ConversationModelOutput) => console.log("Prev:", m), []);
   const handleShowNext = useCallback((m: ConversationModelOutput) => console.log("Next:", m), []);
 
-  // Load welcome prompt (one-time)
-  useEffect(() => {
-    const welcome = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcome) {
-      setInputValue(welcome);
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    }
-  }, []);
-
   useEffect(() => {
     modelInitializedRef.current = false;
   }, [conversationData?.id]);
@@ -181,7 +170,7 @@ const Home = ({
       modelInitializedRef.current = true;
       return;
     }
-    
+
     const lastMsg = conversationData.data.at(-1);
     const newModels = [...selectedModelsRef.current];
     const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
@@ -192,7 +181,7 @@ const Home = ({
     } else {
       msgModel = defaultModel?.modelId;
     }
-    
+
     newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
     modelInitializedRef.current = true;
