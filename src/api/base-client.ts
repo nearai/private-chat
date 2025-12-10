@@ -367,7 +367,6 @@ export class ApiClient {
             break;
           case "conversation.title.updated": {
             const title = data.conversation_title;
-            console.log('Received conversation title updated event:', data);
 
             // FALLBACK_CONVERSATION_TITLE is the fallback title returned by the server,
             // which means probably the title generation failed, so we don't update the title.

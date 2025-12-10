@@ -128,7 +128,6 @@ export default function NewChat({
         || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE
         || conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE) {
         const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
-        console.log('Generated a new title:', title);
   
         if (title) {
           // update the conversation details
