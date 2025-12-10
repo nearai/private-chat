@@ -17,7 +17,7 @@ interface CodeBlockProps {
 
 // TODO: REMOVE WHEN https://github.com/nearai/cloud-api/pull/238 FIXED
 const TAG_BASED_LANGUAGES = [
-  // Web Markup 基础类
+  // Web Markup
   "html",
   "xhtml",
   "xml",
