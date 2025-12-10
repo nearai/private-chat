@@ -101,12 +101,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2" })
         </div>
       </div>
 
-      <div className={`language-${lang} -mt-8 rounded-t-lg ${collapsed ? "rounded-b-lg" : ""} overflow-hidden`}>
+      <div className={`language-${lang} -mt-8 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800`}>
         <div className="bg-gray-50 pt-7 dark:bg-gray-700" />
 
         {!collapsed ? (
           <div className="overflow-hidden rounded-b-lg bg-gray-50 dark:bg-gray-900">
-            <CodeEditor id={`code-editor-${lang}-${Date.now()}`} value={code} lang={lang} />
+            <CodeEditor value={code} lang={lang} />
           </div>
         ) : (
           <div className="flex flex-col gap-2 rounded-b-lg! bg-gray-50 px-4 pt-2 pb-2 text-xs dark:bg-black">
