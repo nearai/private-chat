@@ -47,7 +47,8 @@ export function unescapeHtml(html: string): string {
   return decode(html);
 }
 
-export function repairMalformedHtml(raw: string): string {
+// Repairs common malformations in HTML generated from markdown code blocks
+export function repairMalformedMarkup(raw: string): string {
   let html = raw;
 
   // --- DOCTYPE fix ---
