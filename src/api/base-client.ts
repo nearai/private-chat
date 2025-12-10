@@ -379,7 +379,7 @@ export class ApiClient {
                 };
               });
 
-              // Update the list cache
+              // Update the conversations list cache
               options.queryClient?.setQueryData<ConversationInfo[]>(
                 queryKeys.conversation.all,
                 (oldConversations = []) =>
