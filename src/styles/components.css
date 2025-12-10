@@ -239,7 +239,6 @@ pre code {
   font-size: 0.875rem;
   font-family: "Consolas", "Monaco", "Courier New", monospace;
   overflow-anchor: none !important;
-  pointer-events: none; /* Prevent any interaction with read-only editor */
 }
 
 .cm-scroller {

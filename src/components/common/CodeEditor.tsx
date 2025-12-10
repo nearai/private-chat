@@ -1,17 +1,13 @@
 import { languages } from "@codemirror/language-data";
 import { Compartment, EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { EditorView } from "codemirror";
+import { basicSetup, EditorView } from "codemirror";
 import type React from "react";
 import { useEffect, useRef } from "react";
 
 interface CodeEditorProps {
-  id: string;
   value: string;
   lang?: string;
-  onChange?: (value: string) => void;
-  onSave?: () => void;
-  placeholder?: string;
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "" }) => {
@@ -28,6 +24,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "" }) => {
 
     const extensions = [
       // Read-only configuration
+      basicSetup,
       EditorState.readOnly.of(true),
       EditorView.editable.of(false),
       // Prevent any focus-related scroll behavior
@@ -52,13 +49,18 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "" }) => {
       );
 
       if (language) {
-        language.load().then((languageSupport) => {
-          if (viewRef.current && languageSupport) {
-            viewRef.current.dispatch({
-              effects: editorLanguageRef.current.reconfigure(languageSupport),
-            });
-          }
-        });
+        language
+          .load()
+          .then((languageSupport) => {
+            if (viewRef.current && languageSupport) {
+              viewRef.current.dispatch({
+                effects: editorLanguageRef.current.reconfigure(languageSupport),
+              });
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to load language:", error);
+          });
       }
     }
 
