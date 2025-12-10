@@ -4,19 +4,19 @@ import Fuse from "fuse.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
-import { useResponse } from "@/api/chat/queries/useResponse";
 import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
 
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { DEFAULT_CONVERSATION_TITLE, FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS, TITLE_GENERATION_DELAY } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
-import type { ConversationInfo } from "@/types";
+import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
-import { DEFAULT_MODEL } from "@/api/constants";
+import { DEFAULT_MODEL, MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
+import { useResponse } from "@/api/chat/queries/useResponse";
 
 export default function NewChat({
   startStream,
@@ -29,9 +29,9 @@ export default function NewChat({
   const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
   const { createConversation, updateConversation } = useConversation();
-  const { generateChatTitle } = useResponse();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { generateChatTitle } = useResponse();
 
   useEffect(() => {
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
@@ -74,33 +74,27 @@ export default function NewChat({
       ...files.map((file) => generateContentFileDataForOpenAI(file)),
     ];
 
-    const [newConversation, chatTitle] = await Promise.all([
-      createConversation.mutateAsync(
-        {
-          items: [],
-          metadata: {
-            title: "Basic Conversation",
-          },
-        },
-        {
-          onSuccess: async (data) => {
-            await navigate(`/c/${data.id}?new`);
-          },
-        }
-      ),
-      generateChatTitle.mutateAsync({
-        prompt: content,
-        model: "openai/gpt-oss-120b",
-      }),
-    ]);
-    const responseItem = chatTitle.output.find((item) => item.type === "message");
-    const messageContent = responseItem?.content.find((item) => item.type === "output_text")?.text;
-    await updateConversation.mutateAsync({
-      conversationId: newConversation.id,
-      metadata: {
-        title: messageContent || "",
+    const newConversation = await createConversation.mutateAsync(
+      {
+        items: [],
       },
-    });
+      {
+        onSuccess: async (data) => {
+          await navigate(`/c/${data.id}?new`);
+        },
+      }
+    );
+
+    // Update conversation data
+    queryClient.setQueryData(
+      ["conversation", newConversation.id],
+      (old: Conversation) => {
+        return {
+          ...old,
+          id: newConversation.id
+        };
+      }
+    );
 
     // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
@@ -108,7 +102,7 @@ export default function NewChat({
         id: newConversation.id,
         created_at: newConversation.created_at,
         metadata: {
-          title: messageContent ?? "",
+          title: DEFAULT_CONVERSATION_TITLE,
         },
       };
       return [newConversationInfo, ...oldConversations];
@@ -121,6 +115,48 @@ export default function NewChat({
     await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
+
+    // wait several seconds before checking title generation
+    setTimeout(async () => {
+      const conversation = queryClient?.getQueryData<Conversation>([
+        "conversation",
+        newConversation.id,
+      ]);
+
+      // Generate a new title if the title is still the default title or the fallback title
+      if (!conversation?.metadata?.title 
+        || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE
+        || conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE) {
+        const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
+  
+        if (title) {
+          // update the conversation details
+          await updateConversation.mutateAsync({
+            conversationId: newConversation.id,
+            metadata: {
+              title: title,
+            },
+          });
+
+          // update the conversations list
+          queryClient.setQueryData<ConversationInfo[]>(
+            queryKeys.conversation.all,
+            (oldConversations = []) =>
+              oldConversations.map((conversation) =>
+                conversation.id === newConversation.id
+                  ? {
+                      ...conversation,
+                      metadata: {
+                        ...(conversation.metadata ?? {}),
+                        title,
+                      },
+                    }
+                  : conversation
+              )
+          );
+        }
+      }
+    }, TITLE_GENERATION_DELAY);
   };
 
   useEffect(() => {

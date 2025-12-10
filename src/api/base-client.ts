@@ -4,7 +4,7 @@ import { produce } from "immer";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import type {
   Conversation,
   ConversationInfo,
@@ -29,6 +29,11 @@ export interface ApiClientOptions {
 export interface OpenApiEvent {
   event: string;
   data: string;
+}
+
+export type ConversationTitleUpdatedEvent = {
+  type: "conversation.title.updated";
+  conversation_title?: string;
 }
 
 export class ApiClient {
@@ -205,9 +210,11 @@ export class ApiClient {
         onEvent: onParse,
       });
 
-      function onParse(event: EventSourceMessage) {
+      async function onParse(event: EventSourceMessage) {
         if (!options.queryClient) return;
-        const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
+        const data: Responses.ResponseStreamEvent | ConversationTitleUpdatedEvent =
+          JSON.parse(event.data);
+
         const conversationId = (body as { conversation?: string })?.conversation || "";
 
         function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
@@ -358,6 +365,39 @@ export class ApiClient {
               }
             });
             break;
+          case "conversation.title.updated": {
+            const title = data.conversation_title;
+
+            // FALLBACK_CONVERSATION_TITLE is the fallback title returned by the server,
+            // which means probably the title generation failed, so we don't update the title.
+            if (title && title !== FALLBACK_CONVERSATION_TITLE) {
+              // Update the detail cache
+              updateConversationData((draft) => {
+                draft.metadata = {
+                  ...(draft.metadata ?? {}),
+                  title,
+                };
+              });
+
+              // Update the conversations list cache
+              options.queryClient?.setQueryData<ConversationInfo[]>(
+                queryKeys.conversation.all,
+                (oldConversations = []) =>
+                  oldConversations.map((conversation) =>
+                    conversation.id === conversationId
+                      ? {
+                          ...conversation,
+                          metadata: {
+                            ...(conversation.metadata ?? {}),
+                            title,
+                          },
+                        }
+                      : conversation
+                  )
+              );
+            }
+            break;
+          }
         }
       }
 
