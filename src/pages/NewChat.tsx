@@ -10,7 +10,7 @@ import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
 
-import { DEFAULT_CONVERSATION_TITLE, FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { DEFAULT_CONVERSATION_TITLE, FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS, TITLE_GENERATION_DELAY } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
@@ -116,7 +116,7 @@ export default function NewChat({
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
 
-    // wait 3 seconds before checking title generation
+    // wait several seconds before checking title generation
     setTimeout(async () => {
       const conversation = queryClient?.getQueryData<Conversation>([
         "conversation",
@@ -157,7 +157,7 @@ export default function NewChat({
           );
         }
       }
-    }, 3000);
+    }, TITLE_GENERATION_DELAY);
   };
 
   useEffect(() => {
