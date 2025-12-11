@@ -96,7 +96,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     }
 
     try {
-      console.log(signature);
       const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
       return isValid ? "verified" : "failed";
     } catch {
@@ -109,7 +108,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
-    console.log(batch, batch?.parentResponseId, batch?.parentResponseId ?? undefined);
     await regenerateResponse(userPrompt.content, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages]);
 

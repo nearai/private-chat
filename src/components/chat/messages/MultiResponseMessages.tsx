@@ -94,7 +94,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
             <div
               key={batchIds[currentIdx]}
               className={`m-1 w-full max-w-full snap-center ${isSeveralModels && borderClass} cursor-pointer rounded-2xl p-5 transition-all`}
-              onClick={() => console.log(batchIds[currentIdx])}
             >
               {history.messages[batchIds[currentIdx]] && (
                 <ResponseMessage

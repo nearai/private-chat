@@ -87,6 +87,6 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
   resetConversation: () =>
     set((state) => {
       if (!state.conversation) return state;
-      return { conversation: null, lastResponseId: null, batches: [], allMessages: {}, history: { messages: {} } };
+      return { conversation: null };
     }),
 }));

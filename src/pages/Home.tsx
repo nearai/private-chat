@@ -79,7 +79,7 @@ const Home = ({
       clearAllSignatures();
       setConversationData(conversationData);
     }
-  }, [chatId, conversationData, setConversationData, conversationState?.conversationId]);
+  }, [chatId, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
   useEffect(() => {

@@ -72,8 +72,8 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const [editedContent, setEditedContent] = useState(messageContent || "");
 
   const handleSave = useCallback(async () => {
-    const userPromptMesssage = allMessages[batch.userPromptId as string] as ConversationUserInput;
-    const filteredFiles = userPromptMesssage.content.filter((item) => item.type === "input_file");
+    const userPromptMessage = allMessages[batch.userPromptId as string] as ConversationUserInput;
+    const filteredFiles = userPromptMessage.content.filter((item) => item.type === "input_file");
     const contentItems: ContentItem[] = [...filteredFiles, { type: "input_text", text: editedContent.trim() }];
 
     await regenerateResponse(contentItems, webSearchEnabled, chatId, batch?.parentResponseId || undefined);

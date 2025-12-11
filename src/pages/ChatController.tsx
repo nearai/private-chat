@@ -61,14 +61,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
           previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
         };
 
-        console.log(
-          "initial",
-          userMessage,
-          previous_response_id,
-          draft.conversation.lastResponseId,
-          draft.conversation.conversation.data
-        );
-
         draft.conversation.conversation.data.push(userMessage);
         const lastResponseParentId = previous_response_id ?? draft.conversation.lastResponseId;
 
@@ -93,7 +85,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
           }
         }
 
-        console.log("lastResponseParentId", history, allMessages, lastResponseId, batches);
         draft.conversation.conversation.last_id = userMessage.id;
         if (!draft.conversation.conversation.first_id) {
           draft.conversation.conversation.first_id = userMessage.id;

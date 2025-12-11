@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { eventEmitter } from "@/lib/event";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
   ConversationInfo,
@@ -16,7 +17,6 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
-import { eventEmitter } from "@/lib/event";
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -92,7 +92,7 @@ export class ApiClient {
       if (!response.ok) {
         const error = await response.json();
         if (response.status === 401) {
-          eventEmitter.emit('logout');
+          eventEmitter.emit("logout");
         }
 
         throw error;
@@ -205,7 +205,7 @@ export class ApiClient {
       if (!response.ok) {
         const error = await response.json();
         if (response.status === 401) {
-          eventEmitter.emit('logout');
+          eventEmitter.emit("logout");
         }
         throw error;
       }
@@ -262,12 +262,12 @@ export class ApiClient {
                       data.response.id,
                     ].filter((id: string) => id !== TEMP_RESPONSE_ID);
                   }
-                  // This is optimistical update
+                  // This is optimistic update
+
                   if (userInputMessage) {
                     userInputMessage.next_response_ids.push(data.response.id);
                   }
                 }
-                console.log("response.created", batches, history, allMessages, lastResponseId);
               }
               return draft;
             });
