@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import "highlight.js/styles/github-dark.min.css";
 import CodeEditor from "@/components/common/CodeEditor";
 
-
 interface CodeBlockProps {
   lang: string;
   code: string;
