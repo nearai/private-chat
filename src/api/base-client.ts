@@ -3,7 +3,7 @@ import { createParser, type EventSourceMessage } from "eventsource-parser";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { eventEmitter } from "@/lib/event";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
@@ -30,6 +30,17 @@ export interface OpenApiEvent {
   event: string;
   data: string;
 }
+
+export type ConversationTitleUpdatedEvent = {
+  type: "conversation.title.updated";
+  conversation_title?: string;
+};
+
+export type ConversationReasoningUpdatedEvent = {
+  type: "response.reasoning.delta";
+  item_id: string;
+  delta: string;
+};
 
 export class ApiClient {
   protected baseURLV1: string;
@@ -216,15 +227,10 @@ export class ApiClient {
         onEvent: onParse,
       });
 
-      function onParse(event: EventSourceMessage) {
+      async function onParse(event: EventSourceMessage) {
         if (!options.queryClient) return;
-        const data:
-          | Responses.ResponseStreamEvent
-          | {
-              type: "response.reasoning.delta";
-              item_id: string;
-              delta: string;
-            } = JSON.parse(event.data);
+        const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
+          JSON.parse(event.data);
         const updateConversationData = useConversationStore.getState().updateConversation;
         const model = (body as { model?: string })?.model || "";
 
@@ -480,6 +486,23 @@ export class ApiClient {
               return draft;
             });
             break;
+          case "conversation.title.updated": {
+            const title = data.conversation_title;
+
+            // FALLBACK_CONVERSATION_TITLE is the fallback title returned by the server,
+            // which means probably the title generation failed, so we don't update the title.
+            if (title && title !== FALLBACK_CONVERSATION_TITLE) {
+              // Update the detail cache
+              updateConversationData((draft) => {
+                draft.conversation!.conversation.metadata = {
+                  ...(draft.conversation!.conversation.metadata ?? {}),
+                  title,
+                };
+                return draft;
+              });
+            }
+            break;
+          }
         }
       }
 

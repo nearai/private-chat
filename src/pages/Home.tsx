@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { DEFAULT_MODEL } from "@/api/constants";
+
 import MessageInput from "@/components/chat/MessageInput";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
@@ -9,12 +10,13 @@ import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
+
 import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
+
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
@@ -58,15 +60,6 @@ const Home = ({
     },
     [chatId, scrollToBottom, startStream]
   );
-
-  // Load welcome prompt (one-time)
-  useEffect(() => {
-    const welcome = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcome) {
-      setInputValue(welcome);
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    }
-  }, []);
 
   useEffect(() => {
     if (!chatId) return;

@@ -6,11 +6,10 @@ import { type JSX, useMemo } from "react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib";
 import markedExtension from "@/lib/utils/extension";
-import { processResponseContent, replaceTokens, unescapeHtml } from "@/lib/utils/markdown";
+import { processResponseContent, repairMalformedMarkup, replaceTokens, unescapeHtml } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
-
 import Collapsible from "../../common/Collapsible";
-import CodeBlock from "./CodeBlock";
+import CodeBlock, { TAG_BASED_LANGUAGES } from "./CodeBlock";
 import KatexRenderer from "./KatexRenderer";
 
 interface MarkdownTokensProps {
@@ -137,7 +136,12 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
 
         if (token.type === "code") {
           if (token.raw.includes("```")) {
-            return <CodeBlock key={key} lang={token.lang || ""} code={token.text} />;
+            const lang = token.lang || "";
+            let code = token.text;
+            if (TAG_BASED_LANGUAGES.includes(lang || "")) {
+              code = repairMalformedMarkup(code);
+            }
+            return <CodeBlock key={key} lang={lang} code={code} />;
           } else {
             return <span key={key}>{token.text}</span>;
           }
