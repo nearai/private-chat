@@ -4,19 +4,24 @@ import Fuse from "fuse.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
+import { useResponse } from "@/api/chat/queries/useResponse";
+import { DEFAULT_MODEL, MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
-
-import { DEFAULT_CONVERSATION_TITLE, FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS, TITLE_GENERATION_DELAY } from "@/lib/constants";
+import { useAppInitialization } from "@/hooks/useAppInitialization";
+import {
+  DEFAULT_CONVERSATION_TITLE,
+  FALLBACK_CONVERSATION_TITLE,
+  LOCAL_STORAGE_KEYS,
+  TITLE_GENERATION_DELAY,
+} from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
-import { DEFAULT_MODEL, MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
-import { useResponse } from "@/api/chat/queries/useResponse";
 
 export default function NewChat({
   startStream,
@@ -33,13 +38,15 @@ export default function NewChat({
   const queryClient = useQueryClient();
   const { generateChatTitle } = useResponse();
 
+  const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
+
   useEffect(() => {
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcomePagePrompt) {
+    if (welcomePagePrompt && !isAppLoading && isInitialized) {
       setInputValue(welcomePagePrompt);
       localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     }
-  }, []);
+  }, [isAppLoading, isInitialized]);
 
   useEffect(() => {
     if (inputValue.length > 500) {
@@ -86,15 +93,12 @@ export default function NewChat({
     );
 
     // Update conversation data
-    queryClient.setQueryData(
-      ["conversation", newConversation.id],
-      (old: Conversation) => {
-        return {
-          ...old,
-          id: newConversation.id
-        };
-      }
-    );
+    queryClient.setQueryData(["conversation", newConversation.id], (old: Conversation) => {
+      return {
+        ...old,
+        id: newConversation.id,
+      };
+    });
 
     // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
@@ -118,17 +122,16 @@ export default function NewChat({
 
     // wait several seconds before checking title generation
     setTimeout(async () => {
-      const conversation = queryClient?.getQueryData<Conversation>([
-        "conversation",
-        newConversation.id,
-      ]);
+      const conversation = queryClient?.getQueryData<Conversation>(["conversation", newConversation.id]);
 
       // Generate a new title if the title is still the default title or the fallback title
-      if (!conversation?.metadata?.title 
-        || conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE
-        || conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE) {
+      if (
+        !conversation?.metadata?.title ||
+        conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE ||
+        conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE
+      ) {
         const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
-  
+
         if (title) {
           // update the conversation details
           await updateConversation.mutateAsync({
@@ -139,20 +142,18 @@ export default function NewChat({
           });
 
           // update the conversations list
-          queryClient.setQueryData<ConversationInfo[]>(
-            queryKeys.conversation.all,
-            (oldConversations = []) =>
-              oldConversations.map((conversation) =>
-                conversation.id === newConversation.id
-                  ? {
-                      ...conversation,
-                      metadata: {
-                        ...(conversation.metadata ?? {}),
-                        title,
-                      },
-                    }
-                  : conversation
-              )
+          queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) =>
+            oldConversations.map((conversation) =>
+              conversation.id === newConversation.id
+                ? {
+                    ...conversation,
+                    metadata: {
+                      ...(conversation.metadata ?? {}),
+                      title,
+                    },
+                  }
+                : conversation
+            )
           );
         }
       }
