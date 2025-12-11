@@ -11,6 +11,56 @@ interface CodeBlockProps {
   className?: string;
 }
 
+// TODO: REMOVE WHEN https://github.com/nearai/cloud-api/pull/238 FIXED
+export const TAG_BASED_LANGUAGES = [
+  // Web Markup
+  "html",
+  "xhtml",
+  "xml",
+
+  // Web Template / Component
+  "vue",
+  "svelte",
+  "angular",
+  "astro",
+
+  // React-like syntaxes
+  "jsx",
+  "tsx",
+
+  // Mobile / UI Layout
+  "android-xml",
+  "axml",
+  "wxml",
+  "qml", 
+  "fxml",
+
+  // Vector / Math Markups
+  "svg",
+  "mathml",
+
+  // Document / Feed formats
+  "rss",
+  "atom",
+
+  // Configuration / Build XML
+  "pom",
+  "ant",
+  "xsd",
+  "wsdl",
+
+  // Framework specific XML
+  "spring-xml",
+  "struts-xml",
+
+  // Code Document markup
+  "docbook",
+  "dita",
+
+  // Web Components / Custom Elements
+  "webc",
+];
+
 const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2" }) => {
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
