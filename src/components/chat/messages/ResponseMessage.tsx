@@ -73,7 +73,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
   const signatureError = messagesSignaturesErrors[messageId];
-  const isMessageCompleted = batch.status === MessageStatus.OUTPUT;
+  const isBatchCompleted = batch.status === MessageStatus.OUTPUT;
+  const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
 
   const handleVerificationBadgeClick = () => {
     setShouldScrollToSignatureDetails(true);
@@ -82,8 +83,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   };
 
   const verificationStatus = useMemo(() => {
-    if (!isMessageCompleted) {
-      return "verifying";
+    if (!isBatchCompleted || !isMessageCompleted) {
+      return null;
     }
 
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
@@ -101,7 +102,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, conversationImportedAt]);
+  }, [signature, signatureError, isMessageCompleted, conversationImportedAt, isBatchCompleted]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
