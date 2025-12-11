@@ -491,6 +491,8 @@ export class ApiClient {
 
             // FALLBACK_CONVERSATION_TITLE is the fallback title returned by the server,
             // which means probably the title generation failed, so we don't update the title.
+            // Conversation in zustand don't used to show title in sidebar, queryClient cache used for that.
+
             if (title && title !== FALLBACK_CONVERSATION_TITLE) {
               // Update the detail cache
               updateConversationData((draft) => {
@@ -500,6 +502,15 @@ export class ApiClient {
                 };
                 return draft;
               });
+              options.queryClient?.setQueryData<ConversationInfo[]>(
+                queryKeys.conversation.all,
+                (oldConversations = []) =>
+                  oldConversations.map((conversation) =>
+                    conversation.id === (body as { conversation?: string })?.conversation
+                      ? { ...conversation, metadata: { ...conversation.metadata, title } }
+                      : conversation
+                  )
+              );
             }
             break;
           }

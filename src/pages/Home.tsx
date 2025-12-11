@@ -110,6 +110,7 @@ const Home = ({
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
+
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
 

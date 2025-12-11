@@ -11,7 +11,6 @@ import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
-import { useAppInitialization } from "@/hooks/useAppInitialization";
 import {
   DEFAULT_CONVERSATION_TITLE,
   FALLBACK_CONVERSATION_TITLE,
@@ -19,6 +18,7 @@ import {
   TITLE_GENERATION_DELAY,
 } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
+import { useConversationStore } from "@/stores/useConversationStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
@@ -39,19 +39,17 @@ export default function NewChat({
   const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
   const { createConversation, updateConversation } = useConversation();
+  const { generateChatTitle } = useResponse();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { generateChatTitle } = useResponse();
-
-  const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
-
+  const { resetConversation } = useConversationStore();
   useEffect(() => {
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcomePagePrompt && !isAppLoading && isInitialized) {
+    if (welcomePagePrompt) {
       setInputValue(welcomePagePrompt);
       localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     }
-  }, [isAppLoading, isInitialized]);
+  }, []);
 
   useEffect(() => {
     if (inputValue.length > 500) {
@@ -97,15 +95,6 @@ export default function NewChat({
       }
     );
 
-    // Update conversation data
-    queryClient.setQueryData(["conversation", newConversation.id], (old: Conversation) => {
-      return {
-        ...old,
-        id: newConversation.id,
-      };
-    });
-
-    // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
       const newConversationInfo: ConversationInfo = {
         id: newConversation.id,
@@ -117,17 +106,17 @@ export default function NewChat({
       return [newConversationInfo, ...oldConversations];
     });
 
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.conversation.all,
-    });
-
     await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
 
-    // wait several seconds before checking title generation
+    //This query is async, conversation.id is undefined when it starts
     setTimeout(async () => {
-      const conversation = queryClient?.getQueryData<Conversation>(["conversation", newConversation.id]);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.conversation.all,
+      });
+      const conversationId = newConversation.id;
+      const conversation = queryClient?.getQueryData<Conversation>(["conversation", conversationId]);
 
       // Generate a new title if the title is still the default title or the fallback title
       if (
@@ -140,7 +129,7 @@ export default function NewChat({
         if (title) {
           // update the conversation details
           await updateConversation.mutateAsync({
-            conversationId: newConversation.id,
+            conversationId: conversationId,
             metadata: {
               title: title,
             },
@@ -149,7 +138,7 @@ export default function NewChat({
           // update the conversations list
           queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) =>
             oldConversations.map((conversation) =>
-              conversation.id === newConversation.id
+              conversation.id === conversationId
                 ? {
                     ...conversation,
                     metadata: {
@@ -176,7 +165,8 @@ export default function NewChat({
       }
     }
     modelInitializedRef.current = true;
-  }, [selectedModels, models, setSelectedModels]);
+    resetConversation();
+  }, [selectedModels, models, setSelectedModels, resetConversation]);
 
   return (
     <div id="chat-container" className="relative flex h-full grow flex-col">
