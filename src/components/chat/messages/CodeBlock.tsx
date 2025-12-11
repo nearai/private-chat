@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import "highlight.js/styles/github-dark.min.css";
 import CodeEditor from "@/components/common/CodeEditor";
-import { repairMalformedMarkup } from "@/lib/utils/markdown";
 
 
 interface CodeBlockProps {
@@ -14,7 +13,7 @@ interface CodeBlockProps {
 }
 
 // TODO: REMOVE WHEN https://github.com/nearai/cloud-api/pull/238 FIXED
-const TAG_BASED_LANGUAGES = [
+export const TAG_BASED_LANGUAGES = [
   // Web Markup
   "html",
   "xhtml",
@@ -69,15 +68,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2" })
   const codeRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (TAG_BASED_LANGUAGES.includes(lang)) {
-      const repairedCode = repairMalformedMarkup(code);
-      setEditedCode(repairedCode);
-    } else {
-      setEditedCode(code);
-    }
-  }, [code, lang]);
-
-  useEffect(() => {
     if (codeRef.current && !collapsed) {
       codeRef.current.removeAttribute("data-highlighted");
 
@@ -98,7 +88,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2" })
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(editedCode);
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       toast.success("Copied to clipboard");
       setTimeout(() => setCopied(false), 1000);
