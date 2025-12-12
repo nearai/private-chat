@@ -4,7 +4,7 @@ import Spinner from "@/components/common/Spinner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatFileSize, getLineCount } from "@/lib/index";
-import { decodeString } from "@/lib/time";
+import { cn, decodeString } from "@/lib/time";
 import type { ContentItem } from "@/types/openai";
 
 export default function FileDialog({
@@ -43,9 +43,10 @@ export default function FileDialog({
   return (
     <Dialog>
       <DialogTrigger
-        className={`group relative flex w-60 items-center gap-1 bg-gray-850 p-1.5 ${
+        className={cn(
+          "group relative flex w-60 items-center gap-1 bg-card p-1.5 text-left",
           smallView ? "rounded-xl" : "rounded-2xl"
-        } text-left`}
+        )}
         type="button"
         // onClick={async () => {
         //   if (fileData?.content) {
@@ -132,7 +133,22 @@ export default function FileDialog({
                     className="line-clamp-1 hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
-                      if (fileContent && fileContent.url) {
+
+                      if (fileContent && typeof fileContent === "object" && !fileContent.url) {
+                        const jsonString = JSON.stringify(fileContent, null, 2);
+                        const blob = new Blob([jsonString], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = fileData?.filename || "file.json";
+                        a.click();
+
+                        URL.revokeObjectURL(url);
+                        return;
+                      }
+
+                      if (fileContent?.url) {
                         window.open(
                           fileContent.type === "file" ? `${fileContent.url}/content` : `${fileContent.url}`,
                           "_blank"
@@ -148,7 +164,7 @@ export default function FileDialog({
 
             <div>
               <div className="flex w-full flex-col items-center justify-between gap-1 md:flex-row">
-                <div className="flex flex-wrap gap-1 text-gray-500 text-sm">
+                <div className="flex w-full flex-wrap gap-1 text-gray-500 text-sm">
                   {fileData?.bytes && (
                     <>
                       <div className="shrink-0 capitalize">{formatFileSize(fileData.bytes)}</div>•
@@ -156,15 +172,18 @@ export default function FileDialog({
                   )}
 
                   {fileContent && (
-                    <>
+                    <div className="flex w-full flex-col gap-1">
                       <div className="shrink-0 capitalize">
-                        {getLineCount(fileContent.content ?? "")} extracted lines
+                        {getLineCount(fileContent.content ?? "1")} extracted lines
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1">
                         Formatting may be inconsistent from source.
                       </div>
-                    </>
+                      <div className="max-h-[75vh] w-full min-w-0 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+                        {fileContent}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
