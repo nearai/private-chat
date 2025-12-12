@@ -1,9 +1,35 @@
 import { languages } from "@codemirror/language-data";
+import { StreamLanguage } from "@codemirror/language";
+import { clike } from "@codemirror/legacy-modes/mode/clike";
+import { gas } from "@codemirror/legacy-modes/mode/gas";
 import { Compartment, EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { basicSetup, EditorView } from "codemirror";
 import type React from "react";
 import { useEffect, useRef } from "react";
+
+async function getLanguageSupport(lang: string) {
+  const langLower = lang.toLowerCase();
+  if (langLower === "matlab") {
+    return StreamLanguage.define(clike({ name: "matlab" }));
+  } else if (["asm", "assembly"].includes(langLower)) {
+    return StreamLanguage.define(gas);
+  } else {
+    const language = languages.find(
+      (l) => l.alias.includes(langLower) || l.name.toLowerCase() === langLower || l.extensions.includes(langLower)
+    );
+    if (language) {
+      try {
+        const languageSupport = await language.load();
+        return languageSupport;
+      } catch (error) {
+        console.error("Failed to load language:", error);
+        return null;
+      }
+    }
+  }
+  return null;
+}
 
 interface CodeEditorProps {
   value: string;
@@ -42,26 +68,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "" }) => {
       parent: editorRef.current,
     });
 
-    // Load language for syntax highlighting
-    if (lang) {
-      const language = languages.find(
-        (l) => l.alias.includes(lang.toLowerCase()) || l.name.toLowerCase() === lang.toLowerCase()
-      );
 
-      if (language) {
-        language
-          .load()
-          .then((languageSupport) => {
-            if (viewRef.current && languageSupport) {
-              viewRef.current.dispatch({
-                effects: editorLanguageRef.current.reconfigure(languageSupport),
-              });
-            }
-          })
-          .catch((error) => {
-            console.error("Failed to load language:", error);
+    if (lang) {
+      getLanguageSupport(lang).then((languageSupport) => {
+        if (viewRef.current && languageSupport) {
+          viewRef.current.dispatch({
+            effects: editorLanguageRef.current.reconfigure(languageSupport),
           });
-      }
+        }
+      });
     }
 
     // Dark mode observer
