@@ -6,8 +6,7 @@ import type { JSX } from "react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib";
 import { unescapeHtml } from "@/lib/utils/markdown";
-import CodeBlock, { TAG_BASED_LANGUAGES } from "./CodeBlock";
-import { repairMalformedMarkup } from "@/lib/utils/markdown";
+import CodeBlock from "./CodeBlock";
 import Collapsible from "../../common/Collapsible";
 import KatexRenderer from "./KatexRenderer";
 
@@ -123,10 +122,7 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
         if (token.type === "code") {
           if (token.raw.includes("```")) {
             const lang = token.lang || "";
-            let code = token.text;
-            if (TAG_BASED_LANGUAGES.includes(lang || "")) {
-              code = repairMalformedMarkup(code);
-            }
+            const code = token.text;
             return <CodeBlock key={key} lang={lang} code={code} />;
           } else {
             return <span key={key}>{token.text}</span>;
