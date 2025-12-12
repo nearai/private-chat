@@ -21,7 +21,6 @@ import { useUserStore } from "./stores/useUserStore";
 import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
 import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
-import { queryKeys } from "./api/query-keys";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -46,7 +45,7 @@ function App() {
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
-    queryClient.removeQueries({ queryKey: queryKeys.config.all });
+    queryClient.clear();
     navigate(APP_ROUTES.AUTH, { replace: true });
   }, [navigate, setUser, queryClient]);
 
