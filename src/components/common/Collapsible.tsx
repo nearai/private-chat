@@ -1,5 +1,5 @@
 import React, { type ReactNode, useState } from "react";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 
 interface CollapsibleProps {
   title?: string;

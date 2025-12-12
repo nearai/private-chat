@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import type { Conversation } from "@/types";
+import type { ConversationDerivedState } from "@/stores/useConversationStore";
 
 export const useScrollHandler = (
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-  conversationData: Conversation | undefined,
+  conversationState: ConversationDerivedState | undefined,
   chatId: string | undefined
 ) => {
   const [autoScroll, setAutoScroll] = useState(true);
@@ -24,7 +24,7 @@ export const useScrollHandler = (
   }, [scrollContainerRef.current]);
 
   useEffect(() => {
-    if (!conversationData || !scrollContainerRef.current) return;
+    if (!conversationState || !scrollContainerRef.current) return;
 
     requestAnimationFrame(() => {
       if (!scrollContainerRef.current) return;
@@ -39,7 +39,7 @@ export const useScrollHandler = (
         scrollToBottom();
       }
     });
-  }, [scrollToBottom, autoScroll, conversationData, scrollContainerRef.current]);
+  }, [scrollToBottom, autoScroll, conversationState, scrollContainerRef.current]);
 
   useLayoutEffect(() => {
     if (!chatId || !scrollContainerRef.current) return;

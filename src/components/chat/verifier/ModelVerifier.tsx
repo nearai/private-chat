@@ -10,9 +10,9 @@ import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/index";
-import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import type { VerificationStatus } from "../types";
 

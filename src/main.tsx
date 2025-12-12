@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 import "./styles/global.css";
-// import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import React from "react";
 import { ThemeProvider } from "./components/common/ThemeProvider";
 import { initI18n } from "./i18n";
