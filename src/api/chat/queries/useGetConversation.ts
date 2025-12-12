@@ -10,7 +10,7 @@ export const useGetConversation = (id: string | undefined) => {
       if (!id) {
         throw new Error("Conversation ID is required");
       }
-      console.log("fetching conversation", id);
+
       const [conversation, conversationItems] = await Promise.all([
         chatClient.getConversation(id),
         chatClient.getConversationItems(id),

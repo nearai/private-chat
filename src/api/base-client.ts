@@ -3,6 +3,7 @@ import { createParser, type EventSourceMessage } from "eventsource-parser";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
+import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { eventEmitter } from "@/lib/event";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
@@ -243,11 +244,6 @@ export class ApiClient {
 
               if (tempUserMessage) {
                 tempUserMessage.response_id = data.response.id;
-                console.log(
-                  draft.conversation!.conversation.data.map((item) => {
-                    return { id: item.id, response_id: item.response_id };
-                  })
-                );
                 const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
                   draft.conversation!.conversation,
                   data.response.id
@@ -512,6 +508,16 @@ export class ApiClient {
                   )
               );
             }
+            break;
+          }
+          case "response.completed": {
+            updateConversationData((draft) => {
+              const response = draft.conversation?.history.messages[data.response.id];
+              if (response) {
+                response.status = MessageStatus.COMPLETED;
+              }
+              return draft;
+            });
             break;
           }
         }

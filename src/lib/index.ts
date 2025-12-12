@@ -8,12 +8,15 @@ import type {
 } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 
+// COMPLETED status is final used only for responses that generated with stream, needed to know when exactly start veryfing signature.
+// We don't have and can't mark batch commpleted from items endpoint because we combine messages on frontend.
 export const MessageStatus = {
   CREATED: "created",
   INPUT: "input",
   REASONING: "reasoning",
   WEB_SEARCH: "web_search",
   OUTPUT: "output",
+  COMPLETED: "completed",
 } as const;
 
 type MessageStatusType = (typeof MessageStatus)[keyof typeof MessageStatus];

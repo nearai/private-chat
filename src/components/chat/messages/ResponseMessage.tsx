@@ -65,15 +65,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
 
-  // const [edit, setEdit] = useState(false);
-  // const [editedContent, setEditedContent] = useState("");
   const batch = history.messages[batchId];
   const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
   const signatureError = messagesSignaturesErrors[messageId];
-  const isBatchCompleted = batch.status === MessageStatus.OUTPUT;
+  const isBatchCompleted = batch.status === MessageStatus.COMPLETED;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
 
   const handleVerificationBadgeClick = () => {
@@ -118,24 +116,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
   }, [models, model]);
 
-  // const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
-
   const messageContent = useMemo(() => {
     return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
   }, [outputMessages]);
-
-  // const handleSave = () => {
-  //   if (editedContent.trim() !== messageContent) {
-  //     saveMessage(messageId, editedContent.trim());
-  //   }
-  //   setEdit(false);
-  //   setEditedContent("");
-  // };
-
-  // const handleCancel = () => {
-  //   setEdit(false);
-  //   setEditedContent("");
-  // };
 
   const citations = useMemo(() => outputMessages.flatMap(({ content }) => extractCitations(content)), [outputMessages]);
 
@@ -181,6 +164,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       }
 
       case MessageStatus.OUTPUT:
+      case MessageStatus.COMPLETED:
         return (
           <div className="relative flex w-full flex-col" id="response-content-container">
             {messageContent === "" ? (
