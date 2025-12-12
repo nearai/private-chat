@@ -10,7 +10,6 @@ export const useConfig = (options?: UseConfigOptions) => {
     queryKey: queryKeys.config.all,
     queryFn: () => configClient.getConfig(),
     staleTime: Infinity,
-    gcTime: Infinity,
     ...options,
   });
 };
