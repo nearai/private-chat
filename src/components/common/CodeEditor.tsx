@@ -76,6 +76,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "" }) => {
             effects: editorLanguageRef.current.reconfigure(languageSupport),
           });
         }
+      }).catch((error) => {
+        console.error("Error loading language support:", error);
       });
     }
 
