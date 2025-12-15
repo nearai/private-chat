@@ -98,7 +98,7 @@ const Home = ({
 }: {
   startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
 }) => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const queryClient = useQueryClient();
@@ -165,9 +165,14 @@ const Home = ({
   useEffect(() => {
     if (!conversationData?.id) return;
     if (modelInitializedRef.current) return;
-    const isNewChat = searchParams.has("new");
+    const NEW_CHAT_KEY = "new";
+    const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (isNewChat) {
       modelInitializedRef.current = true;
+      setSearchParams((prev) => {
+        prev.delete(NEW_CHAT_KEY);
+        return prev;
+      });
       return;
     }
 
