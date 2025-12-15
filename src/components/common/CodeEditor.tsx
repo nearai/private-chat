@@ -12,7 +12,7 @@ async function getLanguageSupport(lang: string) {
   const langLower = lang.toLowerCase();
   if (langLower === "matlab") {
     return StreamLanguage.define(clike({ name: "matlab" }));
-  } else if (["asm", "assembly"].includes(langLower)) {
+  } else if (["asm", "nasm", "asmx", "inc", "dos", "lin", "elf", "assembly"].includes(langLower)) {
     return StreamLanguage.define(gas);
   } else {
     const language = languages.find(
