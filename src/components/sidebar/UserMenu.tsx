@@ -74,8 +74,8 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
       <DropdownMenu>
         <DropdownMenuTrigger className="flex w-full items-center outline-none">
           <Avatar className="size-[30px] self-center">
-            <AvatarImage src={userData?.user.avatar_url} alt={userData?.user.name} />
-            <AvatarFallback className="bg-muted/35">{userData?.user.name?.slice(0, 2)}</AvatarFallback>
+            <AvatarImage src={userData?.user.avatar_url} alt={userData?.user.name ? `${userData.user.name}'s avatar` : "User avatar"} />
+            <AvatarFallback className="bg-muted/35">{(userData?.user.name || "U").slice(0, 2)}</AvatarFallback>
           </Avatar>
           {!collapsed && <div className="ml-3 self-center whitespace-pre-wrap break-all font-medium">{userData?.user.name}</div>}
         </DropdownMenuTrigger>
