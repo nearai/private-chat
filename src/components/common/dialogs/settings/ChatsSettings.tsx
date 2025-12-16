@@ -38,9 +38,28 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       }
 
       if (conv.items && conv.items.length > 0) {
-        const batchSize = 20;
-        for (let i = 0; i < conv.items.length; i += batchSize) {
-          const batch = conv.items.slice(i, i + batchSize) as ResponseInputItem[];
+        const batches: ResponseInputItem[][] = [];
+        let currentBatch: ResponseInputItem[] = [];
+        let waitingForAiResponse = false;
+
+        for (const item of conv.items) {
+          currentBatch.push(item as ResponseInputItem);
+          
+          if ('role' in item && item.role === 'user') {
+            waitingForAiResponse = true;
+          }
+          else if (waitingForAiResponse && 'role' in item && item.role !== 'user') {
+            batches.push([...currentBatch]);
+            currentBatch = [];
+            waitingForAiResponse = false;
+          }
+        }
+        
+        if (currentBatch.length > 0) {
+          batches.push(currentBatch);
+        }
+
+        for (const batch of batches) {
           await addItemsToConversation.mutateAsync({
             conversationId: newConversation.id,
             items: batch,
