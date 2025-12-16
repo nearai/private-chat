@@ -24,7 +24,8 @@ interface UserMessageProps {
     content: ContentItem[],
     webSearchEnabled: boolean,
     conversationId?: string,
-    previous_response_id?: string
+    previous_response_id?: string,
+    currentModel?: string
   ) => Promise<void>;
   siblings?: string[];
 }

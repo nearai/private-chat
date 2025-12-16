@@ -42,7 +42,8 @@ interface ResponseMessageProps {
     content: ContentItem[],
     webSearchEnabled: boolean,
     conversationId?: string,
-    previous_response_id?: string
+    previous_response_id?: string,
+    currentModel?: string
   ) => Promise<void>;
 }
 
@@ -71,7 +72,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
   const signatureError = messagesSignaturesErrors[messageId];
-  const isBatchCompleted = batch.status === MessageStatus.COMPLETED;
+  const isBatchCompleted = batch.status === MessageStatus.COMPLETED || batch.status === MessageStatus.OUTPUT;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
 
   const handleVerificationBadgeClick = () => {
@@ -104,13 +105,19 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
+  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
+
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
-    await regenerateResponse(userPrompt.content, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
-  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages]);
-
-  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
+    await regenerateResponse(
+      userPrompt.content,
+      webSearchEnabled,
+      chatId,
+      batch?.parentResponseId || undefined,
+      model || undefined,
+    );
+  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
