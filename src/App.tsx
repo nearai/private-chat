@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import AdminLayout from "@/components/layout/AdminLayot";
@@ -27,6 +28,7 @@ function App() {
   const { setUser } = useUserStore();
   const navigate = useNavigate();
   const { isSettingsLoading } = useInitRemoteSettings();
+  const queryClient = useQueryClient();
 
   const { isFetching: isModelsFetching } = useModels();
   const { isFetching: isUserDataFetching } = useUserData();
@@ -43,8 +45,9 @@ function App() {
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
+    queryClient.clear();
     navigate(APP_ROUTES.AUTH, { replace: true });
-  }, [navigate, setUser]);
+  }, [navigate, setUser, queryClient]);
 
   useEffect(() => {
     eventEmitter.on('logout', handleLogout);
