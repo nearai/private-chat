@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { nearAIClient } from "@/api/nearai/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS, MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -66,8 +66,12 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   const fetchSignature = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token || !message.chatCompletionId) return;
-
     if (signature) return;
+
+    if (message.chatCompletionId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+      setMessageSignatureError(message.chatCompletionId, IMPORTED_MESSAGE_SIGNATURE_TIP);
+      return;
+    }
 
     setIsLoading(true);
     removeMessageSignatureError(message.chatCompletionId);

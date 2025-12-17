@@ -2,6 +2,7 @@ import { produce } from "immer";
 import { create } from "zustand";
 import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, findLastResponseId } from "@/lib";
 import type { Conversation, ConversationItem } from "@/types";
+import { convertImportedMessages } from "@/lib/message-converter";
 
 export type ConversationDerivedState = {
   conversationId: string;
@@ -9,6 +10,7 @@ export type ConversationDerivedState = {
   history: {
     messages: Record<string, CombinedResponse>;
   };
+  messagesList: ConversationItem[];
   allMessages: Record<string, ConversationItem>;
   lastResponseId: string | null;
   batches: string[];
@@ -39,7 +41,10 @@ export const buildConversationEntry = (
   conversation: Conversation,
   preserveLastResponseId?: string | null
 ): ConversationDerivedState => {
-  const { history, allMessages, currentId } = combineMessagesById(conversation.data ?? []);
+  const isImportedConversation = conversation.metadata?.initial_created_at !== undefined;
+  const messages = conversation.data || [];
+  const messagesList =  isImportedConversation ? convertImportedMessages(conversation, messages) : messages;
+  const { history, allMessages, currentId } = combineMessagesById(messagesList  );
   const lastResponseId = preserveLastResponseId ?? currentId;
   const batches = extractBatchFromHistory(history, lastResponseId);
 
@@ -48,6 +53,7 @@ export const buildConversationEntry = (
     conversation,
     history,
     allMessages,
+    messagesList,
     lastResponseId,
     batches,
   };

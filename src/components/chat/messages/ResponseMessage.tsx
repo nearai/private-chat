@@ -11,7 +11,7 @@ import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import { type CombinedResponse, cn, MessageStatus } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -89,9 +89,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
-      if (signatureError && conversationImportedAt) {
-        return "imported";
+      if (conversationImportedAt) {
+        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX) || signatureError) {
+          return "imported";
+        }
       }
+      
       return "verifying";
     }
 
