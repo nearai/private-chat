@@ -27,6 +27,7 @@
     "@noble/hashes": "^1.8.0",
     "@noble/secp256k1": "^2.3.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
