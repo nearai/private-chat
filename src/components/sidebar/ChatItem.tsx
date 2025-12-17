@@ -1,5 +1,5 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { cn } from "@/lib/time";
@@ -70,6 +70,10 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
     setRenameInput(chat.metadata.title);
     stopEditingChatName();
   };
+
+  useEffect(() => {
+    setRenameInput(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
+  }, [chat?.metadata?.title]);
 
   return (
     <div className="group relative w-full" draggable="true">
