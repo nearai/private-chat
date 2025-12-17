@@ -45,6 +45,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
             conversationId: conversationId,
             history: { messages: {} },
             allMessages: {},
+            messagesList: [],
             lastResponseId: null,
             batches: [],
           };
