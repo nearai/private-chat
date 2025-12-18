@@ -2,6 +2,7 @@ import { produce } from "immer";
 import { create } from "zustand";
 import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, findLastResponseId } from "@/lib";
 import type { Conversation, ConversationItem } from "@/types";
+import { convertImportedMessages } from "@/lib/message-converter";
 
 export type ConversationDerivedState = {
   conversationId: string;
@@ -10,6 +11,7 @@ export type ConversationDerivedState = {
     messages: Record<string, CombinedResponse>;
   };
   allMessages: Record<string, ConversationItem>;
+  importedMessagesIdMapping?: Record<string, string>;
   lastResponseId: string | null;
   batches: string[];
 };
@@ -39,15 +41,25 @@ export const buildConversationEntry = (
   conversation: Conversation,
   preserveLastResponseId?: string | null
 ): ConversationDerivedState => {
-  const { history, allMessages, currentId } = combineMessagesById(conversation.data ?? []);
+  const isImportedConversation = conversation.metadata?.initial_created_at !== undefined;
+  let importedMessagesIdMapping: Record<string, string> = {};
+  let messages = conversation.data || [];
+
+  if (isImportedConversation) {
+    const converted = convertImportedMessages(conversation, messages);
+    messages = converted.newMessages;
+    importedMessagesIdMapping = converted.idMapping || {};
+  }
+
+  const { history, allMessages, currentId } = combineMessagesById(messages);
   const lastResponseId = preserveLastResponseId ?? currentId;
   const batches = extractBatchFromHistory(history, lastResponseId);
-
   return {
     conversationId: conversation.id,
     conversation,
     history,
     allMessages,
+    importedMessagesIdMapping,
     lastResponseId,
     batches,
   };

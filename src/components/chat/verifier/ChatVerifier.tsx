@@ -3,8 +3,8 @@ import { XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
+import { useParams } from "react-router";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import IntelLogo from "@/assets/images/intel.svg?react";
 import NvidiaLogo from "@/assets/images/nvidia.svg?react";
@@ -50,7 +50,7 @@ const ChatVerifier: React.FC = () => {
 
     const messages = [];
     let currentId: string | null = null;
-    const responseItems = conversationData.data.reduce(
+    const responseItems = conversationData?.data.reduce(
       (acc, item) => {
         if (acc[item.response_id]) {
           acc[item.response_id].content.push(item);

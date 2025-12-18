@@ -11,7 +11,7 @@ import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import { type CombinedResponse, cn, MessageStatus } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -65,9 +65,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { chatId } = useParams<{ chatId: string }>();
   const { models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const batch = history.messages[batchId];
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
@@ -89,9 +89,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
-      if (signatureError && conversationImportedAt) {
-        return "imported";
+      if (conversationImportedAt) {
+        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX) || signatureError) {
+          return "imported";
+        }
       }
+      
       return "verifying";
     }
 
@@ -110,11 +113,15 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
+    let prevResponseId = batch?.parentResponseId || undefined;
+    if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+      prevResponseId = prevResponseId.replace(MOCK_MESSAGE_RESPONSE_ID_PREFIX, "");
+    }
     await regenerateResponse(
       userPrompt.content,
       webSearchEnabled,
       chatId,
-      batch?.parentResponseId || undefined,
+      prevResponseId,
       model || undefined,
     );
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
@@ -362,7 +369,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && (
                 <Button
                   variant="ghost"
                   size="icon"

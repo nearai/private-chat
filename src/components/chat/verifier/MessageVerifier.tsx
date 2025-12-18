@@ -19,6 +19,7 @@ import {
 } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
+import { useConversationStore } from "@/stores/useConversationStore";
 
 interface MessageVerifierProps {
   conversation?: ConversationInfo;
@@ -32,6 +33,8 @@ interface MessageVerifierProps {
 
 const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message, index, isLastIndex }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
+  const conversationState = useConversationStore((state) => state.conversation);
+  const importedMessagesIdMapping = conversationState?.importedMessagesIdMapping || {};
   const {
     messagesSignatures,
     messagesSignaturesErrors,
@@ -66,8 +69,14 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   const fetchSignature = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token || !message.chatCompletionId) return;
-
     if (signature) return;
+
+    if (isImportedConversation) {
+      if (importedMessagesIdMapping[message.chatCompletionId]) {
+        setMessageSignatureError(message.chatCompletionId, IMPORTED_MESSAGE_SIGNATURE_TIP);
+        return;
+      }
+    }
 
     setIsLoading(true);
     removeMessageSignatureError(message.chatCompletionId);
@@ -97,7 +106,16 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     } finally {
       setIsLoading(false);
     }
-  }, [signature, message.chatCompletionId, message.content, setMessageSignature]);
+  }, [
+    signature,
+    message.chatCompletionId,
+    message.content,
+    isImportedConversation,
+    importedMessagesIdMapping,
+    setMessageSignature,
+    removeMessageSignatureError,
+    setMessageSignatureError,
+  ]);
 
   useEffect(() => {
     if (signature?.signature && signature?.signing_address && signature?.text) {

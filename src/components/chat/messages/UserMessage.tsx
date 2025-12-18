@@ -15,6 +15,8 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationItem, ConversationUserInput } from "@/types";
 import { type ContentItem, extractFiles, extractMessageContent } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -49,6 +51,14 @@ const UserMessage: React.FC<UserMessageProps> = ({
   // TODO: We should filter user system prompt from the content here
   const messageContent = extractMessageContent(message?.content ?? []);
   const messageFiles = extractFiles(message?.content ?? []);
+  const { data: conversationData } = useGetConversation(chatId);
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
+
+  const messageIsImported = useMemo(() => {
+    if (!conversationImportedAt) return false;
+    if (!message?.response_id) return false;
+    return message.response_id.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
+  }, [conversationImportedAt, message]);
 
   // Find the current index in siblings by comparing input content
   const currentSiblingIndex = useMemo(() => {
@@ -140,7 +150,12 @@ const UserMessage: React.FC<UserMessageProps> = ({
   if (!message) return null;
 
   return (
-    <div className="user-message group flex w-full" dir={settings.chatDirection || "ltr"} id={`message-${message.id}`}>
+    <div
+      className="user-message group flex w-full"
+      dir={settings.chatDirection || "ltr"}
+      id={`message-${message.id}`}
+      data-response-id={message.response_id || ''}
+    >
       <div className="w-0 max-w-full flex-auto pl-1">
         <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>
           {messageFiles && messageFiles.length > 0 && (
@@ -255,7 +270,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </>
                     )}
 
-                    {batch.parentResponseId && (
+                    {batch.parentResponseId && !messageIsImported && (
                       <Button
                         variant="ghost"
                         size="icon"
