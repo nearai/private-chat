@@ -21,7 +21,7 @@ export function convertImportedMessages(
   
   result.forEach((msg, index) => {
     const msgCreatedAt = dayjs(msg.created_at * 1000);
-    if (Math.abs(msgCreatedAt.diff(importedAt, 'minute')) <= 2) {
+    if (Math.abs(msgCreatedAt.diff(importedAt, 'second')) < 10) {
       importedIndices.push(index);
     }
   });
@@ -75,6 +75,8 @@ export function convertImportedMessages(
       msg.next_response_ids = [];
     }
   });
+
+  console.log(result, idMapping)
 
   return {
     newMessages: result,
