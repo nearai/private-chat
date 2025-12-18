@@ -106,7 +106,16 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     } finally {
       setIsLoading(false);
     }
-  }, [signature, message.chatCompletionId, message.content, isImportedConversation, importedMessagesIdMapping, setMessageSignature]);
+  }, [
+    signature,
+    message.chatCompletionId,
+    message.content,
+    isImportedConversation,
+    importedMessagesIdMapping,
+    setMessageSignature,
+    removeMessageSignatureError,
+    setMessageSignatureError,
+  ]);
 
   useEffect(() => {
     if (signature?.signature && signature?.signing_address && signature?.text) {

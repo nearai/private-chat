@@ -58,7 +58,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
     if (!conversationImportedAt) return false;
     if (!message?.response_id) return false;
     return message.response_id.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, message])
+  }, [conversationImportedAt, message]);
 
   // Find the current index in siblings by comparing input content
   const currentSiblingIndex = useMemo(() => {

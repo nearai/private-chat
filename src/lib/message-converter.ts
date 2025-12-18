@@ -29,7 +29,7 @@ export function convertImportedMessages(
     return {
       newMessages: result,
       idMapping: {},
-    }
+    };
   }
 
   const idMapping: Record<string, string> = {};
