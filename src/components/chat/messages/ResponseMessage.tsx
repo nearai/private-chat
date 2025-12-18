@@ -65,9 +65,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { chatId } = useParams<{ chatId: string }>();
   const { models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const batch = history.messages[batchId];
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
@@ -365,7 +365,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && (
                 <Button
                   variant="ghost"
                   size="icon"

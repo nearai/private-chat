@@ -10,8 +10,8 @@ export type ConversationDerivedState = {
   history: {
     messages: Record<string, CombinedResponse>;
   };
-  messagesList: ConversationItem[];
   allMessages: Record<string, ConversationItem>;
+  importedMessagesIdMapping?: Record<string, string>;
   lastResponseId: string | null;
   batches: string[];
 };
@@ -42,18 +42,25 @@ export const buildConversationEntry = (
   preserveLastResponseId?: string | null
 ): ConversationDerivedState => {
   const isImportedConversation = conversation.metadata?.initial_created_at !== undefined;
-  const messages = conversation.data || [];
-  const messagesList =  isImportedConversation ? convertImportedMessages(conversation, messages) : messages;
-  const { history, allMessages, currentId } = combineMessagesById(messagesList  );
+  let importedMessagesIdMapping: Record<string, string> = {};
+  let messages = conversation.data || [];
+
+  if (isImportedConversation) {
+    const converted = convertImportedMessages(conversation, messages);
+    messages = converted.newMessages;
+    importedMessagesIdMapping = converted.idMapping || {};
+  }
+
+  const { history, allMessages, currentId } = combineMessagesById(messages);
   const lastResponseId = preserveLastResponseId ?? currentId;
   const batches = extractBatchFromHistory(history, lastResponseId);
-
+  console.log(importedMessagesIdMapping)
   return {
     conversationId: conversation.id,
     conversation,
     history,
     allMessages,
-    messagesList,
+    importedMessagesIdMapping,
     lastResponseId,
     batches,
   };

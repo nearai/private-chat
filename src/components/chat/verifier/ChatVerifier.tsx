@@ -3,6 +3,7 @@ import { XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { useParams } from "react-router";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import IntelLogo from "@/assets/images/intel.svg?react";
@@ -21,15 +22,12 @@ import type {
 import type { VerificationStatus } from "../types";
 import MessagesVerifier from "./MessagesVerifier";
 import ModelVerifier from "./ModelVerifier";
-import { useConversationStore } from "@/stores/useConversationStore";
 
 const ChatVerifier: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
   const { selectedModels } = useChatStore();
-  const conversationState = useConversationStore((state) => state.conversation);
-  const conversationData = conversationState?.conversation;
-  const conversationMessages = conversationState?.messagesList;
+  const { data: conversationData } = useGetConversation(chatId);
   const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const {
@@ -43,7 +41,7 @@ const ChatVerifier: React.FC = () => {
 
   // Transform conversation data into history format for MessagesVerifier
   const history = useMemo(() => {
-    if (!conversationMessages) {
+    if (!conversationData?.data) {
       return {
         messages: {},
         currentId: null,
@@ -52,7 +50,7 @@ const ChatVerifier: React.FC = () => {
 
     const messages = [];
     let currentId: string | null = null;
-    const responseItems = conversationMessages.reduce(
+    const responseItems = conversationData?.data.reduce(
       (acc, item) => {
         if (acc[item.response_id]) {
           acc[item.response_id].content.push(item);
@@ -107,7 +105,7 @@ const ChatVerifier: React.FC = () => {
       ),
       currentId,
     };
-  }, [conversationMessages]);
+  }, [conversationData]);
 
   const toggleVerifier = () => {
     setIsRightSidebarOpen(!isRightSidebarOpen);

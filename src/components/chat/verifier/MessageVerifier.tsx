@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { nearAIClient } from "@/api/nearai/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS, MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -19,6 +19,7 @@ import {
 } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
+import { useConversationStore } from "@/stores/useConversationStore";
 
 interface MessageVerifierProps {
   conversation?: ConversationInfo;
@@ -32,6 +33,8 @@ interface MessageVerifierProps {
 
 const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message, index, isLastIndex }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
+  const conversationState = useConversationStore((state) => state.conversation);
+  const importedMessagesIdMapping = conversationState?.importedMessagesIdMapping || {};
   const {
     messagesSignatures,
     messagesSignaturesErrors,
@@ -68,9 +71,11 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     if (!token || !message.chatCompletionId) return;
     if (signature) return;
 
-    if (message.chatCompletionId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
-      setMessageSignatureError(message.chatCompletionId, IMPORTED_MESSAGE_SIGNATURE_TIP);
-      return;
+    if (isImportedConversation) {
+      if (importedMessagesIdMapping[message.chatCompletionId]) {
+        setMessageSignatureError(message.chatCompletionId, IMPORTED_MESSAGE_SIGNATURE_TIP);
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -101,7 +106,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     } finally {
       setIsLoading(false);
     }
-  }, [signature, message.chatCompletionId, message.content, setMessageSignature]);
+  }, [signature, message.chatCompletionId, message.content, isImportedConversation, importedMessagesIdMapping, setMessageSignature]);
 
   useEffect(() => {
     if (signature?.signature && signature?.signing_address && signature?.text) {

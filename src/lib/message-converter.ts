@@ -5,9 +5,15 @@ import type { Conversation, ConversationItem } from "@/types";
 export function convertImportedMessages(
   conversation: Conversation,
   messages: ConversationItem[],
-): ConversationItem[] {
+): {
+  newMessages: ConversationItem[];
+  idMapping?: Record<string, string>;
+} {
   const importedAtStr = conversation.metadata?.imported_at;
-  if (!importedAtStr) return messages;
+  if (!importedAtStr) return {
+    newMessages: messages,
+    idMapping: {},
+  };
 
   const importedAt = dayjs(Number(importedAtStr));
   const result = messages.map(m => ({ ...m }));
@@ -19,7 +25,12 @@ export function convertImportedMessages(
       importedIndices.push(index);
     }
   });
-  if (importedIndices.length === 0) return result;
+  if (importedIndices.length === 0) {
+    return {
+      newMessages: result,
+      idMapping: {},
+    }
+  }
 
   const idMapping: Record<string, string> = {};
 
@@ -65,5 +76,8 @@ export function convertImportedMessages(
     }
   });
 
-  return result;
+  return {
+    newMessages: result,
+    idMapping,
+  };
 }
