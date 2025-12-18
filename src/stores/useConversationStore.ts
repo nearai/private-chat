@@ -54,7 +54,6 @@ export const buildConversationEntry = (
   const { history, allMessages, currentId } = combineMessagesById(messages);
   const lastResponseId = preserveLastResponseId ?? currentId;
   const batches = extractBatchFromHistory(history, lastResponseId);
-  console.log(importedMessagesIdMapping)
   return {
     conversationId: conversation.id,
     conversation,

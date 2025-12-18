@@ -113,11 +113,15 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
+    let prevResponseId = batch?.parentResponseId || undefined;
+    if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+      prevResponseId = prevResponseId.replace(MOCK_MESSAGE_RESPONSE_ID_PREFIX, "");
+    }
     await regenerateResponse(
       userPrompt.content,
       webSearchEnabled,
       chatId,
-      batch?.parentResponseId || undefined,
+      prevResponseId,
       model || undefined,
     );
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);

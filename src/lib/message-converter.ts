@@ -76,8 +76,6 @@ export function convertImportedMessages(
     }
   });
 
-  console.log(result, idMapping)
-
   return {
     newMessages: result,
     idMapping,
