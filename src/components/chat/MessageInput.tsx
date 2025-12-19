@@ -7,7 +7,17 @@ import { chatClient, isUploadError } from "@/api/chat/client";
 
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
+import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -87,6 +97,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
   const [isUploading, setIsUploading] = useState(false);
+  const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
+  const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
+
+  useEffect(() => {
+    if (isLowBalance) {
+      setShowLowBalanceAlert(true);
+    }
+  }, [isLowBalance]);
 
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
@@ -463,6 +481,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 type="file"
                 hidden
                 multiple
+                disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
@@ -475,7 +494,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   }
                 }}
               />
-              <form className="flex w-full gap-1.5" onSubmit={handleSubmit}>
+              <form
+                className="flex w-full gap-1.5"
+                onSubmit={handleSubmit}
+                onClick={() => {
+                  if (isLowBalance) {
+                    setShowLowBalanceAlert(true);
+                    return;
+                  }
+                }}
+              >
                 <div
                   className="relative flex w-full flex-1 flex-col rounded-3xl border border-border bg-input px-1 shadow-lg transition focus-within:shadow-xl hover:shadow-xl"
                   dir={settings.chatDirection ?? "auto"}
@@ -563,9 +591,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                       <textarea
                         ref={chatInputRef}
                         id="chat-input"
-                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none dark:placeholder:text-white/70"
+                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
                         placeholder={placeholder || "How can I help you today?"}
                         value={prompt}
+                        readOnly={isLowBalance}
+                        disabled={isLowBalance}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
@@ -648,7 +678,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           className="size-10 rounded-full"
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={isMessageCompleted && prompt === "" && files.length === 0}
+                          disabled={isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance}
                           size="icon"
                         >
                           {isMessageCompleted ? (
@@ -667,6 +697,24 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </div>
         </div>
       </div>
+  
+      <AlertDialog open={showLowBalanceAlert} onOpenChange={setShowLowBalanceAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Insufficient Balance</AlertDialogTitle>
+            <AlertDialogDescription>
+              To use Private Chat, your NEAR account must have at least {MIN_NEAR_BALANCE} NEAR.
+              Please add funds to your wallet to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+            <Button onClick={refetchBalance} disabled={checkingBalance}>
+              {checkingBalance ? "Checking..." : "I have added funds"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
