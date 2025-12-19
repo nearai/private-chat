@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { JsonRpcProvider } from "@near-js/providers";
-import { NEAR } from "@near-js/tokens";
+import { useCallback, useEffect, useState } from "react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { usersClient } from "@/api/users/client";
 import type { User } from "@/types";
@@ -8,9 +6,40 @@ import { NEAR_RPC_URL } from "@/api/constants";
 
 export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
+async function getNearBalance(accountId: string) {
+  const rpcUrl = NEAR_RPC_URL;
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: "dontcare",
+      method: "query",
+      params: {
+        request_type: "view_account",
+        finality: "final",
+        account_id: accountId,
+      },
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message || "Failed to query account balance");
+  }
+
+  return BigInt(data.result.amount);
+}
+
+function toYoctoNear(amount: number) {
+  return BigInt(amount) * 10n ** 24n;
+}
+
 export const useNearBalance = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
-  const rpcProviderRef = useRef<JsonRpcProvider | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLowBalance, setIsLowBalance] = useState(false);
@@ -24,26 +53,13 @@ export const useNearBalance = () => {
 
     setLoading(true);
     try {
-      if (!rpcProviderRef.current) {
-        rpcProviderRef.current = new JsonRpcProvider({
-          url: NEAR_RPC_URL
-        });
-      }
-
       const accountId = userData.name;
-      const account = await rpcProviderRef.current.viewAccount(accountId);
-      const balance = account.amount;
-      
-      if (balance) {
-        setBalance(balance);
-        const status = balance >= NEAR.toUnits(MIN_NEAR_BALANCE);
-        setIsLowBalance(!status);
-        return status;
-      } else {
-        setBalance(null);
-        setIsLowBalance(false);
-        return false;
-      }
+      const balance = await getNearBalance(accountId);
+
+      setBalance(balance);
+      const status = balance >= toYoctoNear(MIN_NEAR_BALANCE);
+      setIsLowBalance(!status);
+      return status;
     } catch (error) {
       console.error("Failed to fetch NEAR balance:", error);
       setBalance(null);
