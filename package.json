@@ -24,6 +24,8 @@
     "@codemirror/view": "^6.38.4",
     "@heroicons/react": "^2.2.0",
     "@hot-labs/near-connect": "^0.6.11",
+    "@near-js/providers": "^2.5.1",
+    "@near-js/tokens": "^2.5.1",
     "@noble/hashes": "^1.8.0",
     "@noble/secp256k1": "^2.3.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

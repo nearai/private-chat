@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fromHotConnect, Near } from "near-kit";
-import { NearConnector } from "@hot-labs/near-connect";
+import { JsonRpcProvider } from "@near-js/providers";
+import { NEAR } from "@near-js/tokens";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { usersClient } from "@/api/users/client";
 import type { User } from "@/types";
+import { NEAR_RPC_URL } from "@/api/constants";
 
 export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
 export const useNearBalance = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
-  const nearRef = useRef<Near | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
+  const rpcProviderRef = useRef<JsonRpcProvider | null>(null);
+  const [balance, setBalance] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLowBalance, setIsLowBalance] = useState(false);
 
@@ -21,24 +22,21 @@ export const useNearBalance = () => {
     const nearAccount = userInfo.linked_accounts?.find(a => a.provider === 'near');
     if (!nearAccount) return false;
 
-    const accountId = userData.name;
     setLoading(true);
     try {
-      if (!nearRef.current) {
-        const connector =new NearConnector({ network: "mainnet" });
-        nearRef.current = new Near({
-          network: "mainnet",
-          rpcUrl: "https://free.rpc.fastnear.com",
-          wallet: fromHotConnect(connector),
+      if (!rpcProviderRef.current) {
+        rpcProviderRef.current = new JsonRpcProvider({
+          url: NEAR_RPC_URL
         });
       }
-     
-      const balanceStr = await nearRef.current.getBalance(accountId);
-      const balanceInNear = parseFloat(balanceStr);
+
+      const accountId = userData.name;
+      const account = await rpcProviderRef.current.viewAccount(accountId);
+      const balance = account.amount;
       
-      if (!isNaN(balanceInNear)) {
-        setBalance(balanceInNear);
-        const status = balanceInNear >= MIN_NEAR_BALANCE;
+      if (balance) {
+        setBalance(balance);
+        const status = balance >= NEAR.toUnits(MIN_NEAR_BALANCE);
         setIsLowBalance(!status);
         return status;
       } else {
