@@ -36,7 +36,6 @@ const UserMessage: React.FC<UserMessageProps> = ({
   history,
   allMessages,
   batchId,
-
   regenerateResponse,
   siblings,
 }) => {
@@ -59,6 +58,13 @@ const UserMessage: React.FC<UserMessageProps> = ({
     if (!message?.response_id) return false;
     return message.response_id.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
   }, [conversationImportedAt, message]);
+
+  const prevMessageIsImported = useMemo(() => {
+    const prevResponseId = batch?.parentResponseId || undefined;
+    if (!prevResponseId) return false;
+    if (!conversationImportedAt) return false;
+    return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
+  }, [conversationImportedAt, batch, ]);
 
   // Find the current index in siblings by comparing input content
   const currentSiblingIndex = useMemo(() => {
@@ -270,7 +276,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </>
                     )}
 
-                    {batch.parentResponseId && !messageIsImported && (
+                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && (
                       <Button
                         variant="ghost"
                         size="icon"

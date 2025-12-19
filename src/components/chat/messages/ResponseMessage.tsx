@@ -111,6 +111,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
+  const prevMessageIsImported = useMemo(() => {
+    const prevResponseId = batch?.parentResponseId || undefined;
+    if (!prevResponseId) return false;
+    if (!conversationImportedAt) return false;
+    return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
+  }, [conversationImportedAt, batch, ]);
+
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
@@ -125,7 +132,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       prevResponseId,
       model || undefined,
     );
-  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
+  }, [regenerateResponse, webSearchEnabled,  batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
@@ -370,7 +377,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && verificationStatus !== "imported" && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && (
                 <Button
                   variant="ghost"
                   size="icon"
