@@ -6,32 +6,45 @@ import { NEAR_RPC_URL } from "@/api/constants";
 
 export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
-async function getNearBalance(accountId: string) {
+async function getNearBalance(accountId: string, retries: number = 3) {
   const rpcUrl = NEAR_RPC_URL;
-  const response = await fetch(rpcUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "dontcare",
-      method: "query",
-      params: {
-        request_type: "view_account",
-        finality: "final",
-        account_id: accountId,
-      },
-    }),
-  });
+  
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "dontcare",
+          method: "query",
+          params: {
+            request_type: "view_account",
+            finality: "final",
+            account_id: accountId,
+          },
+        }),
+      });
 
-  const data = await response.json();
+      const data = await response.json();
 
-  if (data.error) {
-    throw new Error(data.error.message || "Failed to query account balance");
+      if (data.error) {
+        throw new Error(data.error.message || "Failed to query account balance");
+      }
+
+      return BigInt(data.result.amount);
+    } catch (error) {
+      if (i === retries) {
+        throw error;
+      }
+      // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** i));
+    }
   }
-
-  return BigInt(data.result.amount);
+  
+  throw new Error("Failed to fetch NEAR balance");
 }
 
 function toYoctoNear(amount: number) {
