@@ -23,17 +23,14 @@ export const useNearBalance = () => {
     const nearAccount = userInfo.linked_accounts?.find(a => a.provider === 'near');
     if (!nearAccount) return;
 
-    let accountId = userData.email;
-    if (!accountId.endsWith('.near') && userData.name.endsWith('.near')) {
-        accountId = userData.name;
-    }
+    const accountId = userData.name;
     setLoading(true);
     try {
       const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
       connectorRef.current = connector;
       const near = new Near({
         network: "mainnet",
-        rpcUrl: "https://rpc.mainnet.near.org",
+        rpcUrl: "https://free.rpc.fastnear.com",
         wallet: fromHotConnect(connector),
       });
 
