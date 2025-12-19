@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
-import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import type { Conversation, ConversationItem } from "@/types";
+import { wrapMockResponseID } from "./utils/mock";
 
 export function convertImportedMessages(
   conversation: Conversation,
@@ -37,7 +37,8 @@ export function convertImportedMessages(
   // 1. Update IDs for imported messages and record mapping
   importedIndices.forEach((index) => {
     const oldId = result[index].response_id;
-    const newId = `${MOCK_MESSAGE_RESPONSE_ID_PREFIX}${index + 1}_${oldId}`;
+    const newId = wrapMockResponseID(oldId, index);
+
     result[index].response_id = newId;
     idMapping[oldId] = newId;
   });

@@ -30,6 +30,7 @@ import { type ContentItem, extractCitations, extractMessageContent, getModelAndC
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
+import { unwrapMockResponseId } from "@/lib/utils/mock";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -115,7 +116,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     // Need fix for files that will display input_file correctly
     let prevResponseId = batch?.parentResponseId || undefined;
     if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
-      prevResponseId = prevResponseId.replace(MOCK_MESSAGE_RESPONSE_ID_PREFIX, "");
+      prevResponseId = unwrapMockResponseId(prevResponseId);
     }
     await regenerateResponse(
       userPrompt.content,
