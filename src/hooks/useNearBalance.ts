@@ -9,39 +9,48 @@ export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
 export const useNearBalance = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
-  const connectorRef = useRef<NearConnector | null>(null);
+  const nearRef = useRef<Near | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [trigger, setTrigger] = useState(0);
+  const [isLowBalance, setIsLowBalance] = useState(false);
 
-  const refetch = () => setTrigger((t) => t + 1);
-
-  const checkBalance = useCallback(async () => {
-    if (!userInfo) return;
+  const checkBalance = useCallback(async (): Promise<boolean> => {
+    if (!userInfo) return false;
     const userData = userInfo.user;
     
     const nearAccount = userInfo.linked_accounts?.find(a => a.provider === 'near');
-    if (!nearAccount) return;
+    if (!nearAccount) return false;
 
     const accountId = userData.name;
     setLoading(true);
     try {
-      const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
-      connectorRef.current = connector;
-      const near = new Near({
-        network: "mainnet",
-        rpcUrl: "https://free.rpc.fastnear.com",
-        wallet: fromHotConnect(connector),
-      });
-
-      const balanceStr = await near.getBalance(accountId);
+      if (!nearRef.current) {
+        const connector =new NearConnector({ network: "mainnet" });
+        nearRef.current = new Near({
+          network: "mainnet",
+          rpcUrl: "https://free.rpc.fastnear.com",
+          wallet: fromHotConnect(connector),
+        });
+      }
+     
+      const balanceStr = await nearRef.current.getBalance(accountId);
       const balanceInNear = parseFloat(balanceStr);
       
       if (!isNaN(balanceInNear)) {
         setBalance(balanceInNear);
+        const status = balanceInNear >= MIN_NEAR_BALANCE;
+        setIsLowBalance(!status);
+        return status;
+      } else {
+        setBalance(null);
+        setIsLowBalance(false);
+        return false;
       }
     } catch (error) {
       console.error("Failed to fetch NEAR balance:", error);
+      setBalance(null);
+      setIsLowBalance(false);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -52,14 +61,14 @@ export const useNearBalance = () => {
     if (!token) return;
     usersClient.getUserData().then((u) => {
       setUserInfo(u);
+    }).catch((err) => {
+      console.error("Failed to fetch user data:", err);
     });
   }, [])
 
   useEffect(() => {
     checkBalance();
-  }, [trigger, checkBalance]);
+  }, [checkBalance]);
 
-  const isLowBalance = balance !== null && balance < MIN_NEAR_BALANCE;
-
-  return { balance, isLowBalance, loading, refetch };
+  return { balance, isLowBalance, loading, refetch: checkBalance };
 };
