@@ -678,7 +678,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           className="size-10 rounded-full"
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={isMessageCompleted && prompt === "" && files.length === 0}
+                          disabled={isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance}
                           size="icon"
                         >
                           {isMessageCompleted ? (
