@@ -7,11 +7,9 @@ import { NEAR_RPC_URL } from "@/api/constants";
 export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
 async function getNearBalance(accountId: string, retries: number = 3) {
-  const rpcUrl = NEAR_RPC_URL;
-  
   for (let i = 0; i <= retries; i++) {
     try {
-      const response = await fetch(rpcUrl, {
+      const response = await fetch(NEAR_RPC_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
