@@ -37,11 +37,11 @@ async function getNearBalance(accountId: string, retries: number = 3) {
       if (i === retries) {
         throw error;
       }
-      // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+      // Wait before retrying (exponential backoff)
       await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** i));
     }
   }
-  
+
   throw new Error("Failed to fetch NEAR balance");
 }
 
