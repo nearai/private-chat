@@ -594,7 +594,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
                         placeholder={placeholder || "How can I help you today?"}
                         value={prompt}
-                        readOnly={isLowBalance}
                         disabled={isLowBalance}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
