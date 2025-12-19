@@ -5,7 +5,7 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { usersClient } from "@/api/users/client";
 import type { User } from "@/types";
 
-const MIN_BALANCE = 1; // 1 NEAR
+export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
 export const useNearBalance = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
@@ -59,7 +59,7 @@ export const useNearBalance = () => {
     checkBalance();
   }, [trigger, checkBalance]);
 
-  const isLowBalance = balance !== null && balance < MIN_BALANCE;
+  const isLowBalance = balance !== null && balance < MIN_NEAR_BALANCE;
 
   return { balance, isLowBalance, loading, refetch };
 };

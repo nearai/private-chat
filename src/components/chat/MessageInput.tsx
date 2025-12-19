@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
-import { useNearBalance } from "@/hooks/useNearBalance";
+import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -481,6 +481,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 type="file"
                 hidden
                 multiple
+                disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
@@ -590,7 +591,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                       <textarea
                         ref={chatInputRef}
                         id="chat-input"
-                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none dark:placeholder:text-white/70"
+                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
                         placeholder={placeholder || "How can I help you today?"}
                         value={prompt}
                         readOnly={isLowBalance}
@@ -702,7 +703,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Insufficient Balance</AlertDialogTitle>
             <AlertDialogDescription>
-              To use Private Chat, your NEAR account must have at least 1 NEAR.
+              To use Private Chat, your NEAR account must have at least {MIN_NEAR_BALANCE} NEAR.
               Please add funds to your wallet to continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
