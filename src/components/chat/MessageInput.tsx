@@ -712,7 +712,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
               onClick={async () => {
                 const status = await refetchBalance();
                 if (!status) return;
-                toast.success("Balance updated. You can now use Private Chat.");
+                toast.success("Balance updated. Private Chat is now available.");
                 setShowLowBalanceAlert(false);
               }}
               disabled={checkingBalance}
