@@ -47,8 +47,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
           
           if ('role' in item && item.role === 'user') {
             waitingForAiResponse = true;
-          }
-          else if (waitingForAiResponse && 'role' in item && item.role !== 'user') {
+          } else if (waitingForAiResponse && 'role' in item && item.role !== 'user') {
             batches.push([...currentBatch]);
             currentBatch = [];
             waitingForAiResponse = false;
