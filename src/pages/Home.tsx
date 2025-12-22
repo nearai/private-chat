@@ -18,7 +18,8 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useViewStore } from "@/stores/useViewStore";
 
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
-import { RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { unwrapMockResponseID } from "@/lib/utils/mock";
 
 const Home = ({
   startStream,
@@ -62,6 +63,9 @@ const Home = ({
         const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
         if (lastMsg) {
           prevRespId = lastMsg.getAttribute('data-response-id') || undefined;
+          if (prevRespId && prevRespId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+            prevRespId = unwrapMockResponseID(prevRespId);
+          }
         }
       }
       await startStream(contentItems, webSearchEnabled, chatId, prevRespId);
