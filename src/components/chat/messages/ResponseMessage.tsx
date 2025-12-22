@@ -206,10 +206,10 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   return (
     <div
-      className={cn('group flex w-full', RESPONSE_MESSAGE_CLASSNAME)}
+      className={cn("group flex w-full", RESPONSE_MESSAGE_CLASSNAME)}
       id={`message-${batch.responseId}`}
       dir={settings.chatDirection || "ltr"}
-      data-response-id={batch.responseId || ''}
+      data-response-id={batch.responseId || ""}
     >
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
         {modelIcon ? (

@@ -56,7 +56,7 @@ const Home = ({
         ...files.map(generateContentFileDataForOpenAI),
       ];
 
-      let prevRespId = previous_response_id
+      let prevRespId = previous_response_id;
       if (!prevRespId) {
         const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
         const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
