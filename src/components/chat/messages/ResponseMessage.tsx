@@ -109,14 +109,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
-  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
-
   const prevMessageIsImported = useMemo(() => {
     const prevResponseId = batch?.parentResponseId || undefined;
     if (!prevResponseId) return false;
     if (!conversationImportedAt) return false;
     return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
   }, [conversationImportedAt, batch]);
+
+  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
