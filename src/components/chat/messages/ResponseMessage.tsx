@@ -11,7 +11,7 @@ import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import { type CombinedResponse, cn, MessageStatus } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP, MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -205,7 +205,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   };
 
   return (
-    <div className="group flex w-full" id={`message-${batch.responseId}`} dir={settings.chatDirection || "ltr"}>
+    <div
+      className={cn("group flex w-full", RESPONSE_MESSAGE_CLASSNAME)}
+      id={`message-${batch.responseId}`}
+      dir={settings.chatDirection || "ltr"}
+      data-response-id={batch.responseId || ""}
+    >
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
         {modelIcon ? (
           <img src={modelIcon} alt="Model Icon" className="mt-0.5 h-6 w-6 rounded" />

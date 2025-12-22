@@ -18,6 +18,7 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useViewStore } from "@/stores/useViewStore";
 
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
+import { RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
 
 const Home = ({
   startStream,
@@ -55,7 +56,15 @@ const Home = ({
         ...files.map(generateContentFileDataForOpenAI),
       ];
 
-      await startStream(contentItems, webSearchEnabled, chatId, previous_response_id);
+      let prevRespId = previous_response_id;
+      if (!prevRespId) {
+        const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
+        const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
+        if (lastMsg) {
+          prevRespId = lastMsg.getAttribute('data-response-id') || undefined;
+        }
+      }
+      await startStream(contentItems, webSearchEnabled, chatId, prevRespId);
       scrollToBottom();
     },
     [chatId, scrollToBottom, startStream]
