@@ -3,7 +3,7 @@ import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 /**
  * Unwrap a mock response_id to get the original response_id
  */
-export function unwrapMockResponseId(id?: string) {
+export function unwrapMockResponseID(id?: string) {
   if (!id) return id;
   return id.replace(new RegExp(`^${MOCK_MESSAGE_RESPONSE_ID_PREFIX}\\d+_`), "");
 }

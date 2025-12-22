@@ -30,7 +30,7 @@ import { type ContentItem, extractCitations, extractMessageContent, getModelAndC
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
-import { unwrapMockResponseId } from "@/lib/utils/mock";
+import { unwrapMockResponseID } from "@/lib/utils/mock";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -109,21 +109,21 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
-  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
-
   const prevMessageIsImported = useMemo(() => {
     const prevResponseId = batch?.parentResponseId || undefined;
     if (!prevResponseId) return false;
     if (!conversationImportedAt) return false;
     return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, batch, ]);
+  }, [conversationImportedAt, batch]);
+
+  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
     let prevResponseId = batch?.parentResponseId || undefined;
     if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
-      prevResponseId = unwrapMockResponseId(prevResponseId);
+      prevResponseId = unwrapMockResponseID(prevResponseId);
     }
     await regenerateResponse(
       userPrompt.content,
@@ -132,7 +132,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       prevResponseId,
       model || undefined,
     );
-  }, [regenerateResponse, webSearchEnabled,  batch, chatId, allMessages, model]);
+  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === model)?.metadata?.modelIcon;

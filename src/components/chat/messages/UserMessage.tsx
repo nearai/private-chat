@@ -57,14 +57,14 @@ const UserMessage: React.FC<UserMessageProps> = ({
     if (!conversationImportedAt) return false;
     if (!message?.response_id) return false;
     return message.response_id.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, message]);
+  }, [conversationImportedAt, message?.response_id]);
 
   const prevMessageIsImported = useMemo(() => {
     const prevResponseId = batch?.parentResponseId || undefined;
     if (!prevResponseId) return false;
     if (!conversationImportedAt) return false;
     return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, batch, ]);
+  }, [conversationImportedAt, batch]);
 
   // Find the current index in siblings by comparing input content
   const currentSiblingIndex = useMemo(() => {
