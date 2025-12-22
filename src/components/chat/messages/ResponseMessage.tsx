@@ -11,7 +11,7 @@ import VerifiedIcon from "@/assets/images/verified-2.svg?react";
 import { Button } from "@/components/ui/button";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import { type CombinedResponse, cn, MessageStatus } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP, MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { formatDate } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
@@ -30,6 +30,7 @@ import { type ContentItem, extractCitations, extractMessageContent, getModelAndC
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
+import { unwrapMockResponseID } from "@/lib/utils/mock";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -42,7 +43,8 @@ interface ResponseMessageProps {
     content: ContentItem[],
     webSearchEnabled: boolean,
     conversationId?: string,
-    previous_response_id?: string
+    previous_response_id?: string,
+    currentModel?: string
   ) => Promise<void>;
 }
 
@@ -64,14 +66,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { chatId } = useParams<{ chatId: string }>();
   const { models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const batch = history.messages[batchId];
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
   const signatureError = messagesSignaturesErrors[messageId];
-  const isBatchCompleted = batch.status === MessageStatus.COMPLETED;
+  const isBatchCompleted = batch.status === MessageStatus.COMPLETED || batch.status === MessageStatus.OUTPUT;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
 
   const handleVerificationBadgeClick = () => {
@@ -88,9 +90,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
-      if (signatureError && conversationImportedAt) {
-        return "imported";
+      if (conversationImportedAt) {
+        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX) || signatureError) {
+          return "imported";
+        }
       }
+      
       return "verifying";
     }
 
@@ -104,13 +109,30 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
+  const prevMessageIsImported = useMemo(() => {
+    const prevResponseId = batch?.parentResponseId || undefined;
+    if (!prevResponseId) return false;
+    if (!conversationImportedAt) return false;
+    return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
+  }, [conversationImportedAt, batch]);
+
+  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
+
   const handleRegenerateResponse = useCallback(async () => {
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
-    await regenerateResponse(userPrompt.content, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
-  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages]);
-
-  const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
+    let prevResponseId = batch?.parentResponseId || undefined;
+    if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+      prevResponseId = unwrapMockResponseID(prevResponseId);
+    }
+    await regenerateResponse(
+      userPrompt.content,
+      webSearchEnabled,
+      chatId,
+      prevResponseId,
+      model || undefined,
+    );
+  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {
     return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
@@ -355,7 +377,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && (
                 <Button
                   variant="ghost"
                   size="icon"

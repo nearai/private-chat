@@ -117,6 +117,7 @@ const Home = ({
     return batches.map((batch, idx) => {
       const isLast = idx === currentMessages.length - 1;
       const batchMessage = history.messages[batch];
+      if (!batchMessage) return null;
       if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
         const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
         return (

@@ -45,6 +45,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
             conversationId: conversationId,
             history: { messages: {} },
             allMessages: {},
+            importedMessagesIdMapping: {},
             lastResponseId: null,
             batches: [],
           };
@@ -102,7 +103,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
       contentItems: ContentItem[],
       webSearchEnabled: boolean,
       conversationId?: string,
-      previous_response_id?: string
+      previous_response_id?: string,
+      currentModel?: string,
     ) => {
       const conversationLocalId = conversationId || params.chatId;
       if (!conversationLocalId) {
@@ -110,7 +112,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
 
-      const model = selectedModels[0] || DEFAULT_MODEL;
+      const model = currentModel || selectedModels[0] || DEFAULT_MODEL;
 
       pushResponse(conversationLocalId, contentItems, previous_response_id);
 

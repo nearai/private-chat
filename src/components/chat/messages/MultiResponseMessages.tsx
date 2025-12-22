@@ -1,6 +1,6 @@
 import type React from "react";
 import { useMemo } from "react";
-import type { CombinedResponse } from "@/lib";
+import { cn, type CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationItem } from "@/types";
 import { type ContentItem, getModelAndCreatedTimestamp } from "@/types/openai";
@@ -17,7 +17,8 @@ interface MultiResponseMessagesProps {
     content: ContentItem[],
     webSearchEnabled: boolean,
     conversationId?: string,
-    previous_response_id?: string
+    previous_response_id?: string,
+    currentModel?: string
   ) => Promise<void>;
   responseSiblings?: string[];
 }
@@ -93,7 +94,10 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           return (
             <div
               key={batchIds[currentIdx]}
-              className={`m-1 w-full max-w-full snap-center ${isSeveralModels && borderClass} cursor-pointer rounded-2xl p-5 transition-all`}
+              className={cn(`m-1 w-full max-w-full cursor-pointer snap-center rounded-2xl transition-all`, {
+                'p-5': isSeveralModels,
+                [borderClass]: isSeveralModels,
+              })}
             >
               {history.messages[batchIds[currentIdx]] && (
                 <ResponseMessage
