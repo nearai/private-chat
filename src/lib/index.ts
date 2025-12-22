@@ -131,6 +131,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
     {} as Record<string, ConversationItem>
   );
 
+  const responseIds = new Set(messages.map(msg => msg.response_id));
   let rootNode: string | null = null;
 
   for (const msg of messages) {
@@ -146,7 +147,10 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
         nextResponseIds: [],
       };
     }
-    if (!rootNode && !msg.previous_response_id) rootNode = msg.response_id;
+  
+    if (!rootNode && (!msg.previous_response_id || !responseIds.has(msg.previous_response_id))) {
+      rootNode = msg.response_id;
+    }
 
     if (msg.previous_response_id) history.messages[msg.response_id].parentResponseId = msg.previous_response_id;
     if (msg.next_response_ids) {
