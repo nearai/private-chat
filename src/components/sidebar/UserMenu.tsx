@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 interface DropdownItem {

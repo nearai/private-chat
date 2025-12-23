@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useUpdateUserSettings, useUserSettings } from "@/api/users/queries";
 
-import { useTheme, type Theme } from "@/components/common/ThemeProvider";
+import { type Theme, useTheme } from "@/components/common/ThemeProvider";
 import { Button } from "@/components/ui/button";
 
 import { changeLanguage, getLanguages } from "@/i18n";
@@ -35,7 +35,7 @@ const GeneralSettings = () => {
   const { webSearchEnabled, setWebSearchEnabled } = useChatStore();
 
   const [formAppearance, setFormAppearance] = useState<Theme>(theme);
-  const [formWebSearchEnabled, setFormWebSearchEnabled] = useState(webSearchEnabled); 
+  const [formWebSearchEnabled, setFormWebSearchEnabled] = useState(webSearchEnabled);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [requestFormat, setRequestFormat] = useState<string | null>(null);
   const [keepAlive, setKeepAlive] = useState<string | null>(null);

@@ -2,7 +2,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type * as React from "react";
 import XMarkIcon from "@/assets/icons/x-mark.svg?react";
 
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { Button } from "./button";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {

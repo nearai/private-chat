@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
@@ -17,9 +17,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
+import { cn } from "@/lib";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 import { compressImage } from "@/lib/image";
-import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -65,7 +65,6 @@ const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
-  onChange = () => {},
   createMessagePair = () => {},
   stopResponse = () => {},
   autoScroll = false,
@@ -78,7 +77,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   files: initialFiles = [],
   toolServers = [],
   selectedToolIds: initialSelectedToolIds = [],
-  imageGenerationEnabled: initialImageGenerationEnabled = false,
   placeholder = "",
   onSubmit,
   showUserProfile = true,
@@ -95,7 +93,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { isEditingChatName, webSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
-  const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
   const [isUploading, setIsUploading] = useState(false);
   const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
@@ -114,90 +111,85 @@ const MessageInput: React.FC<MessageInputProps> = ({
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
   );
 
-  useEffect(() => {
-    onChange({
-      prompt,
-      files,
-      selectedToolIds,
-      imageGenerationEnabled,
-      webSearchEnabled,
-    });
-  }, [prompt, files, selectedToolIds, imageGenerationEnabled, webSearchEnabled, onChange]);
-
-  const uploadFileHandler = async (file: File): Promise<FileContentItem | undefined> => {
-    try {
-      const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
-      const maxFileSize = 10 * 1024 * 1024;
-
-      if (file.type === "application/pdf") {
-        toast.error("PDF files are not supported yet.");
-        return;
-      }
-
-      if (file.size > maxFileSize) {
-        toast.error(`File size should not exceed 10 MB.`);
-        return;
-      }
-
-      if (imageTypes.includes(file.type)) {
-        const imageUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (event) => resolve(event.target?.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        let finalImageUrl = imageUrl;
-        if (settings.imageCompression) {
-          const width = settings.imageCompressionSize?.width;
-          const height = settings.imageCompressionSize?.height;
-          if (width || height) {
-            finalImageUrl = await compressImage(imageUrl, width, height);
-          }
+  const uploadFileHandler = useCallback(
+    async (file: File): Promise<FileContentItem | undefined> => {
+      try {
+        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
+        const maxFileSize = 10 * 1024 * 1024;
+        if (file.type === "application/pdf") {
+          toast.error("PDF files are not supported yet.");
+          return;
         }
 
-        const newFile: FileContentItem = {
-          type: "input_image",
-          id: uuidv4(),
-          name: file.name,
-          image_url: finalImageUrl,
-        };
+        if (file.size > maxFileSize) {
+          toast.error(`File size should not exceed 10 MB.`);
+          return;
+        }
+
+        if (imageTypes.includes(file.type)) {
+          const imageUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          let finalImageUrl = imageUrl;
+          if (settings.imageCompression) {
+            const width = settings.imageCompressionSize?.width;
+            const height = settings.imageCompressionSize?.height;
+            if (width || height) {
+              finalImageUrl = await compressImage(imageUrl, width, height);
+            }
+          }
+
+          const newFile: FileContentItem = {
+            type: "input_image",
+            id: uuidv4(),
+            name: file.name,
+            image_url: finalImageUrl,
+          };
+
+          return newFile;
+        }
+
+        const data = await chatClient.uploadFile(file);
+
+        const newFile: FileContentItem = file.type.startsWith("audio/")
+          ? { type: "input_audio", id: data.id, name: data.filename }
+          : { type: "input_file", id: data.id, name: data.filename };
 
         return newFile;
-      }
-
-      const data = await chatClient.uploadFile(file);
-
-      const newFile: FileContentItem = file.type.startsWith("audio/")
-        ? { type: "input_audio", id: data.id, name: data.filename }
-        : { type: "input_file", id: data.id, name: data.filename };
-
-      return newFile;
-    } catch (errorObj: unknown) {
-      if (isUploadError(errorObj)) {
-        if (errorObj.error.type === "invalid_request_error") {
-          toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+      } catch (errorObj: unknown) {
+        if (isUploadError(errorObj)) {
+          if (errorObj.error.type === "invalid_request_error") {
+            toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+          }
+        } else {
+          toast.error(t("Error uploading file."));
         }
-      } else {
-        toast.error(t("Error uploading file."));
+        console.error("Error uploading file:", errorObj);
+        return undefined;
       }
-      console.error("Error uploading file:", errorObj);
-      return undefined;
-    }
-  };
+    },
+    [settings.imageCompression, settings.imageCompressionSize, t]
+  );
 
-  const inputFilesHandler = async (inputFiles: File[]) => {
-    setIsUploading(true);
-    try {
-      for (const file of inputFiles) {
-        const newFile = await uploadFileHandler(file);
-        if (!newFile) continue;
-        setFiles((prev) => [...prev, newFile]);
+  const inputFilesHandler = useCallback(
+    async (inputFiles: File[]) => {
+      setIsUploading(true);
+      try {
+        for (const file of inputFiles) {
+          const newFile = await uploadFileHandler(file);
+          if (!newFile) continue;
+          setFiles((prev) => [...prev, newFile]);
+        }
+      } finally {
+        setIsUploading(false);
       }
-    } finally {
-      setIsUploading(false);
-    }
-  };
+    },
+    [uploadFileHandler]
+  );
 
   useEffect(() => {
     setLoaded(true);
@@ -279,7 +271,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       stopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
-      setImageGenerationEnabled(false);
+      // setImageGenerationEnabled(false);
     }
 
     if (isCtrlPressed && e.key === "Enter" && e.shiftKey) {

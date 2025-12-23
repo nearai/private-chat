@@ -1,5 +1,5 @@
 import type React from "react";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 
 interface SpinnerProps {
   className?: string;

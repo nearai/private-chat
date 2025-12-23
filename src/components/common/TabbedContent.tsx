@@ -1,6 +1,6 @@
 import type React from "react";
 import { useMemo, useState } from "react";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 
 type TabLike = {
   id: string;
@@ -30,7 +30,9 @@ function TabbedContent<T extends ReadonlyArray<TabLike>>({ tabs, defaultTab, cla
             onClick={() => setActiveTab(tab.id)}
             className={cn(
               "flex min-w-fit items-center gap-2 rounded-[0.75rem] p-2 outline-none ring-none transition-colors hover:text-foreground",
-              activeTab === tab.id ? "bg-[#E3EBED] font-medium text-foreground dark:bg-[#1E293B] dark:text-white" : "text-muted-foreground"
+              activeTab === tab.id
+                ? "bg-[#E3EBED] font-medium text-foreground dark:bg-[#1E293B] dark:text-white"
+                : "text-muted-foreground"
             )}
           >
             <tab.icon className="h-4 w-4" />
