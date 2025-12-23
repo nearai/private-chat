@@ -37,6 +37,7 @@ interface ResponseMessageProps {
   batchId: string;
   allMessages: Record<string, ConversationItem>;
   siblings: string[];
+  isFirstMessage: boolean;
   isLastMessage: boolean;
   readOnly: boolean;
   regenerateResponse: (
@@ -52,6 +53,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   history,
   allMessages,
   batchId,
+  isFirstMessage,
   isLastMessage,
   readOnly,
   regenerateResponse,
@@ -382,7 +384,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && !isFirstMessage && (
                 <Button
                   variant="ghost"
                   size="icon"

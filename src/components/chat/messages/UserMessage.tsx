@@ -22,6 +22,7 @@ interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
   allMessages: Record<string, ConversationItem>;
   batchId: string;
+  isFirstMessage: boolean;
   regenerateResponse: (
     content: ContentItem[],
     webSearchEnabled: boolean,
@@ -36,6 +37,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   history,
   allMessages,
   batchId,
+  isFirstMessage,
   regenerateResponse,
   siblings,
 }) => {
@@ -276,7 +278,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </>
                     )}
 
-                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && (
+                    {batch.parentResponseId && !messageIsImported && !isFirstMessage && !prevMessageIsImported && (
                       <Button
                         variant="ghost"
                         size="icon"
