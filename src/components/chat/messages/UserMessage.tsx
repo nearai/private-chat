@@ -162,7 +162,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
       className="user-message group flex w-full"
       dir={settings.chatDirection || "ltr"}
       id={`message-${message.id}`}
-      data-response-id={message.response_id || ''}
+      data-response-id={message.response_id || ""}
     >
       <div className="w-0 max-w-full flex-auto pl-1">
         <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>

@@ -117,60 +117,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           );
         })}
       </div>
-
-      {/* {!readOnly && allMessagesDone && (
-        <div className="flex justify-end">
-          <div className="w-full">
-            {history.messages[messageId]?.merged?.status && (
-              <div className="w-full rounded-xl py-2 pr-2 pl-5">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">Merged Response</span>
-                  {history.messages[messageId].merged.timestamp && (
-                    <span className="-mt-0.5 invisible ml-0.5 self-center font-medium text-gray-400 text-xs uppercase group-hover:visible">
-                      {dayjs(history.messages[messageId].merged.timestamp * 1000).format("LT")}
-                    </span>
-                  )}
-                </div>
-
-                <div className="markdown-prose mt-1 w-full min-w-full">
-                  {!history.messages[messageId].merged.content ? (
-                    <div className="text-gray-500 dark:text-gray-400">Loading...</div>
-                  ) : (
-                    <div className="markdown-content">{history.messages[messageId].merged.content}</div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {isLastMessage && (
-            <div className="mt-1 shrink-0 text-gray-600 dark:text-gray-500">
-              <button
-                type="button"
-                id="merge-response-button"
-                className="regenerate-response-button visible rounded-lg p-1 transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5"
-                onClick={mergeResponses}
-                title={"Merge Responses"}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="size-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-      )} */}
     </div>
   );
 };

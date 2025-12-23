@@ -110,7 +110,7 @@ export default function NewChat({
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
 
-    //This query is async, conversation.id is undefined when it starts
+    // Capture conversationId before the async operation, as the conversation object may change
     setTimeout(async () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.conversation.all,

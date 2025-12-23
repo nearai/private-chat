@@ -62,7 +62,7 @@ const Home = ({
         const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
         const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
         if (lastMsg) {
-          prevRespId = lastMsg.getAttribute('data-response-id') || undefined;
+          prevRespId = lastMsg.getAttribute("data-response-id") || undefined;
           if (prevRespId && prevRespId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
             prevRespId = unwrapMockResponseID(prevRespId);
           }

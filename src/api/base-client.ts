@@ -253,7 +253,7 @@ export class ApiClient {
                       data.response.id,
                     ].filter((id: string) => id !== TEMP_RESPONSE_ID);
                   }
-                  // This is optimistic update
+                  // Optimistically associate the originating user input message with the new response ID
 
                   if (userInputMessage) {
                     userInputMessage.next_response_ids.push(data.response.id);
@@ -277,7 +277,7 @@ export class ApiClient {
                 draft.conversation!.lastResponseId
               );
               draft.conversation!.history = history;
-              //Optimize adding content only on needed message
+              // Optimize adding content only on needed message
               draft.conversation!.allMessages = allMessages;
 
               return draft;
@@ -312,7 +312,7 @@ export class ApiClient {
                 draft.conversation!.lastResponseId
               );
               draft.conversation!.history = history;
-              //Optimize adding content only on needed message
+              // Optimize adding content only on needed message
               draft.conversation!.allMessages = allMessages;
 
               return draft;
