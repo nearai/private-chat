@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, findLastResponseId } from "@/lib";
 import type { Conversation, ConversationItem } from "@/types";
 import { convertImportedMessages } from "@/lib/message-converter";
+import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
 export type ConversationDerivedState = {
   conversationId: string;
@@ -28,7 +29,7 @@ export const createEmptyConversation = (conversationId: string): Conversation =>
   id: conversationId,
   created_at: Date.now(),
   metadata: {
-    title: "New Conversation",
+    title: DEFAULT_CONVERSATION_TITLE,
   },
   data: [],
   has_more: false,

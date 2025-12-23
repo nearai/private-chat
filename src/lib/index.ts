@@ -85,7 +85,6 @@ export const validateJSON = (json: string): boolean => {
 };
 
 export interface CombinedResponse {
-  //TODO: add conversationId
   responseId: string;
   userPromptId: string | null;
   reasoningMessagesIds: string[];

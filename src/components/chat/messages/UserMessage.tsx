@@ -49,7 +49,6 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const messageEditTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const { webSearchEnabled } = useChatStore();
   const { chatId } = useParams();
-  // TODO: We should filter user system prompt from the content here
   const messageContent = extractMessageContent(message?.content ?? []);
   const messageFiles = extractFiles(message?.content ?? []);
   const { data: conversationData } = useGetConversation(chatId);
