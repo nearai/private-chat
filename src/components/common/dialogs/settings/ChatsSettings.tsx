@@ -87,6 +87,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   };
 
   const handleImport = async (json: any) => {
+    let loadingId: string | number = "";
     try {
       const conversions = historiesToConversations(json);
       console.log("Imported JSON:", conversions);
@@ -94,7 +95,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       const errors: string[] = [];
       const newConversations: string[] = [];
       
-      toast.loading("Importing conversations...");
+      loadingId = toast.loading("Importing conversations...");
       setImporting(true);
 
       const batchSize = 10;
@@ -123,9 +124,12 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
       onImportFinish && onImportFinish();
     } catch (error) {
+      console.warn("Import error:", error);
       toast.error(`Failed to import chats: ${error}`);
     } finally {
-      toast.dismiss();
+      if (loadingId) {
+        toast.dismiss(loadingId);
+      }
       setImporting(false);
     }
   };
