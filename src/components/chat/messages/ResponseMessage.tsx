@@ -137,7 +137,11 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {
-    return models.find((m) => m.modelId === model)?.metadata?.modelIcon;
+    const icon = models.find((m) => m.modelId === model)?.metadata?.modelIcon;
+    if (icon) {
+      return <img src={icon} alt="Model Icon" className="mt-0.5 h-6 w-6 rounded" />;
+    }
+    return <NearAIIcon className="mt-0.5 h-6 w-6 rounded" />;
   }, [models, model]);
 
   const messageContent = useMemo(() => {
@@ -214,11 +218,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       data-response-id={batch.responseId || ""}
     >
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
-        {modelIcon ? (
-          <img src={modelIcon} alt="Model Icon" className="mt-0.5 h-6 w-6 rounded" />
-        ) : (
-          <NearAIIcon className="mt-0.5 h-6 w-6 rounded" />
-        )}
+        {modelIcon}
       </div>
 
       <div className="w-0 flex-auto pl-1">
