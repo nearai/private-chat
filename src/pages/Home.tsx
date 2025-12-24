@@ -20,6 +20,7 @@ import { useViewStore } from "@/stores/useViewStore";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
+import { useStreamStore } from "@/stores/useStreamStore";
 
 const Home = ({
   startStream,
@@ -36,8 +37,10 @@ const Home = ({
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
   const modelInitializedRef = useRef<boolean>(false);
+  const dataInitializedRef = useRef<boolean>(false);
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
+  const { isStreamActive } = useStreamStore();
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
@@ -83,9 +86,13 @@ const Home = ({
     if (!chatId || !conversationData) return;
     if (conversationState?.conversationId !== chatId) {
       clearAllSignatures();
-      setConversationData(conversationData);
+      dataInitializedRef.current = false;
     }
-  }, [chatId, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
+    if (!dataInitializedRef.current && !isStreamActive(conversationData.id)) {
+      setConversationData(conversationData);
+      dataInitializedRef.current = true;
+    }
+  }, [chatId, isStreamActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
   useEffect(() => {

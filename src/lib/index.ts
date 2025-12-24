@@ -147,16 +147,38 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
       };
     }
   
-    if (!rootNode && (!msg.previous_response_id || !responseIds.has(msg.previous_response_id))) {
+    const previousResponseId = msg.previous_response_id;
+    if (!rootNode && (!previousResponseId || !responseIds.has(previousResponseId))) {
       rootNode = msg.response_id;
     }
 
-    if (msg.previous_response_id) history.messages[msg.response_id].parentResponseId = msg.previous_response_id;
+    if (previousResponseId) {
+      history.messages[msg.response_id].parentResponseId = previousResponseId;
+      
+      if (!history.messages[previousResponseId]) {
+        history.messages[previousResponseId] = {
+          status: MessageStatus.CREATED,
+          responseId: previousResponseId,
+          userPromptId: null,
+          reasoningMessagesIds: [],
+          webSearchMessagesIds: [],
+          outputMessagesIds: [],
+          parentResponseId: null,
+          nextResponseIds: [],
+        };
+      }
+      
+      if (!history.messages[previousResponseId].nextResponseIds.includes(msg.response_id)) {
+        history.messages[previousResponseId].nextResponseIds.push(msg.response_id);
+      }
+    }
+
     if (msg.next_response_ids) {
       const existing = history.messages[msg.response_id].nextResponseIds;
       const merged = [...new Set([...existing, ...msg.next_response_ids])];
       history.messages[msg.response_id].nextResponseIds = merged;
     }
+    
     switch (msg.type) {
       case "reasoning":
         history.messages[msg.response_id].reasoningMessagesIds.push(msg.id);
