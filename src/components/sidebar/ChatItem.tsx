@@ -10,6 +10,7 @@ import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
 import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
+import { useConversationStore } from "@/stores/useConversationStore";
 
 type ChatItemProps = {
   chat: ConversationInfo;
@@ -29,6 +30,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
 
   const [renameInput, setRenameInput] = useState(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
   const { isReloadingConversations, updateConversation, reloadConversations } = useConversation();
+  const { updateConversationMetadata } = useConversationStore();
 
   const isRenaming = updateConversation.isPending || isReloadingConversations;
 
@@ -43,6 +45,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
       },
       {
         onSuccess: () => {
+          updateConversationMetadata(chat.id, { title: renameInput });
           reloadConversations({
             onSettled: () => {
               stopEditingChatName();

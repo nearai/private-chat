@@ -6,12 +6,19 @@ import { useViewStore } from "@/stores/useViewStore";
 import { Button } from "../ui/button";
 // import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
+import { useConversationStore } from "@/stores/useConversationStore";
+import { useMemo } from "react";
+import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
 export default function Navbar() {
+  const conversationState = useConversationStore((state) => state.conversation?.conversation)
   const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
 
   const navigate = useNavigate();
-  // const { chatId } = useParams();
+
+  const conversationTitle = useMemo(() => {
+    return conversationState?.metadata?.title || DEFAULT_CONVERSATION_TITLE;
+  }, [conversationState]);
 
   const handleNewChat = async () => {
     try {
@@ -58,8 +65,19 @@ export default function Navbar() {
             </div>
           )}
 
-          <div className="flex max-w-full flex-1 justify-center overflow-hidden py-0.5">
-            <ModelSelector />
+          <div className="grid h-9 max-w-full flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 overflow-hidden py-0.5">
+            <div className="flex">
+              <ModelSelector />
+            </div>
+            <div className="flex max-w-[30vw] items-center justify-center overflow-hidden px-2">
+              <span
+                className="max-w-full truncate text-center font-medium text-sm opacity-90"
+                title={conversationTitle}
+              >
+                {conversationTitle}
+              </span>
+            </div>
+            <div aria-hidden="true" />
           </div>
 
           <div className="flex h-fit items-center gap-2">

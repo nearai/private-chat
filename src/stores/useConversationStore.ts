@@ -1,7 +1,7 @@
 import { produce } from "immer";
 import { create } from "zustand";
 import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, findLastResponseId } from "@/lib";
-import type { Conversation, ConversationItem } from "@/types";
+import type { Conversation, ConversationInfo, ConversationItem } from "@/types";
 import { convertImportedMessages } from "@/lib/message-converter";
 import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
@@ -23,6 +23,7 @@ export interface ConversationStoreState {
   updateConversation: (updater: (state: ConversationStoreState) => ConversationStoreState) => void;
   setLastResponseId: (nextId: string) => void;
   resetConversation: () => void;
+  updateConversationMetadata: (conversationId: string, metadata: Partial<ConversationInfo['metadata']>) => void;
 }
 
 export const createEmptyConversation = (conversationId: string): Conversation => ({
@@ -101,5 +102,22 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
     set((state) => {
       if (!state.conversation) return state;
       return { conversation: null };
+    }),
+  updateConversationMetadata: (conversationId: string, metadata: Partial<ConversationInfo['metadata']>) =>
+    set((state) => {
+      if (conversationId !== state.conversation?.conversationId) return state;
+      if (!state.conversation) return state;
+      return {
+        conversation: {
+          ...state.conversation,
+          conversation: {
+            ...state.conversation.conversation,
+            metadata: {
+              ...state.conversation.conversation.metadata,
+              ...metadata,
+            },
+          },
+        },
+      };
     }),
 }));
