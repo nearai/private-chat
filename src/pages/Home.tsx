@@ -143,7 +143,6 @@ const Home = ({
       const batchMessage = history.messages[batch];
       return !!batchMessage;
     }).map((batch, idx) => {
-      const isFirst = idx === 0;
       const isLast = idx === currentMessages.length - 1;
       const batchMessage = history.messages[batch];
       if (!batchMessage) return null;
@@ -153,7 +152,6 @@ const Home = ({
           <UserMessage
             key={batchMessage.userPromptId}
             history={history}
-            isFirstMessage={isFirst}
             allMessages={allMessages}
             batchId={batch}
             regenerateResponse={startStream}
@@ -178,7 +176,6 @@ const Home = ({
           <UserMessage
             key={batchMessage.userPromptId}
             history={history}
-            isFirstMessage={isFirst}
             allMessages={allMessages}
             batchId={batch}
             regenerateResponse={startStream}
@@ -197,7 +194,6 @@ const Home = ({
             allMessages={allMessages}
             batchId={batch}
             currentBatchBundle={batches}
-            isFirstMessage={isFirst}
             isLastMessage={isLast}
             readOnly={false}
             regenerateResponse={startStream}
@@ -211,7 +207,6 @@ const Home = ({
             history={history}
             allMessages={allMessages}
             batchId={batch}
-            isFirstMessage={isFirst}
             isLastMessage={isLast}
             readOnly={false}
             regenerateResponse={startStream}
