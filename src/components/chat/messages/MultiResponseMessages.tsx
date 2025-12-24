@@ -11,7 +11,6 @@ interface MultiResponseMessagesProps {
   batchId: string;
   currentBatchBundle: string[];
   allMessages: Record<string, ConversationItem>;
-  isFirstMessage: boolean;
   isLastMessage: boolean;
   readOnly: boolean;
   regenerateResponse: (
@@ -29,7 +28,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   batchId,
   currentBatchBundle,
   allMessages,
-  isFirstMessage,
   isLastMessage,
   readOnly,
   regenerateResponse,
@@ -106,7 +104,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
                   history={history}
                   allMessages={allMessages}
                   batchId={batchIds[currentIdx]}
-                  isFirstMessage={isFirstMessage}
                   isLastMessage={isLastMessage}
                   siblings={batchIds}
                   readOnly={readOnly}

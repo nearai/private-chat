@@ -20,6 +20,7 @@ import { useViewStore } from "@/stores/useViewStore";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
+import { useStreamStore } from "@/stores/useStreamStore";
 
 const Home = ({
   startStream,
@@ -36,12 +37,20 @@ const Home = ({
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
   const modelInitializedRef = useRef<boolean>(false);
+  const dataInitializedRef = useRef<boolean>(false);
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
+  const { isStreamActive } = useStreamStore();
+  const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
+  
+  const currentStreamIsActive = useMemo(() => {
+    if (!chatId) return false;
+    return activeStreams.has(chatId);
+  }, [chatId, activeStreams]);
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
   const setConversationData = useConversationStore((state) => state.setConversationData);
@@ -83,9 +92,13 @@ const Home = ({
     if (!chatId || !conversationData) return;
     if (conversationState?.conversationId !== chatId) {
       clearAllSignatures();
-      setConversationData(conversationData);
+      dataInitializedRef.current = false;
     }
-  }, [chatId, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
+    if (!dataInitializedRef.current && !isStreamActive(chatId)) {
+      setConversationData(conversationData);
+      dataInitializedRef.current = true;
+    }
+  }, [chatId, isStreamActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
   useEffect(() => {
@@ -136,7 +149,6 @@ const Home = ({
       const batchMessage = history.messages[batch];
       return !!batchMessage;
     }).map((batch, idx) => {
-      const isFirst = idx === 0;
       const isLast = idx === currentMessages.length - 1;
       const batchMessage = history.messages[batch];
       if (!batchMessage) return null;
@@ -146,7 +158,6 @@ const Home = ({
           <UserMessage
             key={batchMessage.userPromptId}
             history={history}
-            isFirstMessage={isFirst}
             allMessages={allMessages}
             batchId={batch}
             regenerateResponse={startStream}
@@ -171,7 +182,6 @@ const Home = ({
           <UserMessage
             key={batchMessage.userPromptId}
             history={history}
-            isFirstMessage={isFirst}
             allMessages={allMessages}
             batchId={batch}
             regenerateResponse={startStream}
@@ -190,7 +200,6 @@ const Home = ({
             allMessages={allMessages}
             batchId={batch}
             currentBatchBundle={batches}
-            isFirstMessage={isFirst}
             isLastMessage={isLast}
             readOnly={false}
             regenerateResponse={startStream}
@@ -204,7 +213,6 @@ const Home = ({
             history={history}
             allMessages={allMessages}
             batchId={batch}
-            isFirstMessage={isFirst}
             isLastMessage={isLast}
             readOnly={false}
             regenerateResponse={startStream}
@@ -240,6 +248,7 @@ const Home = ({
         setPrompt={setInputValue}
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
+        isConversationStreamActive={currentStreamIsActive}
       />
     </div>
   );
