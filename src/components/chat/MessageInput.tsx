@@ -177,6 +177,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     [settings.imageCompression, settings.imageCompressionSize, t]
   );
 
+  const disabledSendButton = useMemo(() => {
+    if (isConversationStreamActive) return true;
+    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance;
+  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalance]);
+
   const inputFilesHandler = useCallback(
     async (inputFiles: File[]) => {
       setIsUploading(true);
@@ -260,6 +265,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     e.preventDefault();
     if (prompt.trim() || files.length > 0) {
       if (!isMessageCompleted) return;
+      if (disabledSendButton) return;
       onSubmit(prompt, files, webSearchEnabled);
       setPrompt("");
       setFiles([]);
@@ -308,6 +314,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         e.preventDefault();
         if (prompt !== "" || files.length > 0) {
           if (!isMessageCompleted) return;
+          if (disabledSendButton) return;
           onSubmit(prompt, files, webSearchEnabled);
           setFiles([]);
           setPrompt("");
@@ -361,13 +368,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const setAtSelectedModel = () => {
     // This would be handled by parent component or store
   };
-
-  const disabledSendButton = useMemo(() => {
-    if (isMessageCompleted) {
-      if (isConversationStreamActive) return true;
-    }
-    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance;
-  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalance]);
 
   if (!loaded) return null;
 
@@ -666,16 +666,20 @@ const MessageInput: React.FC<MessageInputProps> = ({
                       )}
                     </div>
 
-                    <div className="mr-1 flex shrink-0 space-x-1 self-end">
-                      {(taskIds && taskIds.length > 0) ||
-                      (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
+                    {(taskIds && taskIds.length > 0) ||
+                    (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
+                      <div className="mr-1 flex shrink-0 space-x-1 self-end">
                         <Button size="icon" onClick={stopResponse} className="size-10">
                           <StopMessageIcon className="size-5" />
                         </Button>
-                      ) : (
+                      </div>
+                    ) : (
+                      <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+                        'cursor-not-allowed!': disabledSendButton,
+                      })}>
                         <Button
                           id="send-message-button"
-                          className="size-10 rounded-full"
+                          className={cn("size-10 rounded-full")}
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
                           disabled={disabledSendButton}
@@ -688,8 +692,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             <StopMessageIcon className="size-5" />
                           )}
                         </Button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </form>
