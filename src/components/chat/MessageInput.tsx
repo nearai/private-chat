@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
@@ -59,6 +59,7 @@ interface MessageInputProps {
   fullWidth?: boolean;
   toolsDisabled?: boolean;
   isMessageCompleted?: boolean;
+  isConversationStreamActive?: boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
@@ -83,6 +84,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   fullWidth = true,
   toolsDisabled = false,
   isMessageCompleted = true,
+  isConversationStreamActive = false,
 }) => {
   const { settings } = useSettingsStore();
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -359,6 +361,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const setAtSelectedModel = () => {
     // This would be handled by parent component or store
   };
+
+  const disabledSendButton = useMemo(() => {
+    if (isMessageCompleted) {
+      if (isConversationStreamActive) return true;
+    }
+    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance;
+  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalance]);
 
   if (!loaded) return null;
 
@@ -669,7 +678,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           className="size-10 rounded-full"
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance}
+                          disabled={disabledSendButton}
                           size="icon"
                         >
                           {isMessageCompleted ? (

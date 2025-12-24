@@ -41,10 +41,16 @@ const Home = ({
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const { isStreamActive } = useStreamStore();
+  const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
+  
+  const currentStreamIsActive = useMemo(() => {
+    if (!chatId) return false;
+    return activeStreams.has(chatId);
+  }, [chatId, activeStreams]);
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
   const setConversationData = useConversationStore((state) => state.setConversationData);
@@ -88,7 +94,7 @@ const Home = ({
       clearAllSignatures();
       dataInitializedRef.current = false;
     }
-    if (!dataInitializedRef.current && !isStreamActive(conversationData.id)) {
+    if (!dataInitializedRef.current && !isStreamActive(chatId)) {
       setConversationData(conversationData);
       dataInitializedRef.current = true;
     }
@@ -242,6 +248,7 @@ const Home = ({
         setPrompt={setInputValue}
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
+        isConversationStreamActive={currentStreamIsActive}
       />
     </div>
   );
