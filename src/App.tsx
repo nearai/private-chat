@@ -21,6 +21,7 @@ import { useUserStore } from "./stores/useUserStore";
 import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
 import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
+import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -30,10 +31,17 @@ function App() {
   const { isSettingsLoading } = useInitRemoteSettings();
   const queryClient = useQueryClient();
 
-  const { isFetching: isModelsFetching } = useModels();
+  const {
+    isFetching: isRemoteConfigFetching,
+    data: remoteConfig,
+  } = useRemoteConfig();
+  const { isFetching: isModelsFetching } = useModels({
+    enabled: !isRemoteConfigFetching,
+    defaultModel: remoteConfig?.default_model,
+  });
   const { isFetching: isUserDataFetching } = useUserData();
 
-  const isDataLoading = isModelsFetching || isUserDataFetching;
+  const isDataLoading = isModelsFetching || isUserDataFetching || isRemoteConfigFetching;
   const isLoading = isAppLoading || isDataLoading || isSettingsLoading;
 
   useEffect(() => {

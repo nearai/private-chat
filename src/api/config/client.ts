@@ -1,5 +1,5 @@
 import { ApiClient } from "@/api/base-client";
-import type { Config } from "@/types";
+import type { Config, RemoteConfig } from "@/types";
 
 class ConfigClient extends ApiClient {
   constructor() {
@@ -8,12 +8,12 @@ class ConfigClient extends ApiClient {
       defaultHeaders: {
         "Content-Type": "application/json",
       },
-      includeAuth: false,
+      includeAuth: true,
     });
   }
 
   async getConfig(): Promise<Config> {
-    return {
+    const localConfig: Config = {
       status: true,
       name: "NEAR AI Private Chat",
       version: "1.0.0",
@@ -37,11 +37,11 @@ class ConfigClient extends ApiClient {
       },
       onboarding: false,
     };
-    // try {
-    //   return await this.get<Config>("/config");
-    // } catch (error) {
-    //   console.error(error);
-    // }
+    return localConfig;
+  }
+
+  async getRemoteConfig(): Promise<RemoteConfig> {
+    return this.get<RemoteConfig>("/configs", { apiVersion: "v2" });
   }
 }
 
