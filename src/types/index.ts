@@ -319,6 +319,7 @@ export interface ModelsResponse {
 
 export interface ModelV1 {
   modelId: string;
+  public: boolean;
   inputCostPerToken: {
     amount: number;
     scale: number;
@@ -462,6 +463,10 @@ export interface Config {
     enable_websocket?: boolean;
   };
   onboarding?: boolean;
+}
+
+export interface RemoteConfig {
+  default_model: string;
 }
 
 // Banner types

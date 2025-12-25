@@ -87,7 +87,14 @@ const UserMessage: React.FC<UserMessageProps> = ({
 
   const [editedContent, setEditedContent] = useState(messageContent || "");
 
+  const disabledSendButton = useMemo(() => {
+    if (editedContent === "") return true;
+    if (editedContent === messageContent) return true;
+    return false;
+  }, [messageContent, editedContent]);
+
   const handleSave = useCallback(async () => {
+    if (disabledSendButton) return;
     const userPromptMessage = allMessages[batch.userPromptId as string] as ConversationUserInput;
     const filteredFiles = userPromptMessage.content.filter((item) => item.type === "input_file");
     const contentItems: ContentItem[] = [...filteredFiles, { type: "input_text", text: editedContent.trim() }];
@@ -192,17 +199,28 @@ const UserMessage: React.FC<UserMessageProps> = ({
                   <div className="mt-2 mb-1 flex justify-between font-medium text-sm">
                     <div />
                     <div className="flex gap-1.5">
-                      <Button
-                        id="close-edit-message-button"
-                        onClick={handleCancel}
-                        variant="secondary"
-                        className="h-9 rounded-3xl"
-                      >
-                        Cancel
-                      </Button>
-                      <Button id="confirm-edit-message-button" onClick={handleSave} className="h-9 rounded-3xl">
-                        Send
-                      </Button>
+                      <div>
+                        <Button
+                          id="close-edit-message-button"
+                          onClick={handleCancel}
+                          variant="secondary"
+                          className="h-9 rounded-3xl"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      <div className={cn({
+                        "cursor-not-allowed! opacity-40!": disabledSendButton,
+                      })}>
+                        <Button
+                          id="confirm-edit-message-button"
+                          onClick={handleSave}
+                          className={cn("h-9 rounded-3xl")}
+                          disabled={disabledSendButton}
+                        >
+                          Send
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

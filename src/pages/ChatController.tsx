@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
-import { DEFAULT_MODEL, TEMP_RESPONSE_ID } from "@/api/constants";
+import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 
 import { useUserSettings } from "@/api/users/queries/useUserSettings";
@@ -22,6 +22,7 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -31,6 +32,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { addStream, removeStream, markStreamComplete } = useStreamStore();
   const updateConversation = useConversationStore((state) => state.updateConversation);
   const userSettings = useUserSettings();
+  const remoteConfig = useRemoteConfig();
 
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
@@ -112,7 +114,11 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
 
-      const model = currentModel || selectedModels[0] || DEFAULT_MODEL;
+      const model = currentModel || selectedModels[0] || remoteConfig.data?.default_model;
+      if (!model) {
+        console.error("Model is required to start stream but none was available");
+        return;
+      }
 
       pushResponse(conversationLocalId, contentItems, previous_response_id);
 
@@ -152,6 +158,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       removeStream,
       params.chatId,
       userSettings,
+      remoteConfig.data?.default_model,
     ]
   );
 

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useResponse } from "@/api/chat/queries/useResponse";
-import { DEFAULT_MODEL, MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
+import { MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
@@ -22,6 +22,7 @@ import { useConversationStore } from "@/stores/useConversationStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function NewChat({
   startStream,
@@ -43,6 +44,8 @@ export default function NewChat({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { resetConversation } = useConversationStore();
+  const { data: remoteConfig } = useRemoteConfig();
+
   useEffect(() => {
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     if (welcomePagePrompt) {
@@ -159,14 +162,16 @@ export default function NewChat({
     const validSelectedModels = selectedModels.filter((modelId) => models.some((model) => model.modelId === modelId));
     if (validSelectedModels.length === 0 && models.length > 0) {
       // set default model
-      const selectedDefaultModel = models.find((model) => model.modelId === DEFAULT_MODEL);
-      if (selectedDefaultModel) {
-        setSelectedModels([selectedDefaultModel.modelId]);
+      if (remoteConfig?.default_model) {
+        const selectedDefaultModel = models.find((model) => model.modelId === remoteConfig.default_model);
+        if (selectedDefaultModel) {
+          setSelectedModels([selectedDefaultModel.modelId]);
+        }
       }
     }
     modelInitializedRef.current = true;
     resetConversation();
-  }, [selectedModels, models, setSelectedModels, resetConversation]);
+  }, [selectedModels, models, remoteConfig?.default_model, setSelectedModels, resetConversation]);
 
   return (
     <div id="chat-container" className="relative flex h-full grow flex-col">

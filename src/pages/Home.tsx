@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
-import { DEFAULT_MODEL } from "@/api/constants";
 
 import MessageInput from "@/components/chat/MessageInput";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
@@ -21,6 +20,7 @@ import { type ContentItem, type FileContentItem, generateContentFileDataForOpenA
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useStreamStore } from "@/stores/useStreamStore";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 const Home = ({
   startStream,
@@ -38,6 +38,7 @@ const Home = ({
   const [inputValue, setInputValue] = useState("");
   const modelInitializedRef = useRef<boolean>(false);
   const dataInitializedRef = useRef<boolean>(false);
+  const remoteConfig = useRemoteConfig();
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const { isStreamActive } = useStreamStore();
@@ -117,7 +118,7 @@ const Home = ({
 
     const lastMsg = conversationData.data.at(-1);
     const newModels = [...selectedModelsRef.current];
-    const defaultModel = modelsRef.current.find((model) => model.modelId === DEFAULT_MODEL);
+    const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
     let msgModel = lastMsg?.model;
     if (msgModel) {
       const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
@@ -129,7 +130,7 @@ const Home = ({
     newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
     modelInitializedRef.current = true;
-  }, [conversationData?.id, searchParams, setSelectedModels]);
+  }, [conversationData?.id, searchParams, remoteConfig.data?.default_model, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
