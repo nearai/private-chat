@@ -16,11 +16,16 @@ export const useModels = (options?: UseModelsOptions) => {
       const models = await modelsClient.getModels();
       const filteredModels = models.filter((model) => model.public);
       if (filteredModels.length > 0) {
+        const firstModel = filteredModels[0];
         if (options?.defaultModel) {
           const selectedDefaultModel = filteredModels.find((model) => model.modelId === options.defaultModel);
           if (selectedDefaultModel) {
             setSelectedModels([selectedDefaultModel.modelId]);
+          } else {
+            setSelectedModels([firstModel.modelId]);
           }
+        } else {
+          setSelectedModels([firstModel.modelId]);
         }
       }
       setModels(filteredModels);
