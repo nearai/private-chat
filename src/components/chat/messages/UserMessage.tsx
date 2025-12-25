@@ -88,7 +88,6 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const [editedContent, setEditedContent] = useState(messageContent || "");
 
   const disabledSendButton = useMemo(() => {
-    if (messageContent === "") return true;
     if (editedContent === "") return true;
     if (editedContent === messageContent) return true;
     return false;

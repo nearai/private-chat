@@ -27,6 +27,9 @@ export const useModels = (options?: UseModelsOptions) => {
         } else {
           setSelectedModels([firstModel.modelId]);
         }
+      } else {
+        console.warn("useModels: no public models available; clearing selected models.");
+        setSelectedModels([]);
       }
       setModels(filteredModels);
       return filteredModels;

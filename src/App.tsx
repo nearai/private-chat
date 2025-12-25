@@ -36,7 +36,7 @@ function App() {
     data: remoteConfig,
   } = useRemoteConfig();
   const { isFetching: isModelsFetching } = useModels({
-    enabled: !isRemoteConfigFetching,
+    enabled: !!remoteConfig?.default_model && !isRemoteConfigFetching,
     defaultModel: remoteConfig?.default_model,
   });
   const { isFetching: isUserDataFetching } = useUserData();

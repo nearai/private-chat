@@ -130,7 +130,7 @@ const Home = ({
     newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
     modelInitializedRef.current = true;
-  }, [conversationData?.id, searchParams, remoteConfig, setSelectedModels]);
+  }, [conversationData?.id, searchParams, remoteConfig.data?.default_model, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);

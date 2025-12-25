@@ -114,7 +114,11 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
 
-      const model = currentModel || selectedModels[0] || remoteConfig.data?.default_model || "";
+      const model = currentModel || selectedModels[0] || remoteConfig.data?.default_model;
+      if (!model) {
+        console.error("Model is required to start stream but none was available");
+        return;
+      }
 
       pushResponse(conversationLocalId, contentItems, previous_response_id);
 
@@ -154,7 +158,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       removeStream,
       params.chatId,
       userSettings,
-      remoteConfig,
+      remoteConfig.data?.default_model,
     ]
   );
 
