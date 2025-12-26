@@ -91,18 +91,20 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
       if (containerElement) {
         const isDarkMode = settings.theme === "dark";
+        const backgroundColor = isDarkMode ? "#101417" : "#f5f8f9";
 
         const virtualWidth = 1024;
         const virtualHeight = 1400;
 
         const clonedElement = containerElement.cloneNode(true) as HTMLElement;
+        clonedElement.classList.add("pdf-export-container");
         clonedElement.style.width = `${virtualWidth}px`;
         clonedElement.style.height = "auto";
 
         document.body.appendChild(clonedElement);
 
         const canvas = await html2canvas(clonedElement, {
-          backgroundColor: "#f5f8f9",
+          backgroundColor: backgroundColor,
           useCORS: true,
           scale: 2,
           width: virtualWidth,
@@ -125,7 +127,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
 
         // Set page background for dark mode
         if (isDarkMode) {
-          pdf.setFillColor(245, 248, 249);
+          pdf.setFillColor(16, 20, 23);
           pdf.rect(0, 0, imgWidth, pageHeight, "F");
         }
 
@@ -138,7 +140,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
           pdf.addPage();
 
           if (isDarkMode) {
-            pdf.setFillColor(0, 0, 0);
+            pdf.setFillColor(16, 20, 23);
             pdf.rect(0, 0, imgWidth, pageHeight, "F");
           }
 

@@ -224,7 +224,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           <span className="line-clamp-1 font-normal text-muted-foreground">{model || "Assistant"}</span>
 
           {/* Verification Badge */}
-          <div className="ml-3 flex items-center">
+          <div className="message-verification-badge ml-3 flex items-center">
             {verificationStatus === "failed" ? (
               <button
                 onClick={handleVerificationBadgeClick}

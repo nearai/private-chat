@@ -172,3 +172,10 @@
   --green: #4a9a67;
   --green-dark: #258367;
 }
+
+
+.pdf-export-container {
+  .message-verification-badge, .message-codeblock-buttons {
+    opacity: 0 !important;
+  }
+}

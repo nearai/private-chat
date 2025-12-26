@@ -110,7 +110,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ lang, code, className = "my-2" })
       </div>
 
       <div className="sticky top-8 z-10 mb-1 flex items-center justify-end py-1 pr-2.5 text-xs">
-        <div className="flex translate-y-px items-center gap-0.5">
+        <div className="message-codeblock-buttons flex translate-y-px items-center gap-0.5">
           <button
             className="flex items-center gap-1 rounded-md bg-gray-50 px-1.5 py-0.5 transition hover:bg-gray-100 dark:bg-gray-600 dark:bg-gray-850 dark:hover:bg-gray-800"
             onClick={toggleCollapse}
