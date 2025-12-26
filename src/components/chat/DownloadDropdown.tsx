@@ -12,7 +12,6 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useSettingsStore } from "@/stores/useSettingsStore";
 import {
   type ConversationModelOutput,
   type ConversationReasoning,
@@ -27,7 +26,6 @@ type DownloadDropdownProps = {
 
 const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const { settings } = useSettingsStore();
 
   const downloadAsJSON = async () => {
     try {
@@ -90,7 +88,7 @@ const DownloadDropdown = ({ chatId }: DownloadDropdownProps) => {
       const containerElement = document.getElementById("messages-container");
 
       if (containerElement) {
-        const isDarkMode = settings.theme === "dark";
+        const isDarkMode = document.documentElement.classList.contains("dark");
         const backgroundColor = isDarkMode ? "#101417" : "#f5f8f9";
 
         const virtualWidth = 1024;
