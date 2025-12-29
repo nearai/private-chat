@@ -3,16 +3,29 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
-import type { ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
+import type {
+  ConversationInfo,
+  ConversationModelOutput,
+  ConversationReasoning,
+  ConversationUserInput,
+  ConversationWebSearchCall,
+} from "@/types";
 
 import MessageVerifier from "./MessageVerifier";
+import { useStreamStore } from "@/stores/useStreamStore";
 
 interface MessagesVerifierProps {
+  conversation?: ConversationInfo;
   history: {
     messages: Record<
       string,
       {
-        content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+        content: (
+          | ConversationUserInput
+          | ConversationModelOutput
+          | ConversationWebSearchCall
+          | ConversationReasoning
+        )[];
         chatCompletionId: string;
       }
     >;
@@ -20,9 +33,10 @@ interface MessagesVerifierProps {
   };
 }
 
-const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
+const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const { messagesSignatures } = useMessagesSignaturesStore();
+  const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
+  const { isStreamActive } = useStreamStore();
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
@@ -36,31 +50,43 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ history }) => {
     }).length;
   }, [chatCompletions, messagesSignatures]);
 
+  if (chatCompletions.length === 0) {
+    return (
+      <div className="py-8 text-center text-muted-foreground">
+        <p className="text-sm">{t("No verifiable messages found for this chat.")}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full">
-      {chatCompletions.length > 0 ? (
-        <div className="flex flex-col gap-y-4">
-          <p className="font-medium text-green-dark text-xs leading-[normal]">{verifiedCount} Verified Messages</p>
+    <div className="relative flex flex-1 flex-col gap-y-2 overflow-hidden">
+      <p className="font-medium text-green-dark text-xs leading-[normal]">{verifiedCount} Verified Messages</p>
 
-          {chatCompletions.reverse().map((message, index, array) => {
-            const reversedIndex = array.length - 1 - index;
-            return (
-              <MessageVerifier
-                message={message}
-                key={`message-verification-${message.chatCompletionId}-${index}`}
-                index={reversedIndex}
-                isLastIndex={reversedIndex === array.length - 1}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <div className="py-8 text-center text-muted-foreground">
-          <p className="text-sm">{t("No verifiable messages found for this chat.")}</p>
-        </div>
-      )}
+      <div className="pointer-events-none absolute top-4 left-0 z-10 h-4 w-full bg-linear-to-b from-input via-50% via-input to-transparent" />
+      <div className="pointer-events-none absolute bottom-0 left-0 z-10 h-4 w-full bg-linear-to-t from-input via-50% via-input to-transparent" />
 
-      <div className="h-10" />
+      <div className="scrollbar-none flex flex-1 flex-col gap-y-2 overflow-y-auto px-1 py-4">
+        {[...chatCompletions].map((message, index, array) => {
+          const reversedIndex = array.length - 1 - index;
+          const isCompleted = message.content.every((item) => item.status === "completed");
+          if (!isCompleted) return null;
+
+          const msgHasSignature = messagesSignatures[message.chatCompletionId] || messagesSignaturesErrors[message.chatCompletionId];
+          if (!msgHasSignature && conversation && isStreamActive(conversation.id)) {
+            return null;
+          }
+
+          return (
+            <MessageVerifier
+              conversation={conversation}
+              message={message}
+              key={`message-verification-${message.chatCompletionId}-${index}`}
+              index={reversedIndex}
+              isLastIndex={reversedIndex === array.length - 1}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };

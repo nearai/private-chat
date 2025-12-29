@@ -3,17 +3,22 @@ import { XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
+import { useParams } from "react-router";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import IntelLogo from "@/assets/images/intel.svg?react";
 import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
+import type {
+  ConversationModelOutput,
+  ConversationReasoning,
+  ConversationUserInput,
+  ConversationWebSearchCall,
+} from "@/types";
 import type { VerificationStatus } from "../types";
 import MessagesVerifier from "./MessagesVerifier";
 import ModelVerifier from "./ModelVerifier";
@@ -23,11 +28,11 @@ const ChatVerifier: React.FC = () => {
   const { chatId } = useParams();
   const { selectedModels } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
+  const conversationImportedAt = conversationData?.metadata?.imported_at;
 
   const {
     isRightSidebarOpen,
     setIsRightSidebarOpen,
-    selectedMessageIdForVerifier,
     setSelectedMessageIdForVerifier,
     setShouldScrollToSignatureDetails,
   } = useViewStore();
@@ -45,7 +50,7 @@ const ChatVerifier: React.FC = () => {
 
     const messages = [];
     let currentId: string | null = null;
-    const responseItems = conversationData.data.reduce(
+    const responseItems = conversationData?.data.reduce(
       (acc, item) => {
         if (acc[item.response_id]) {
           acc[item.response_id].content.push(item);
@@ -55,7 +60,17 @@ const ChatVerifier: React.FC = () => {
 
         return acc;
       },
-      {} as Record<string, { content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[] }>
+      {} as Record<
+        string,
+        {
+          content: (
+            | ConversationUserInput
+            | ConversationModelOutput
+            | ConversationWebSearchCall
+            | ConversationReasoning
+          )[];
+        }
+      >
     );
 
     for (const responseId in responseItems) {
@@ -78,7 +93,12 @@ const ChatVerifier: React.FC = () => {
         {} as Record<
           string,
           {
-            content: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[];
+            content: (
+              | ConversationUserInput
+              | ConversationModelOutput
+              | ConversationWebSearchCall
+              | ConversationReasoning
+            )[];
             chatCompletionId: string;
           }
         >
@@ -103,6 +123,76 @@ const ChatVerifier: React.FC = () => {
     setModelVerificationStatus(status);
   };
 
+  const renderError = () => {
+    if (!modelVerificationStatus?.error) return null;
+    if (conversationImportedAt) return null;
+    return (
+      <>
+        <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+          <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
+          <span className="text-destructive text-sm">{modelVerificationStatus.error}</span>
+        </div>
+        <Button
+          onClick={() => setModelVerificationStatus(null)}
+          disabled={!selectedModels[0]}
+          variant="secondary"
+          className="w-full"
+          size="small"
+        >
+          {t("Retry Verification")}
+        </Button>
+      </>
+    )
+  };
+
+  const renderContent = () => {
+    return (
+      <div className="flex flex-col gap-6 overflow-hidden">
+        <div className="flex w-full flex-col gap-6 p-2">
+          {modelVerificationStatus?.loading ? (
+            <div className="flex items-center justify-center py-4">
+              <Spinner className="size-5" />
+              <span className="ml-3 text-sm">{t("Verifying confidentiality...")}</span>
+            </div>
+          ) : modelVerificationStatus?.error ? (
+            renderError()
+          ) : modelVerificationStatus?.isVerified ? (
+            <>
+              {selectedModels.length > 0 && (
+                <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
+                  {selectedModels.length} Verified Models
+                </p>
+              )}
+
+              <p className="font-normal text-sm leading-[140%] opacity-80">
+                All models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
+                messages.
+              </p>
+              <div className="flex flex-col items-start gap-3">
+                <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
+                <div className="flex items-end gap-4">
+                  <NvidiaLogo className="h-3" />
+                  <IntelLogo className="h-4" />
+                </div>
+              </div>
+
+              <Button onClick={openModelVerifier} className="w-full" variant="secondary" size="small">
+                Show Verification Details
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center justify-center py-4">
+              <Spinner className="size-5" />
+              <span className="ml-3 text-sm">{t("Verifying confidentiality...")}</span>
+            </div>
+          )}
+        </div>
+
+        {chatId && <MessagesVerifier conversation={conversationData} history={history} />}
+      </div>
+    );
+  };
+
   useEffect(() => {
     if (!isRightSidebarOpen) {
       setModelVerificationStatus(null);
@@ -112,17 +202,6 @@ const ChatVerifier: React.FC = () => {
       setShouldScrollToSignatureDetails(false);
     }
   }, [isRightSidebarOpen, setSelectedMessageIdForVerifier, setShouldScrollToSignatureDetails]);
-
-  // Clear the selected message ID after it's been used
-  useEffect(() => {
-    if (selectedMessageIdForVerifier && isRightSidebarOpen) {
-      // Clear it after a short delay to allow MessagesVerifier to pick it up
-      const timer = setTimeout(() => {
-        setSelectedMessageIdForVerifier(null);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedMessageIdForVerifier, isRightSidebarOpen, setSelectedMessageIdForVerifier]);
 
   return (
     <div className="relative z-50">
@@ -145,67 +224,7 @@ const ChatVerifier: React.FC = () => {
           </Button>
         </div>
 
-        <div className="flex h-full flex-col gap-6">
-          <div className="flex w-full flex-col gap-6 p-2">
-            {modelVerificationStatus?.loading ? (
-              <div className="flex items-center justify-center py-4">
-                <Spinner className="size-5" />
-                <span className="ml-3 text-sm">{t("Verifying confidentiality...")}</span>
-              </div>
-            ) : modelVerificationStatus?.error ? (
-              <>
-                <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-                  <XCircleIcon className="mr-2 h-4 w-4 text-destructive" />
-                  <span className="text-destructive text-sm">{modelVerificationStatus.error}</span>
-                </div>
-                <Button
-                  onClick={() => setModelVerificationStatus(null)}
-                  disabled={!selectedModels[0]}
-                  variant="secondary"
-                  className="w-full"
-                  size="small"
-                >
-                  {t("Retry Verification")}
-                </Button>
-              </>
-            ) : modelVerificationStatus?.isVerified ? (
-              <>
-                {selectedModels.length > 0 && (
-                  <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
-                    {selectedModels.length} Verified Models
-                  </p>
-                )}
-
-                <p className="font-normal text-sm leading-[140%] opacity-80">
-                  All models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
-                  messages.
-                </p>
-                <div className="flex flex-col items-start gap-3">
-                  <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
-                  <div className="flex items-end gap-4">
-                    <NvidiaLogo className="h-3" />
-                    <IntelLogo className="h-4" />
-                  </div>
-                </div>
-
-                <Button onClick={openModelVerifier} className="w-full" variant="secondary">
-                  Show Verification Details
-                </Button>
-              </>
-            ) : (
-              <div className="flex items-center justify-center py-4">
-                <Spinner className="size-5" />
-                <span className="ml-3 text-sm">{t("Verifying confidentiality...")}</span>
-              </div>
-            )}
-          </div>
-
-          {chatId && (
-            <div className="scrollbar-none flex-1 overflow-y-auto">
-              <MessagesVerifier history={history} />
-            </div>
-          )}
-        </div>
+        {renderContent()}
       </div>
 
       <ModelVerifier

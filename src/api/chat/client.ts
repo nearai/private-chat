@@ -10,6 +10,25 @@ import { getTimeRange } from "@/lib/time";
 import type { Chat, ChatInfo, Conversation, ConversationItemsResponse, StartStreamProps, Tag } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
+export interface UploadError {
+  error: {
+    type: string;
+    message?: string;
+    code?: string | number;
+  };
+}
+
+export function isUploadError(err: unknown): err is UploadError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "error" in err &&
+    typeof (err as { error?: unknown }).error === "object" &&
+    (err as { error?: { type?: unknown } }).error !== null &&
+    typeof (err as { error?: { type?: unknown } }).error?.type === "string"
+  );
+}
+
 class ChatClient extends ApiClient {
   constructor() {
     super({
@@ -229,14 +248,16 @@ class ChatClient extends ApiClient {
     return this.get<boolean>(`/chats/${id}/pinned`);
   }
 
-  async toggleChatPinnedStatusById(id: string) {
-    return this.post<Chat>(`/chats/${id}/pin`);
+  async pinConversationById(id: string) {
+    return this.post<Chat>(`/conversations/${id}/pin`, {}, { apiVersion: "v2" });
   }
 
-  async cloneChatById(id: string, title?: string) {
-    return this.post<Chat>(`/chats/${id}/clone`, {
-      ...(title && { title: title }),
-    });
+  async unpinConversationById(id: string) {
+    return this.delete<Chat>(`/conversations/${id}/pin`, { apiVersion: "v2" });
+  }
+
+  async cloneChatById(id: string) {
+    return this.post<Chat>(`/conversations/${id}/clone`, {}, { apiVersion: "v2" });
   }
 
   async cloneSharedChatById(id: string) {
@@ -254,7 +275,11 @@ class ChatClient extends ApiClient {
   }
 
   async archiveChatById(id: string) {
-    return this.post<Chat>(`/chats/${id}/archive`);
+    return this.post<Chat>(`/conversations/${id}/archive`, {}, { apiVersion: "v2" });
+  }
+
+  async unarchiveChatById(id: string) {
+    return this.delete<Chat>(`/conversations/${id}/archive`, { apiVersion: "v2" });
   }
 
   async deleteSharedChatById(id: string) {
@@ -268,7 +293,7 @@ class ChatClient extends ApiClient {
   }
 
   async deleteChatById(id: string) {
-    return this.delete<Chat>(`/chats/${id}`);
+    return this.delete<Chat>(`/conversations/${id}`, { apiVersion: "v2" });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -313,6 +338,7 @@ class ChatClient extends ApiClient {
     queryClient,
     tools,
     include,
+    previous_response_id,
   }: StartStreamProps) {
     const input = Array.isArray(content)
       ? [{ role, content }]
@@ -328,6 +354,7 @@ class ChatClient extends ApiClient {
         include,
         instructions: systemPrompt,
         signing_algo: DEFAULT_SIGNING_ALGO,
+        previous_response_id,
       },
       { apiVersion: "v2", queryClient }
     );

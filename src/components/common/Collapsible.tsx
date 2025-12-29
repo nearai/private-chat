@@ -1,5 +1,5 @@
 import React, { type ReactNode, useState } from "react";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 
 interface CollapsibleProps {
   title?: string;
@@ -78,7 +78,7 @@ const Collapsible: React.FC<CollapsibleProps> = ({
   return (
     <div id={id} className={className}>
       <div className={`${buttonClassName} cursor-pointer`} onClick={toggleOpen}>
-        <div className="flex w-full flex-row items-center gap-2 font-medium">
+        <div className="flex w-full flex-row items-center gap-2 text-sm">
           <div>{title}</div>
           {chevron && (
             <div className="flex translate-y-[2px] items-center justify-center">

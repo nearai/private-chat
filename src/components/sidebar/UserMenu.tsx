@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 interface DropdownItem {
   title?: string;
@@ -72,14 +73,11 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger className="flex w-full items-center outline-none">
-          <div className="self-center">
-            <img
-              src={userData?.user.avatar_url || "/user.png"}
-              alt="User"
-              className="max-w-[30px] rounded-full object-cover"
-            />
-          </div>
-          {!collapsed && <div className="ml-3 self-center font-medium">{userData?.user.name}</div>}
+          <Avatar className="size-[30px] self-center">
+            <AvatarImage src={userData?.user.avatar_url} alt={userData?.user.name ? `${userData.user.name}'s avatar` : "User avatar"} />
+            <AvatarFallback className="bg-muted/35">{(userData?.user.name || "U").slice(0, 2)}</AvatarFallback>
+          </Avatar>
+          {!collapsed && <div className="ml-3 self-center whitespace-pre-wrap break-all font-medium">{userData?.user.name}</div>}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-full min-w-[240px] rounded-xl px-1 py-1.5" side="top" align="start">
           {dropdownItems.map((el, index) => (

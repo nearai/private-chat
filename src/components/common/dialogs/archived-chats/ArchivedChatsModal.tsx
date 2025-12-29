@@ -1,169 +1,159 @@
-import { ArrowUpOnSquareIcon, MagnifyingGlassIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpOnSquareIcon,
+  MagnifyingGlassIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import fileSaver from "file-saver";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CompactTooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/time";
 import ConfirmDialog from "../ConfirmDialog";
+
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetConversations } from "@/api/chat/queries/useGetConversations";
+import { useDeleteChat, useUnarchiveChat } from "@/api/chat/queries";
+import { queryKeys } from "@/api/query-keys";
 
 dayjs.extend(localizedFormat);
 const { saveAs } = fileSaver;
 
-interface Chat {
-  id: string;
-  title: string;
-  created_at: number;
+function ConversationSkeletonRow() {
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell className="w-2/3 px-3 py-2">
+        <div className="h-4 w-40 animate-pulse rounded bg-muted/40" />
+      </TableCell>
+
+      <TableCell className="hidden px-3 py-2 md:table-cell">
+        <div className="h-4 w-24 animate-pulse rounded bg-muted/40" />
+      </TableCell>
+
+      <TableCell className="px-3 py-2 text-right">
+        <div className="flex justify-end gap-2">
+          <div className="h-6 w-6 animate-pulse rounded bg-muted/40" />
+          <div className="h-6 w-6 animate-pulse rounded bg-muted/40" />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 }
 
-// Mock data for archived chats
-const MOCK_ARCHIVED_CHATS: Chat[] = [
-  {
-    id: "1a2b3c4d",
-    title: "Discussion about React best practices",
-    created_at: Math.floor(new Date("2024-09-15").getTime() / 1000),
-  },
-  {
-    id: "2b3c4d5e",
-    title: "How to optimize database queries",
-    created_at: Math.floor(new Date("2024-08-28").getTime() / 1000),
-  },
-  {
-    id: "3c4d5e6f",
-    title: "TypeScript generic types explained",
-    created_at: Math.floor(new Date("2024-08-10").getTime() / 1000),
-  },
-  {
-    id: "4d5e6f7g",
-    title: "Building a responsive navigation menu",
-    created_at: Math.floor(new Date("2024-07-22").getTime() / 1000),
-  },
-  {
-    id: "5e6f7g8h",
-    title: "Understanding async/await patterns",
-    created_at: Math.floor(new Date("2024-07-05").getTime() / 1000),
-  },
-  {
-    id: "6f7g8h9i",
-    title: "CSS Grid vs Flexbox: when to use each",
-    created_at: Math.floor(new Date("2024-06-18").getTime() / 1000),
-  },
-  {
-    id: "7g8h9i0j",
-    title: "API design principles and REST conventions",
-    created_at: Math.floor(new Date("2024-06-01").getTime() / 1000),
-  },
-  {
-    id: "8h9i0j1k",
-    title: "State management in React applications",
-    created_at: Math.floor(new Date("2024-05-14").getTime() / 1000),
-  },
-  {
-    id: "9i0j1k2l",
-    title: "Docker containerization basics",
-    created_at: Math.floor(new Date("2024-04-27").getTime() / 1000),
-  },
-  {
-    id: "0j1k2l3m",
-    title: "Git workflow strategies for teams",
-    created_at: Math.floor(new Date("2024-04-10").getTime() / 1000),
-  },
-  {
-    id: "1k2l3m4n",
-    title: "Security best practices for web apps",
-    created_at: Math.floor(new Date("2024-03-23").getTime() / 1000),
-  },
-  {
-    id: "2l3m4n5o",
-    title: "Performance optimization techniques",
-    created_at: Math.floor(new Date("2024-03-05").getTime() / 1000),
-  },
-];
 
-interface ArchivedChatsModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onChange?: () => void;
-}
-
-const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModalProps) => {
+export default function ArchivedChatsModal({ open, onOpenChange }: any) {
   const { t } = useTranslation("translation", { useSuspense: false });
 
-  const [chats, setChats] = useState<Chat[]>([]);
+  const queryClient = useQueryClient();
+  const { data: conversations, isPending } = useGetConversations();
+
+  const { mutateAsync: unarchiveChat } = useUnarchiveChat();
+  const { mutateAsync: deleteChat } = useDeleteChat();
+
   const [searchValue, setSearchValue] = useState("");
-  const [showUnarchiveAllConfirmDialog, setShowUnarchiveAllConfirmDialog] = useState(false);
+  const [showUnarchiveAllConfirmDialog, setShowUnarchiveAllConfirmDialog] =
+    useState(false);
 
-  const fetchArchivedChats = useCallback(async () => {
-    // const chats = await getArchivedChatList(localStorage.token);
-    // setChats(chats);
+  const archived = useMemo(() => {
+    return (conversations ?? []).filter((c) => !!c.metadata?.archived_at);
+  }, [conversations]);
 
-    // Using mock data for development
-    setChats(MOCK_ARCHIVED_CHATS);
-  }, []);
+  const filteredChats = useMemo(() => {
+    if (!searchValue) return archived;
+    const s = searchValue.toLowerCase();
+    return archived.filter((c) => c.metadata.title.toLowerCase().includes(s));
+  }, [archived, searchValue]);
 
-  useEffect(() => {
-    if (open) {
-      fetchArchivedChats();
-    }
-  }, [open, fetchArchivedChats]);
+  const optimisticUpdate = (updater: (old: any[]) => any[]) => {
+    const prev = queryClient.getQueryData(queryKeys.conversation.all) as any[] | undefined;
 
-  const unarchiveChatHandler = async (chatId: string) => {
-    try {
-      // await archiveChatById(localStorage.token, chatId);
-      void chatId; // TODO: Remove when API is implemented
-      await fetchArchivedChats();
-      onChange?.();
-    } catch (error) {
-      toast.error(`${error}`);
-    }
+    queryClient.setQueryData(
+      queryKeys.conversation.all,
+      (old: any[] = []) => updater(old)
+    );
+
+    return () => queryClient.setQueryData(queryKeys.conversation.all, prev ?? []);
   };
 
-  const deleteChatHandler = async (chatId: string) => {
+  const handleUnarchive = useCallback(
+    async (id: string) => {
+      const rollback = optimisticUpdate((old) =>
+        old.map((c) =>
+          c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: null } } : c
+        )
+      );
+
+      try {
+        await unarchiveChat({ id });
+        toast.success(t("Chat unarchived"));
+      } catch (err) {
+        rollback();
+        toast.error(String(err));
+      }
+    },
+    [unarchiveChat, queryClient]
+  );
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const rollback = optimisticUpdate((old) => old.filter((c) => c.id !== id));
+
+      try {
+        await deleteChat({ id });
+        toast.success(t("Chat deleted"));
+      } catch (err) {
+        rollback();
+        toast.error(String(err));
+      }
+    },
+    [deleteChat, queryClient]
+  );
+
+  const handleUnarchiveAll = useCallback(async () => {
+    const rollback = optimisticUpdate((old) =>
+      old.map((c) =>
+        c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: null } } : c
+      )
+    );
+
     try {
-      // await deleteChatById(localStorage.token, chatId);
-      void chatId; // TODO: Remove when API is implemented
-      await fetchArchivedChats();
-    } catch (error) {
-      toast.error(`${error}`);
+      await Promise.all(
+        archived.map((c) => unarchiveChat({ id: c.id }))
+      );
+      toast.success(t("All chats unarchived"));
+    } catch (err) {
+      rollback();
+      toast.error(String(err));
     }
-  };
+  }, [archived, unarchiveChat, queryClient]);
 
-  const exportChatsHandler = async () => {
+  const handleExport = () => {
     try {
-      // const allChats = await getAllArchivedChats(localStorage.token);
-
-      // Using mock data for development
-      const allChats = MOCK_ARCHIVED_CHATS;
-      const blob = new Blob([JSON.stringify(allChats, null, 2)], {
+      const blob = new Blob([JSON.stringify(archived, null, 2)], {
         type: "application/json",
       });
       saveAs(blob, `${t("archived-chat-export")}-${Date.now()}.json`);
-    } catch (error) {
-      toast.error(`${error}`);
+    } catch (err) {
+      toast.error(String(err));
     }
   };
-
-  const unarchiveAllHandler = async () => {
-    try {
-      for (const chat of chats) {
-        void chat.id; // TODO: Use in archiveChatById when API is implemented
-        // await archiveChatById(localStorage.token, chat.id);
-      }
-      await fetchArchivedChats();
-      onChange?.();
-    } catch (error) {
-      toast.error(`${error}`);
-    }
-  };
-
-  const filteredChats = chats.filter(
-    (chat) => searchValue === "" || chat.title.toLowerCase().includes(searchValue.toLowerCase())
-  );
 
   return (
     <>
@@ -174,7 +164,7 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
         confirmText={t("Unarchive All")}
         onConfirm={() => {
           setShowUnarchiveAllConfirmDialog(false);
-          unarchiveAllHandler();
+          handleUnarchiveAll();
         }}
         onCancel={() => setShowUnarchiveAllConfirmDialog(false)}
       />
@@ -182,117 +172,133 @@ const ArchivedChatsModal = ({ open, onOpenChange, onChange }: ArchivedChatsModal
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="font-medium text-lg">{t("Archived Chats")}</DialogTitle>
+            <DialogTitle className="font-medium text-lg">
+              {t("Archived Chats")}
+            </DialogTitle>
             <DialogDescription className="sr-only" />
           </DialogHeader>
 
-          <div className="flex w-full flex-col">
-            {/* Search Input */}
-            <div className="mt-2 flex w-full space-x-2">
-              <div className="flex flex-1">
-                <div className="mr-3 ml-1 self-center">
-                  <MagnifyingGlassIcon className="size-4" />
-                </div>
-                <input
-                  className="w-full rounded-r-xl bg-transparent py-1 pr-4 text-sm outline-hidden"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  placeholder={t("Search Chats")}
-                />
-              </div>
-            </div>
-
-            <hr className="my-2 border-muted/30" />
-
-            {/* Table or Empty State */}
-            <div className="flex w-full flex-col sm:flex-row sm:justify-center sm:space-x-6">
-              {chats.length > 0 ? (
-                <div className="w-full">
-                  <div className="mb-3 max-h-88 w-full overflow-y-scroll text-left text-sm">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="px-3 py-2">{t("Name")}</TableHead>
-                          <TableHead className="hidden px-3 py-2 md:table-cell">{t("Created At")}</TableHead>
-                          <TableHead className="px-3 py-2 text-right" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredChats.map((chat, idx) => (
-                          <TableRow
-                            key={chat.id}
-                            className={cn(
-                              `border-muted/30 text-xs hover:bg-secondary/30`,
-                              idx !== chats.length - 1 && "border-b"
-                            )}
-                          >
-                            <TableCell className="w-2/3 px-3 py-1">
-                              <a href={`/c/${chat.id}`} target="_blank" rel="noreferrer">
-                                <div className="line-clamp-1 underline">{chat.title}</div>
-                              </a>
-                            </TableCell>
-
-                            <TableCell className="hidden h-10 px-3 py-1 md:table-cell">
-                              <div className="my-auto">{dayjs(chat.created_at * 1000).format("LLL")}</div>
-                            </TableCell>
-
-                            <TableCell className="px-3 py-1 text-right">
-                              <div className="flex w-full justify-end">
-                                {/* Unarchive Button */}
-                                <CompactTooltip content={t("Unarchive Chat")} align="center">
-                                  <button
-                                    className="w-fit self-center rounded-xl px-2 py-2 text-sm"
-                                    onClick={() => unarchiveChatHandler(chat.id)}
-                                  >
-                                    <ArrowUpOnSquareIcon className="size-4" />
-                                  </button>
-                                </CompactTooltip>
-
-                                {/* Delete Button */}
-                                <CompactTooltip content={t("Delete Chat")} align="center">
-                                  <button
-                                    className="w-fit self-center rounded-xl px-2 py-2 text-sm"
-                                    onClick={() => deleteChatHandler(chat.id)}
-                                  >
-                                    <TrashIcon className="size-4" />
-                                  </button>
-                                </CompactTooltip>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="m-1 mt-2 flex w-full flex-wrap justify-end gap-1.5 font-medium text-sm">
-                    <Button
-                      variant="secondary"
-                      className="h-9 rounded-3xl px-3.5 py-1.5 text-sm"
-                      onClick={() => setShowUnarchiveAllConfirmDialog(true)}
-                    >
-                      {t("Unarchive All Archived Chats")}
-                    </Button>
-
-                    <Button
-                      variant="secondary"
-                      className="h-9 rounded-3xl px-3.5 py-1.5 text-sm"
-                      onClick={exportChatsHandler}
-                    >
-                      {t("Export All Archived Chats")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mb-8 w-full text-left text-sm">{t("You have no archived conversations.")}</div>
-              )}
-            </div>
+          {/* Search */}
+          <div className="mt-2 flex w-full items-center space-x-2">
+            <MagnifyingGlassIcon className="mr-2 ml-1 size-4" />
+            <input
+              className="w-full bg-transparent py-1 pr-4 text-sm outline-hidden"
+              placeholder={t("Search Chats")}
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+            />
           </div>
+
+          <hr className="my-2 border-muted/30" />
+
+          {isPending ? (
+            <div className="mb-3 max-h-88 overflow-y-scroll text-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="px-3 py-2">{t("Name")}</TableHead>
+                    <TableHead className="hidden px-3 py-2 md:table-cell">
+                      {t("Created At")}
+                    </TableHead>
+                    <TableHead className="px-3 py-2 text-right" />
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <ConversationSkeletonRow key={i} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : archived.length > 0 ? (
+            <>
+              <div className="mb-3 max-h-88 overflow-y-scroll text-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="px-3 py-2">{t("Name")}</TableHead>
+                      <TableHead className="hidden px-3 py-2 md:table-cell">
+                        {t("Created At")}
+                      </TableHead>
+                      <TableHead className="px-3 py-2 text-right" />
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {filteredChats.map((chat) => (
+                      <TableRow
+                        key={chat.id}
+                        className="border-muted/30 text-xs hover:bg-secondary/30"
+                      >
+                        <TableCell className="w-2/3 px-3 py-1">
+                          <a
+                            href={`/c/${chat.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="line-clamp-1 underline"
+                          >
+                            {chat.metadata.title}
+                          </a>
+                        </TableCell>
+
+                        <TableCell className="hidden px-3 py-1 md:table-cell">
+                          {dayjs(Number(chat.metadata.archived_at!) * 1000).format(
+                            "LLL"
+                          )}
+                        </TableCell>
+
+                        <TableCell className="px-3 py-1 text-right">
+                          <div className="flex justify-end gap-2">
+                            <CompactTooltip content={t("Unarchive Chat")}>
+                              <button
+                                className="rounded-xl p-2"
+                                onClick={() => handleUnarchive(chat.id)}
+                              >
+                                <ArrowUpOnSquareIcon className="size-4" />
+                              </button>
+                            </CompactTooltip>
+
+                            <CompactTooltip content={t("Delete Chat")}>
+                              <button
+                                className="rounded-xl p-2"
+                                onClick={() => handleDelete(chat.id)}
+                              >
+                                <TrashIcon className="size-4" />
+                              </button>
+                            </CompactTooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Buttons */}
+              <div className="mt-2 flex justify-end gap-2">
+                <Button
+                  variant="secondary"
+                  className="h-9 rounded-3xl px-3.5"
+                  onClick={() => setShowUnarchiveAllConfirmDialog(true)}
+                >
+                  {t("Unarchive All Archived Chats")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="h-9 rounded-3xl px-3.5"
+                  onClick={handleExport}
+                >
+                  {t("Export All Archived Chats")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="mb-8 text-sm">
+              {t("You have no archived conversations.")}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
   );
-};
-
-export default ArchivedChatsModal;
+}

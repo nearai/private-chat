@@ -1,317 +1,246 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useSearchParams } from "react-router";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
-import { queryKeys } from "@/api/query-keys";
+
 import MessageInput from "@/components/chat/MessageInput";
-import MessageSkeleton from "@/components/chat/MessageSkeleton";
+import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { cn } from "@/lib/time";
+
+import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
+import { useConversationStore } from "@/stores/useConversationStore";
+import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { Conversation, ConversationModelOutput, ConversationUserInput, ConversationWebSearchCall } from "@/types";
-import { ConversationRoles } from "@/types";
+
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { unwrapMockResponseID } from "@/lib/utils/mock";
+import { useStreamStore } from "@/stores/useStreamStore";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 const Home = ({
   startStream,
 }: {
-  startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
+  startStream: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
-
-  const queryClient = useQueryClient();
-  const [initModelSelectorFlag, setInitModelSelectorFlag] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const { selectedModels, setSelectedModels } = useChatStore();
+  const modelInitializedRef = useRef<boolean>(false);
+  const dataInitializedRef = useRef<boolean>(false);
+  const remoteConfig = useRemoteConfig();
+
+  const { models, selectedModels, setSelectedModels } = useChatStore();
+  const { isStreamActive } = useStreamStore();
+  const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
+  const modelsRef = useRef(models);
+  modelsRef.current = models;
+  
+  const currentStreamIsActive = useMemo(() => {
+    if (!chatId) return false;
+    return activeStreams.has(chatId);
+  }, [chatId, activeStreams]);
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
-
+  const setConversationData = useConversationStore((state) => state.setConversationData);
+  const conversationState = useConversationStore((state) => state.conversation);
+  const { clearAllSignatures } = useMessagesSignaturesStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationData, chatId);
-  const handleSendMessage = async (content: string, files: FileContentItem[], webSearchEnabled: boolean = false) => {
-    const contentItems: ContentItem[] = [
-      { type: "input_text", text: content },
-      ...files.map((file) => generateContentFileDataForOpenAI(file)),
-    ];
+  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
 
-    queryClient.setQueryData(queryKeys.conversation.byId(chatId), (old: Conversation) => {
-      return {
-        ...old,
-        data: [
-          ...(old.data ?? []),
-          {
-            id: `temp-${Date.now()}`,
-            response_id: `response-${Date.now()}`,
-            next_response_ids: [],
-            created_at: Date.now(),
-            status: "pending" as const,
-            role: ConversationRoles.USER,
-            type: "message" as const,
-            content: contentItems,
-            model: selectedModels[0] || "",
-          },
-        ],
-      };
-    });
-    scrollToBottom();
+  const handleSendMessage = useCallback(
+    async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
+      const contentItems: ContentItem[] = [
+        { type: "input_text", text: content },
+        ...files.map(generateContentFileDataForOpenAI),
+      ];
 
-    startStream(contentItems, webSearchEnabled, chatId);
-  };
-
-  const handleEditMessage = (messageId: string, content: string) => {
-    console.log("Edit message:", messageId, content);
-  };
-
-  const handleSaveMessage = (messageId: string, content: string) => {
-    console.log("Save message:", messageId, content);
-  };
-
-  const handleDeleteMessage = (messageId: string) => {
-    console.log("Delete message:", messageId);
-  };
-
-  const handleRegenerateResponse = async (message: ConversationModelOutput) => {
-    console.log("Regenerate response", message);
-  };
-
-  const handleShowPreviousMessage = (message: ConversationModelOutput) => {
-    console.log("Show previous message", message);
-  };
-
-  const handleShowNextMessage = (message: ConversationModelOutput) => {
-    console.log("Show next message", message);
-  };
-
-  useEffect(() => {
-    const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcomePagePrompt) {
-      setInputValue(welcomePagePrompt);
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    }
-  }, []);
-
-  useEffect(() => {
-    setInitModelSelectorFlag(false);
-  }, [conversationData?.id]);
-
-  useEffect(() => {
-    if (!conversationData?.data) return;
-    if (initModelSelectorFlag) return;
-    setInitModelSelectorFlag(true);
-
-    const newModels = [...selectedModelsRef.current];
-    const conversationModel = conversationData.data[conversationData.data.length - 1]?.model;
-    newModels[0] = conversationModel || newModels[0] || "";
-    setSelectedModels(newModels);
-  }, [initModelSelectorFlag, conversationData?.data]);
-
-  const MessageStatus = {
-    CREATED: "created",
-    REASONING: "reasoning",
-    WEB_SEARCH: "web_search",
-    OUTPUT: "output",
-  } as const;
-
-  type MessageStatusType = (typeof MessageStatus)[keyof typeof MessageStatus];
-
-  type CombinedMessage =
-    | ConversationUserInput
-    | {
-        type: "message";
-        role: "assistant";
-        contentMessages: ConversationModelOutput[];
-        reasoningMessages: unknown[];
-        webSearchMessages: ConversationWebSearchCall[];
-        currentStatus: MessageStatusType;
-        id?: string;
-      };
-
-  function combineMessages(
-    messages: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall)[]
-  ): CombinedMessage[] {
-    if (messages.length === 0) return [];
-    const combinedMessages: CombinedMessage[] = [];
-    for (const message of messages) {
-      if (message.type === "message" && message.role === "user") {
-        combinedMessages.push(message);
-      } else {
-        const lastMessage = combinedMessages[combinedMessages.length - 1];
-        if (
-          !lastMessage ||
-          (lastMessage.type === "message" && lastMessage.role === "user") ||
-          !("currentStatus" in lastMessage)
-        ) {
-          combinedMessages.push({
-            type: "message",
-            role: "assistant",
-            contentMessages: [],
-            reasoningMessages: [],
-            webSearchMessages: [],
-            currentStatus: MessageStatus.CREATED,
-            id: message.id,
-          });
-        }
-        const lastCombinedMessage = combinedMessages[combinedMessages.length - 1];
-        if ("currentStatus" in lastCombinedMessage) {
-          switch (message.type) {
-            case "web_search_call":
-              lastCombinedMessage.webSearchMessages.push(message);
-              lastCombinedMessage.currentStatus = MessageStatus.WEB_SEARCH;
-              lastCombinedMessage.id = message.id;
-              break;
-            case "message":
-              if (message.role === "assistant") {
-                lastCombinedMessage.contentMessages.push(message);
-                lastCombinedMessage.currentStatus = MessageStatus.OUTPUT;
-                lastCombinedMessage.id = message.id;
-              }
-              break;
-            default:
-              break;
+      let prevRespId = previous_response_id;
+      if (!prevRespId) {
+        const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
+        const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
+        if (lastMsg) {
+          prevRespId = lastMsg.getAttribute("data-response-id") || undefined;
+          if (prevRespId && prevRespId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+            prevRespId = unwrapMockResponseID(prevRespId);
           }
         }
       }
+      await startStream(contentItems, webSearchEnabled, chatId, prevRespId);
+      scrollToBottom();
+    },
+    [chatId, scrollToBottom, startStream]
+  );
+
+  useEffect(() => {
+    if (!chatId) return;
+    modelInitializedRef.current = false;
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId || !conversationData) return;
+    if (conversationState?.conversationId !== chatId) {
+      clearAllSignatures();
+      dataInitializedRef.current = false;
     }
-    return combinedMessages;
-  }
+    if (!dataInitializedRef.current && !isStreamActive(chatId)) {
+      setConversationData(conversationData);
+      dataInitializedRef.current = true;
+    }
+  }, [chatId, isStreamActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
+
+  // Sync selected model with latest conversation
+  useEffect(() => {
+    if (!conversationData?.id) return;
+    if (modelInitializedRef.current) return;
+    const NEW_CHAT_KEY = "new";
+    const isNewChat = searchParams.has(NEW_CHAT_KEY);
+    if (isNewChat) {
+      modelInitializedRef.current = true;
+      setSearchParams((prev) => {
+        prev.delete(NEW_CHAT_KEY);
+        return prev;
+      });
+      return;
+    }
+
+    const lastMsg = conversationData.data.at(-1);
+    const newModels = [...selectedModelsRef.current];
+    const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
+    let msgModel = lastMsg?.model;
+    if (msgModel) {
+      const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
+      msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
+    } else {
+      msgModel = defaultModel?.modelId;
+    }
+
+    newModels[0] = msgModel ?? newModels[0] ?? "";
+    setSelectedModels(newModels);
+    modelInitializedRef.current = true;
+  }, [conversationData?.id, searchParams, remoteConfig.data?.default_model, setSelectedModels]);
 
   const isMessageCompleted = useMemo(() => {
-    if (!conversationData) return true;
-    const lastMessage = conversationData.data?.[conversationData.data.length - 1];
-    if (!lastMessage) return true;
-    if (lastMessage.type === "message" && lastMessage.role === "assistant") {
-      return lastMessage.status === "completed";
-    }
-    return true;
-  }, [conversationData]);
+    const last = conversationData?.data?.at(-1);
+    return !last || last.role !== "assistant" || last.status === "completed";
+  }, [conversationData?.data]);
 
-  const currentMessages = combineMessages(conversationData?.data ?? []);
-  if (isConversationsLoading) {
-    return <LoadingScreen />;
-  }
+  const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
+
+  const history = conversationState?.history ?? { messages: {} };
+  const allMessages = conversationState?.allMessages ?? {};
+  const batches = conversationState?.batches ?? [];
+
+  const renderedMessages = useMemo(() => {
+    if (!batches.length) return [];
+
+    return batches.filter((batch) => {
+      const batchMessage = history.messages[batch];
+      return !!batchMessage;
+    }).map((batch, idx) => {
+      const isLast = idx === currentMessages.length - 1;
+      const batchMessage = history.messages[batch];
+      if (!batchMessage) return null;
+      if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
+        const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
+        return (
+          <UserMessage
+            key={batchMessage.userPromptId}
+            history={history}
+            allMessages={allMessages}
+            batchId={batch}
+            regenerateResponse={startStream}
+            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+          />
+        );
+      }
+      if (
+        !batchMessage.outputMessagesIds.length &&
+        !batchMessage.reasoningMessagesIds.length &&
+        !batchMessage.webSearchMessagesIds.length
+      ) {
+        return null;
+      }
+      const messages = [];
+
+      // Analyze siblings to determine if they're input variants or response variants
+      const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
+
+      if (batchMessage.userPromptId) {
+        messages.push(
+          <UserMessage
+            key={batchMessage.userPromptId}
+            history={history}
+            allMessages={allMessages}
+            batchId={batch}
+            regenerateResponse={startStream}
+            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+          />
+        );
+      }
+
+      // Show MultiResponseMessages if there are multiple responses for the same input
+      // This can happen even when there are input siblings
+      if (responseSiblings.length > 1) {
+        messages.push(
+          <MultiResponseMessages
+            key={batchMessage.parentResponseId}
+            history={history}
+            allMessages={allMessages}
+            batchId={batch}
+            currentBatchBundle={batches}
+            isLastMessage={isLast}
+            readOnly={false}
+            regenerateResponse={startStream}
+            responseSiblings={responseSiblings}
+          />
+        );
+      } else {
+        messages.push(
+          <ResponseMessage
+            key={batchMessage.responseId}
+            history={history}
+            allMessages={allMessages}
+            batchId={batch}
+            isLastMessage={isLast}
+            readOnly={false}
+            regenerateResponse={startStream}
+            siblings={[]}
+          />
+        );
+      }
+      return messages;
+    });
+  }, [batches, history, allMessages, currentMessages.length, startStream]);
 
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />
+
+      {isConversationsLoading && <LoadingScreen />}
+
       <div
         ref={scrollContainerRef}
+        id="messages-container"
         onScroll={handleScroll}
         className={cn("flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500", {
           "pl-12.5": !isLeftSidebarOpen,
+          "hidden opacity-0": isConversationsLoading,
         })}
       >
-        {currentMessages.map((message, idx) => {
-          if (message.type === "message" && message.role === "user") {
-            return (
-              <UserMessage
-                key={message.id}
-                message={message}
-                isFirstMessage={idx === 0}
-                readOnly={false}
-                editMessage={handleEditMessage}
-                deleteMessage={handleDeleteMessage}
-              />
-            );
-          }
-
-          if (message.type === "message" && message.role === "assistant" && "currentStatus" in message) {
-            const isLastMessage = idx === currentMessages.length - 1;
-
-            if (message.currentStatus === MessageStatus.WEB_SEARCH) {
-              const latestWebSearch = message.webSearchMessages[message.webSearchMessages.length - 1];
-              const searchQuery =
-                latestWebSearch.type === "web_search_call" && latestWebSearch.action.query
-                  ? `Searching for: ${latestWebSearch.action.query}`
-                  : "Performing web search";
-              return (
-                <MessageSkeleton
-                  key={message.id || `web-search-${idx}`}
-                  model={latestWebSearch.model}
-                  message={searchQuery}
-                />
-              );
-            }
-
-            if (message.currentStatus === MessageStatus.REASONING) {
-              const latestReasoning = message.reasoningMessages[message.reasoningMessages.length - 1];
-              let reasoningText = "Reasoning...";
-              if (
-                latestReasoning &&
-                typeof latestReasoning === "object" &&
-                latestReasoning !== null &&
-                "summary" in latestReasoning
-              ) {
-                const summary = (latestReasoning as { summary?: unknown }).summary;
-                if (Array.isArray(summary)) {
-                  reasoningText =
-                    summary
-                      .map((s) =>
-                        typeof s === "string"
-                          ? s
-                          : typeof s === "object" && s !== null && "text" in s
-                            ? String((s as { text?: string }).text)
-                            : ""
-                      )
-                      .join(" ") || "Reasoning...";
-                } else if (typeof summary === "string") {
-                  reasoningText = summary;
-                }
-              }
-              return <MessageSkeleton key={message.id || `reasoning-${idx}`} message={`Reasoning: ${reasoningText}`} />;
-            }
-
-            if (message.contentMessages.length > 0) {
-              const outputMessage = message.contentMessages[message.contentMessages.length - 1];
-              if (outputMessage && outputMessage.type === "message" && outputMessage.role === "assistant") {
-                const isEmpty =
-                  outputMessage.content.length === 0 ||
-                  !outputMessage.content.some((c) => c.type === "output_text" && c.text !== "");
-                if (isEmpty) {
-                  return (
-                    <MessageSkeleton
-                      key={outputMessage.id || `output-${idx}`}
-                      model={outputMessage.model}
-                      message="Generating response..."
-                    />
-                  );
-                } else {
-                  return (
-                    <ResponseMessage
-                      key={message.id || outputMessage.id}
-                      message={outputMessage}
-                      siblings={[]}
-                      isLastMessage={isLastMessage}
-                      readOnly={false}
-                      webSearchEnabled={message.webSearchMessages.length > 0}
-                      saveMessage={handleSaveMessage}
-                      deleteMessage={handleDeleteMessage}
-                      regenerateResponse={handleRegenerateResponse}
-                      showPreviousMessage={handleShowPreviousMessage}
-                      showNextMessage={handleShowNextMessage}
-                    />
-                  );
-                }
-              }
-            }
-
-            if (message.currentStatus === MessageStatus.CREATED) {
-              return <MessageSkeleton key={message.id || `created-${idx}`} message="Starting..." />;
-            }
-
-            return null;
-          }
-
-          return null;
-        })}
+        {renderedMessages}
       </div>
 
       <MessageInput
@@ -320,6 +249,7 @@ const Home = ({
         setPrompt={setInputValue}
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
+        isConversationStreamActive={currentStreamIsActive}
       />
     </div>
   );

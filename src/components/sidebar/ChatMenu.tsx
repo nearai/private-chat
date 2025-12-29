@@ -1,9 +1,17 @@
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
+import { ArchiveBoxIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCloneChat, useDeleteChat, useTogglePinnedStatus } from "@/api/chat/queries";
-import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
+import { toast } from "sonner";
+import {
+  useArchiveChat,
+  // useCloneChat,
+  useDeleteChat,
+  usePinConversationById,
+  useUnpinConversationById,
+} from "@/api/chat/queries";
+// import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
 import PencilIcon from "@/assets/icons/pen.svg?react";
+
 import PinIcon from "@/assets/icons/pin.svg?react";
 import TrashIcon from "@/assets/icons/trash.svg?react";
 import UnpinIcon from "@/assets/icons/unpin.svg?react";
@@ -14,10 +22,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import type { ConversationInfo } from "@/types";
 
 import ConfirmDialog from "../common/dialogs/ConfirmDialog";
+import { useConversation } from "@/api/chat/queries/useConversation";
 
 type ChatMenuProps = {
   chat: ConversationInfo;
@@ -29,10 +37,15 @@ type ChatMenuProps = {
 export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPinned }: ChatMenuProps) {
   const { t } = useTranslation("translation", { useSuspense: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { mutate: toggleChatPinnedStatusById } = useTogglePinnedStatus();
-  const { mutate: cloneChatById } = useCloneChat();
-  // const { mutate: archiveChatById } = useArchiveChat(); //TODO: Add archive chat
-  const { mutate: deleteChatById } = useDeleteChat({
+  const { reloadConversations } = useConversation();
+  const { mutate: pinConversationById } = usePinConversationById();
+  const { mutate: unpinConversationById } = useUnpinConversationById();
+  // const { mutate: cloneChatById } = useCloneChat();
+  const { mutate: archiveChatById } = useArchiveChat({ onSuccess: () => {
+    toast.success(t("Chat archived"));
+    reloadConversations();
+  }});
+  const { mutate: deleteChatById, isPending: isDeleting } = useDeleteChat({
     onSuccess: () => {
       setShowDeleteConfirm(false);
       if (handleDeleteSuccess) {
@@ -42,16 +55,16 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   });
 
   const handlePinToggle = () => {
-    toggleChatPinnedStatusById({ id: chat.id });
+    isPinned ? unpinConversationById({ id: chat.id }) : pinConversationById({ id: chat.id });
   };
 
-  const handleClone = () => {
-    cloneChatById({ id: chat.id });
-  };
-
-  // const handleArchive = () => {
-  //   archiveChatById({ id: chat.id });
+  // const handleClone = () => {
+  //   cloneChatById({ id: chat.id });
   // };
+
+  const handleArchive = () => {
+    archiveChatById({ id: chat.id });
+  };
 
   const handleDelete = () => {
     setShowDeleteConfirm(true);
@@ -66,6 +79,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
             {t("This will delete")} <span className="font-semibold">{chat.metadata.title}</span>
           </>
         }
+        isLoading={isDeleting}
         onConfirm={() => deleteChatById({ id: chat.id })}
         onCancel={() => setShowDeleteConfirm(false)}
         open={showDeleteConfirm}
@@ -107,18 +121,18 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
             <span>{t("Rename")}</span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
+          {/* <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
             <ClipboardIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Clone")}</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
-          {/* <DropdownMenuItem
+          <DropdownMenuItem
             className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
             onClick={handleArchive}
           >
             <ArchiveBoxIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Archive")}</span>
-          </DropdownMenuItem> */}
+          </DropdownMenuItem>
 
           <DownloadDropdown chatId={chat.id} />
 

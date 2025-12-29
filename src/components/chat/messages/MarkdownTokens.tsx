@@ -1,13 +1,15 @@
 import DOMPurify from "dompurify";
 import type { Token, Tokens } from "marked";
-import { lexer } from "marked";
+import { lexer, marked } from "marked";
 import type React from "react";
-import type { JSX } from "react";
+import { type JSX, useMemo } from "react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib";
-import { unescapeHtml } from "@/lib/utils/markdown";
+import markedExtension from "@/lib/utils/extension";
+import { processResponseContent, repairMalformedMarkup, replaceTokens, unescapeHtml } from "@/lib/utils/markdown";
+import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import Collapsible from "../../common/Collapsible";
-import CodeBlock from "./CodeBlock";
+import CodeBlock, { TAG_BASED_LANGUAGES } from "./CodeBlock";
 import KatexRenderer from "./KatexRenderer";
 
 interface MarkdownTokensProps {
@@ -100,6 +102,19 @@ const MarkdownInlineTokens: React.FC<{ tokens?: Token[]; id: string }> = ({ toke
   );
 };
 
+export const MarkDown = ({ messageContent, batchId }: { messageContent: string; batchId: string }) => {
+  const tokens = useMemo(() => {
+    if (!messageContent) return [];
+    marked.use(markedKatexExtension());
+    marked.use(markedExtension());
+    const processedContent = replaceTokens(processResponseContent(messageContent), [], undefined, undefined);
+
+    return marked.lexer(processedContent);
+  }, [messageContent]);
+
+  return <MarkdownTokens tokens={tokens} id={`message-${batchId}`} />;
+};
+
 const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false }) => {
   return (
     <>
@@ -121,7 +136,12 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
 
         if (token.type === "code") {
           if (token.raw.includes("```")) {
-            return <CodeBlock key={key} lang={token.lang || ""} code={token.text} />;
+            const lang = token.lang || "";
+            let code = token.text;
+            if (TAG_BASED_LANGUAGES.includes(lang || "")) {
+              code = repairMalformedMarkup(code);
+            }
+            return <CodeBlock key={key} lang={lang} code={code} />;
           } else {
             return <span key={key}>{token.text}</span>;
           }
@@ -131,14 +151,14 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
           return (
             <div key={key} className="group relative w-full">
               <div className="scrollbar-hidden relative max-w-full overflow-x-auto rounded-lg">
-                <table className="w-full max-w-full rounded-xl text-left text-gray-500 text-sm dark:text-gray-400">
-                  <thead className="border-none bg-gray-50 text-gray-700 text-xs uppercase dark:bg-gray-850 dark:text-gray-400">
+                <table className="w-full max-w-full rounded-xl text-left text-gray-500 text-sm dark:text-gray-100">
+                  <thead className="border-none bg-gray-50 text-gray-700 text-xs uppercase dark:bg-gray-700 dark:text-gray-800">
                     <tr>
                       {token.header.map((header: Tokens.TableCell, headerIdx: number) => (
                         <th
                           key={`${key}-header-${headerIdx}`}
                           scope="col"
-                          className="border border-gray-100 px-3! py-1.5! dark:border-gray-850"
+                          className="border border-gray-100 px-3! py-1.5! dark:border-gray-700"
                         >
                           <MarkdownInlineTokens tokens={header.tokens} id={`${key}-header-${headerIdx}`} />
                         </th>
@@ -154,7 +174,7 @@ const MarkdownTokens: React.FC<MarkdownTokensProps> = ({ tokens, id, top = false
                         {row?.map((cell: Tokens.TableCell, cellIdx: number) => (
                           <td
                             key={`${key}-row-${rowIdx}-${cellIdx}`}
-                            className="border border-gray-100 px-3! py-1.5! text-gray-900 dark:border-gray-850"
+                            className="border border-gray-100 px-3! py-1.5! text-gray-900 dark:border-gray-700 dark:border-none dark:text-gray-100"
                           >
                             <MarkdownInlineTokens tokens={cell.tokens} id={`${key}-row-${rowIdx}-${cellIdx}`} />
                           </td>

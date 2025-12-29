@@ -1,34 +1,59 @@
 import Bolt from "@heroicons/react/24/outline/BoltIcon";
 import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useResponse } from "@/api/chat/queries/useResponse";
+import { MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
-
+import {
+  DEFAULT_CONVERSATION_TITLE,
+  FALLBACK_CONVERSATION_TITLE,
+  LOCAL_STORAGE_KEYS,
+  TITLE_GENERATION_DELAY,
+} from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
-import type { ConversationInfo } from "@/types";
+import { useConversationStore } from "@/stores/useConversationStore";
+import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function NewChat({
   startStream,
 }: {
-  startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
+  startStream: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
-  const { selectedModels } = useChatStore();
+  const { selectedModels, models, setSelectedModels } = useChatStore();
+  const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
   const { createConversation, updateConversation } = useConversation();
   const { generateChatTitle } = useResponse();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { resetConversation } = useConversationStore();
+  const { data: remoteConfig } = useRemoteConfig();
+
+  useEffect(() => {
+    const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
+    if (welcomePagePrompt) {
+      setInputValue(welcomePagePrompt);
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
+    }
+  }, []);
+
   useEffect(() => {
     if (inputValue.length > 500) {
       setFilteredPrompts([]);
@@ -62,54 +87,91 @@ export default function NewChat({
       ...files.map((file) => generateContentFileDataForOpenAI(file)),
     ];
 
-    const [newConversation, chatTitle] = await Promise.all([
-      createConversation.mutateAsync(
-        {
-          items: [],
-          metadata: {
-            title: "Basic Conversation",
-          },
-        },
-        {
-          onSuccess: async (data) => {
-            await navigate(`/c/${data.id}`);
-          },
-        }
-      ),
-      generateChatTitle.mutateAsync({
-        prompt: content,
-        model: "openai/gpt-oss-120b",
-      }),
-    ]);
-    const responseItem = chatTitle.output.find((item) => item.type === "message");
-    const messageContent = responseItem?.content.find((item) => item.type === "output_text")?.text;
-    await updateConversation.mutateAsync({
-      conversationId: newConversation.id,
-      metadata: {
-        title: messageContent || "",
+    const newConversation = await createConversation.mutateAsync(
+      {
+        items: [],
       },
-    });
+      {
+        onSuccess: async (data) => {
+          await navigate(`/c/${data.id}?new`);
+        },
+      }
+    );
 
-    // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
       const newConversationInfo: ConversationInfo = {
         id: newConversation.id,
         created_at: newConversation.created_at,
         metadata: {
-          title: messageContent ?? "",
+          title: DEFAULT_CONVERSATION_TITLE,
         },
       };
       return [newConversationInfo, ...oldConversations];
     });
 
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.conversation.all,
-    });
-
-    await navigate(`/c/${newConversation.id}`);
+    await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
+
+    // Capture conversationId before the async operation, as the conversation object may change
+    setTimeout(async () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.conversation.all,
+      });
+      const conversationId = newConversation.id;
+      const conversation = queryClient?.getQueryData<Conversation>(["conversation", conversationId]);
+
+      // Generate a new title if the title is still the default title or the fallback title
+      if (
+        !conversation?.metadata?.title ||
+        conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE ||
+        conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE
+      ) {
+        const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
+
+        if (title) {
+          // update the conversation details
+          await updateConversation.mutateAsync({
+            conversationId: conversationId,
+            metadata: {
+              title: title,
+            },
+          });
+
+          // update the conversations list
+          queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) =>
+            oldConversations.map((conversation) =>
+              conversation.id === conversationId
+                ? {
+                    ...conversation,
+                    metadata: {
+                      ...(conversation.metadata ?? {}),
+                      title,
+                    },
+                  }
+                : conversation
+            )
+          );
+        }
+      }
+    }, TITLE_GENERATION_DELAY);
   };
+
+  useEffect(() => {
+    if (modelInitializedRef.current) return;
+    const validSelectedModels = selectedModels.filter((modelId) => models.some((model) => model.modelId === modelId));
+    if (validSelectedModels.length === 0 && models.length > 0) {
+      // set default model
+      if (remoteConfig?.default_model) {
+        const selectedDefaultModel = models.find((model) => model.modelId === remoteConfig.default_model);
+        if (selectedDefaultModel) {
+          setSelectedModels([selectedDefaultModel.modelId]);
+        }
+      }
+    }
+    modelInitializedRef.current = true;
+    resetConversation();
+  }, [selectedModels, models, remoteConfig?.default_model, setSelectedModels, resetConversation]);
 
   return (
     <div id="chat-container" className="relative flex h-full grow flex-col">

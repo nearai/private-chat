@@ -1,16 +1,15 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { toChatRoute } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";
 import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
-
-const BASIC_PLACEHOLDER = "TEMP CHAT";
+import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
 type ChatItemProps = {
   chat: ConversationInfo;
@@ -20,9 +19,7 @@ type ChatItemProps = {
 };
 
 function getChatTitle(chat: ConversationInfo) {
-  if (chat.metadata.title) return chat.metadata.title;
-  const conv = chat as ConversationInfo;
-  return conv.metadata?.title || BASIC_PLACEHOLDER;
+  return chat.metadata.title || DEFAULT_CONVERSATION_TITLE;
 }
 
 const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatItemProps) => {
@@ -30,14 +27,20 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
-  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? BASIC_PLACEHOLDER);
+  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
   const { isReloadingConversations, updateConversation, reloadConversations } = useConversation();
 
   const isRenaming = updateConversation.isPending || isReloadingConversations;
 
   const confirmRename = () => {
     updateConversation.mutate(
-      { conversationId: chat.id, metadata: { title: renameInput } },
+      {
+        conversationId: chat.id,
+        metadata: {
+          ...chat.metadata,
+          title: renameInput,
+        }
+      },
       {
         onSuccess: () => {
           reloadConversations({
@@ -68,6 +71,10 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
     stopEditingChatName();
   };
 
+  useEffect(() => {
+    setRenameInput(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
+  }, [chat?.metadata?.title]);
+
   return (
     <div className="group relative w-full" draggable="true">
       <Link
@@ -83,7 +90,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
             <div className="flex w-full flex-1 self-center">
               <input
                 ref={renameRef}
-                className="h-[20px] w-full self-center border-none bg-transparent text-left outline-none"
+                className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
                 onClick={() => startEditingChatName(chat.id)}
                 onChange={(e) => setRenameInput(e.target.value)}
@@ -104,7 +111,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
           </>
         ) : (
           <>
-            <div dir="auto" className="h-[20px] w-full self-center overflow-hidden truncate text-left">
+            <div dir="auto" className="h-5 w-full self-center overflow-hidden truncate text-left">
               {getChatTitle(chat)}
             </div>
             {isRenaming && editingChatId === chat.id ? (

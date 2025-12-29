@@ -19,7 +19,10 @@ export const useResponse = () => {
 
   const generateChatTitle = useMutation({
     mutationFn: async ({ prompt, model }: { prompt: string; model: string }) => {
-      return chatClient.generateChatTitle(prompt, model);
+      const res = await chatClient.generateChatTitle(prompt, model);
+      const msg = res.output?.find((item) => item.type === "message");
+      const text = msg?.content?.find((c) => c.type === "output_text")?.text;
+      return (text ?? "").trim();
     },
   });
 

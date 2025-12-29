@@ -1,64 +1,61 @@
-import { acceptCompletion } from "@codemirror/autocomplete";
-import { indentWithTab } from "@codemirror/commands";
-import { indentUnit } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
+import { StreamLanguage } from "@codemirror/language";
+import { clike } from "@codemirror/legacy-modes/mode/clike";
+import { gas } from "@codemirror/legacy-modes/mode/gas";
 import { Compartment, EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { keymap } from "@codemirror/view";
 import { basicSetup, EditorView } from "codemirror";
 import type React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-interface CodeEditorProps {
-  id: string;
-  value: string;
-  lang?: string;
-  onChange?: (value: string) => void;
-  onSave?: () => void;
-  placeholder?: string;
+async function getLanguageSupport(lang: string) {
+  const langLower = lang.toLowerCase();
+  if (langLower === "matlab") {
+    return StreamLanguage.define(clike({ name: "matlab" }));
+  } else if (["asm", "nasm", "asmx", "inc", "dos", "lin", "elf", "assembly"].includes(langLower)) {
+    return StreamLanguage.define(gas);
+  } else {
+    const language = languages.find(
+      (l) => l.alias.includes(langLower) || l.name.toLowerCase() === langLower || l.extensions.includes(langLower)
+    );
+    if (language) {
+      try {
+        const languageSupport = await language.load();
+        return languageSupport;
+      } catch (error) {
+        console.error("Failed to load language:", error);
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
-const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "", onChange, onSave }) => {
+interface CodeEditorProps {
+  value: string;
+  lang?: string;
+}
+
+const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "" }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const editorThemeRef = useRef(new Compartment());
   const editorLanguageRef = useRef(new Compartment());
-  const loadLanguage = useCallback(async (langName: string) => {
-    if (!viewRef.current) return;
 
-    try {
-      const language = languages.find(
-        (l) => l.alias.includes(langName.toLowerCase()) || l.name.toLowerCase() === langName.toLowerCase()
-      );
-
-      if (language) {
-        const languageSupport = await language.load();
-        if (viewRef.current && languageSupport) {
-          viewRef.current.dispatch({
-            effects: editorLanguageRef.current.reconfigure(languageSupport),
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load language:", error);
-    }
-  }, []);
-  // Initialize editor
+  // Initialize read-only editor
   useEffect(() => {
     if (!editorRef.current || viewRef.current) return;
 
     const isDarkMode = document.documentElement.classList.contains("dark");
 
     const extensions = [
+      // Read-only configuration
       basicSetup,
-      keymap.of([{ key: "Tab", run: acceptCompletion }, indentWithTab]),
-      indentUnit.of("    "),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged && onChange) {
-          const newValue = update.state.doc.toString();
-          onChange(newValue);
-        }
-      }),
+      EditorState.readOnly.of(true),
+      EditorView.editable.of(false),
+      // Prevent any focus-related scroll behavior
+      EditorView.contentAttributes.of({ tabindex: "-1" }),
+      // Theme support
       editorThemeRef.current.of(isDarkMode ? [oneDark] : []),
       editorLanguageRef.current.of([]),
     ];
@@ -71,9 +68,17 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "", onChange, onS
       parent: editorRef.current,
     });
 
-    // Set initial language
+
     if (lang) {
-      loadLanguage(lang);
+      getLanguageSupport(lang).then((languageSupport) => {
+        if (viewRef.current && languageSupport) {
+          viewRef.current.dispatch({
+            effects: editorLanguageRef.current.reconfigure(languageSupport),
+          });
+        }
+      }).catch((error) => {
+        console.error("Error loading language support:", error);
+      });
     }
 
     // Dark mode observer
@@ -95,46 +100,14 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ value, lang = "", onChange, onS
       attributeFilter: ["class"],
     });
 
-    // Keyboard shortcuts
-    const keydownHandler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        if (onSave) onSave();
-      }
-    };
-
-    document.addEventListener("keydown", keydownHandler);
-
     return () => {
       observer.disconnect();
-      document.removeEventListener("keydown", keydownHandler);
       if (viewRef.current) {
         viewRef.current.destroy();
         viewRef.current = null;
       }
     };
-  }, [lang, onChange, onSave, loadLanguage, value]);
-
-  useEffect(() => {
-    if (lang && viewRef.current) {
-      loadLanguage(lang);
-    }
-  }, [lang, loadLanguage]);
-
-  useEffect(() => {
-    if (viewRef.current) {
-      const currentValue = viewRef.current.state.doc.toString();
-      if (currentValue !== value) {
-        viewRef.current.dispatch({
-          changes: {
-            from: 0,
-            to: currentValue.length,
-            insert: value,
-          },
-        });
-      }
-    }
-  }, [value]);
+  }, [value, lang]);
 
   return <div ref={editorRef} className="h-full w-full text-sm" />;
 };

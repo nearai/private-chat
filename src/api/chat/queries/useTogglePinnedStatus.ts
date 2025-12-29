@@ -3,21 +3,32 @@ import { queryKeys } from "@/api/query-keys";
 import type { Chat } from "@/types";
 import { chatClient } from "../client";
 
-type TogglePinnedStatusParams = {
+type ConversationPinParams = {
   id: string;
 };
 
-type UseTogglePinnedStatusOptions = Omit<UseMutationOptions<Chat, Error, TogglePinnedStatusParams>, "mutationFn">;
+type UsePinMutationOptions = Omit<
+  UseMutationOptions<Chat, Error, ConversationPinParams>,
+  "mutationFn"
+>;
 
-export const useTogglePinnedStatus = (options?: UseTogglePinnedStatusOptions) => {
+const createPinnedStatusMutation = (
+  mutationFn: (params: ConversationPinParams) => Promise<Chat>,
+  options?: UsePinMutationOptions
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id }: TogglePinnedStatusParams) => chatClient.toggleChatPinnedStatusById(id),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.pinnedStatus(id) });
+    mutationFn,
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: queryKeys.conversation.all });
     },
     ...options,
   });
 };
+
+export const usePinConversationById = (options?: UsePinMutationOptions) =>
+  createPinnedStatusMutation(({ id }) => chatClient.pinConversationById(id), options);
+
+export const useUnpinConversationById = (options?: UsePinMutationOptions) =>
+  createPinnedStatusMutation(({ id }) => chatClient.unpinConversationById(id), options);

@@ -175,6 +175,10 @@
   color: #818286;
 }
 
+#messages-container {
+  overflow-anchor: none;
+}
+
 .dark .shimmer {
   background: linear-gradient(90deg, #818286 25%, #eae5e5 50%, #818286 75%);
   background-size: 200% 100%;
@@ -234,14 +238,17 @@ pre code {
   height: 100%;
   font-size: 0.875rem;
   font-family: "Consolas", "Monaco", "Courier New", monospace;
+  overflow-anchor: none !important;
 }
 
 .cm-scroller {
   overflow: auto;
+  overflow-anchor: none !important;
 }
 
 .cm-content {
   padding: 0.5rem;
+  overflow-anchor: none !important;
 }
 
 .cm-gutters {

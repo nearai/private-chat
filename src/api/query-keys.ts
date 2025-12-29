@@ -16,6 +16,7 @@ export const queryKeys = {
   },
   config: {
     all: [CONFIG_KEY],
+    remote: [CONFIG_KEY, "remote"],
   },
 
   models: {
@@ -63,5 +64,6 @@ export const queryKeys = {
     all: [USERS_KEY],
     detail: (id: string) => [USERS_KEY, "detail", id],
     userData: [USERS_KEY, "userData"],
+    meSettings: [USERS_KEY, "meSettings"],
   },
 } as const;

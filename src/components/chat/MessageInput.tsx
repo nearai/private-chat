@@ -1,14 +1,25 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { chatClient } from "@/api/chat/client";
+import { chatClient, isUploadError } from "@/api/chat/client";
 
-import GlobeIcon from "@/assets/icons/globe-icon.svg?react";
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import Spinner from "@/components/common/Spinner";
+import { cn } from "@/lib";
+import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 import { compressImage } from "@/lib/image";
-import { cn } from "@/lib/time";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -48,13 +59,13 @@ interface MessageInputProps {
   fullWidth?: boolean;
   toolsDisabled?: boolean;
   isMessageCompleted?: boolean;
+  isConversationStreamActive?: boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
-  onChange = () => {},
   createMessagePair = () => {},
   stopResponse = () => {},
   autoScroll = false,
@@ -67,23 +78,32 @@ const MessageInput: React.FC<MessageInputProps> = ({
   files: initialFiles = [],
   toolServers = [],
   selectedToolIds: initialSelectedToolIds = [],
-  imageGenerationEnabled: initialImageGenerationEnabled = false,
   placeholder = "",
   onSubmit,
   showUserProfile = true,
   fullWidth = true,
   toolsDisabled = false,
   isMessageCompleted = true,
+  isConversationStreamActive = false,
 }) => {
   const { settings } = useSettingsStore();
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [loaded, setLoaded] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const { isEditingChatName, webSearchEnabled, setWebSearchEnabled } = useChatStore();
+  const { isEditingChatName, webSearchEnabled } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
-  const [imageGenerationEnabled, setImageGenerationEnabled] = useState(initialImageGenerationEnabled);
+  const [isUploading, setIsUploading] = useState(false);
+  const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
+  const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
+
+  useEffect(() => {
+    if (isLowBalance) {
+      setShowLowBalanceAlert(true);
+    }
+  }, [isLowBalance]);
 
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
@@ -93,73 +113,90 @@ const MessageInput: React.FC<MessageInputProps> = ({
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
   );
 
-  useEffect(() => {
-    onChange({
-      prompt,
-      files,
-      selectedToolIds,
-      imageGenerationEnabled,
-      webSearchEnabled,
-    });
-  }, [prompt, files, selectedToolIds, imageGenerationEnabled, webSearchEnabled, onChange]);
-
-  const uploadFileHandler = async (file: File): Promise<FileContentItem | undefined> => {
-    try {
-      const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
-      const maxFileSize = 10 * 1024 * 1024;
-
-      if (file.size > maxFileSize) {
-        toast.error(`File size should not exceed 10 MB.`);
-        return;
-      }
-
-      if (imageTypes.includes(file.type)) {
-        const imageUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (event) => resolve(event.target?.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        let finalImageUrl = imageUrl;
-        if (settings.imageCompression) {
-          const width = settings.imageCompressionSize?.width;
-          const height = settings.imageCompressionSize?.height;
-          if (width || height) {
-            finalImageUrl = await compressImage(imageUrl, width, height);
-          }
+  const uploadFileHandler = useCallback(
+    async (file: File): Promise<FileContentItem | undefined> => {
+      try {
+        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
+        const maxFileSize = 10 * 1024 * 1024;
+        if (file.type === "application/pdf") {
+          toast.error("PDF files are not supported yet.");
+          return;
         }
 
-        const newFile: FileContentItem = {
-          type: "input_image",
-          id: uuidv4(),
-          name: file.name,
-          image_url: finalImageUrl,
-        };
+        if (file.size > maxFileSize) {
+          toast.error(`File size should not exceed 10 MB.`);
+          return;
+        }
+
+        if (imageTypes.includes(file.type)) {
+          const imageUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          let finalImageUrl = imageUrl;
+          if (settings.imageCompression) {
+            const width = settings.imageCompressionSize?.width;
+            const height = settings.imageCompressionSize?.height;
+            if (width || height) {
+              finalImageUrl = await compressImage(imageUrl, width, height);
+            }
+          }
+
+          const newFile: FileContentItem = {
+            type: "input_image",
+            id: uuidv4(),
+            name: file.name,
+            image_url: finalImageUrl,
+          };
+
+          return newFile;
+        }
+
+        const data = await chatClient.uploadFile(file);
+
+        const newFile: FileContentItem = file.type.startsWith("audio/")
+          ? { type: "input_audio", id: data.id, name: data.filename }
+          : { type: "input_file", id: data.id, name: data.filename };
 
         return newFile;
+      } catch (errorObj: unknown) {
+        if (isUploadError(errorObj)) {
+          if (errorObj.error.type === "invalid_request_error") {
+            toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+          }
+        } else {
+          toast.error(t("Error uploading file."));
+        }
+        console.error("Error uploading file:", errorObj);
+        return undefined;
       }
+    },
+    [settings.imageCompression, settings.imageCompressionSize, t]
+  );
 
-      const data = await chatClient.uploadFile(file);
+  const disabledSendButton = useMemo(() => {
+    if (isConversationStreamActive) return true;
+    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance;
+  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalance]);
 
-      const newFile: FileContentItem = file.type.startsWith("audio/")
-        ? { type: "input_audio", id: data.id, name: data.filename }
-        : { type: "input_file", id: data.id, name: data.filename };
-
-      return newFile;
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      return undefined;
-    }
-  };
-
-  const inputFilesHandler = async (inputFiles: File[]) => {
-    for (const file of inputFiles) {
-      const newFile = await uploadFileHandler(file);
-      if (!newFile) continue;
-      setFiles((prev) => [...prev, newFile]);
-    }
-  };
+  const inputFilesHandler = useCallback(
+    async (inputFiles: File[]) => {
+      setIsUploading(true);
+      try {
+        for (const file of inputFiles) {
+          const newFile = await uploadFileHandler(file);
+          if (!newFile) continue;
+          setFiles((prev) => [...prev, newFile]);
+        }
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [uploadFileHandler]
+  );
 
   useEffect(() => {
     setLoaded(true);
@@ -228,6 +265,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     e.preventDefault();
     if (prompt.trim() || files.length > 0) {
       if (!isMessageCompleted) return;
+      if (disabledSendButton) return;
       onSubmit(prompt, files, webSearchEnabled);
       setPrompt("");
       setFiles([]);
@@ -241,8 +279,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       stopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
-      setWebSearchEnabled(false);
-      setImageGenerationEnabled(false);
+      // setImageGenerationEnabled(false);
     }
 
     if (isCtrlPressed && e.key === "Enter" && e.shiftKey) {
@@ -277,6 +314,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         e.preventDefault();
         if (prompt !== "" || files.length > 0) {
           if (!isMessageCompleted) return;
+          if (disabledSendButton) return;
           onSubmit(prompt, files, webSearchEnabled);
           setFiles([]);
           setPrompt("");
@@ -402,7 +440,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         <img
                           crossOrigin="anonymous"
                           alt="model profile"
-                          className="size-3.5 max-w-[28px] rounded-full object-cover"
+                          className="size-3.5 max-w-7 rounded-full object-cover"
                           src={
                             atSelectedModel?.info?.meta?.profile_image_url ??
                             `${window.location.pathname}/static/favicon.png`
@@ -444,6 +482,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 type="file"
                 hidden
                 multiple
+                disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
@@ -456,8 +495,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   }
                 }}
               />
-
-              <form className="flex w-full gap-1.5" onSubmit={handleSubmit}>
+              <form
+                className="flex w-full gap-1.5"
+                onSubmit={handleSubmit}
+                onClick={() => {
+                  if (isLowBalance) {
+                    setShowLowBalanceAlert(true);
+                    return;
+                  }
+                }}
+              >
                 <div
                   className="relative flex w-full flex-1 flex-col rounded-3xl border border-border bg-input px-1 shadow-lg transition focus-within:shadow-xl hover:shadow-xl"
                   dir={settings.chatDirection ?? "auto"}
@@ -545,15 +592,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
                       <textarea
                         ref={chatInputRef}
                         id="chat-input"
-                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none"
+                        className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
                         placeholder={placeholder || "How can I help you today?"}
                         value={prompt}
+                        disabled={isLowBalance}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
-                        // rows={15}
                         style={{ lineHeight: "1.5" }}
                       />
                     </div>
@@ -568,18 +615,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
                               className="rounded-full bg-transparent p-1.5 text-muted-foreground outline-hidden transition hover:bg-secondary/30 focus:outline-hidden"
                               type="button"
                               aria-label="More"
+                              disabled={isUploading}
                               onClick={() => {
                                 filesInputRef.current?.click();
                               }}
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="size-5"
-                              >
-                                <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                              </svg>
+                              {isUploading ? (
+                                <Spinner className="size-4" />
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="size-5"
+                                >
+                                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                                </svg>
+                              )}
                             </button>
                           </div>
                           <div className="scrollbar-none flex flex-1 items-center gap-1 overflow-x-auto">
@@ -609,36 +661,28 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                 </span>
                               </button>
                             )}
-
-                            <Button
-                              variant={webSearchEnabled ? "blue" : "ghost"}
-                              onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                              type="button"
-                              className="flex h-auto max-w-full items-center gap-1.5 overflow-hidden rounded-full px-2 py-0.5 font-medium text-xs transition-colors duration-300"
-                            >
-                              <GlobeIcon className="size-5" strokeWidth="1.75" stroke="currentColor" />
-                              <span className="translate-y-[0.5px] overflow-hidden text-ellipsis whitespace-nowrap">
-                                Web Search
-                              </span>
-                            </Button>
                           </div>
                         </>
                       )}
                     </div>
 
-                    <div className="mr-1 flex shrink-0 space-x-1 self-end">
-                      {(taskIds && taskIds.length > 0) ||
-                      (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
+                    {(taskIds && taskIds.length > 0) ||
+                    (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
+                      <div className="mr-1 flex shrink-0 space-x-1 self-end">
                         <Button size="icon" onClick={stopResponse} className="size-10">
                           <StopMessageIcon className="size-5" />
                         </Button>
-                      ) : (
+                      </div>
+                    ) : (
+                      <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+                        'cursor-not-allowed!': disabledSendButton,
+                      })}>
                         <Button
                           id="send-message-button"
-                          className="size-10 rounded-full"
+                          className={cn("size-10 rounded-full")}
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={isMessageCompleted && prompt === "" && files.length === 0}
+                          disabled={disabledSendButton}
                           size="icon"
                         >
                           {isMessageCompleted ? (
@@ -648,8 +692,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             <StopMessageIcon className="size-5" />
                           )}
                         </Button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </form>
@@ -657,6 +701,32 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </div>
         </div>
       </div>
+  
+      <AlertDialog open={showLowBalanceAlert} onOpenChange={setShowLowBalanceAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Insufficient Balance</AlertDialogTitle>
+            <AlertDialogDescription>
+              To use Private Chat, your NEAR account must have at least {MIN_NEAR_BALANCE} NEAR.
+              Please add funds to your wallet to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+            <Button
+              onClick={async () => {
+                const status = await refetchBalance();
+                if (!status) return;
+                toast.success("Balance updated. Private Chat is now available.");
+                setShowLowBalanceAlert(false);
+              }}
+              disabled={checkingBalance}
+            >
+              {checkingBalance ? "Checking..." : "I have added funds"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

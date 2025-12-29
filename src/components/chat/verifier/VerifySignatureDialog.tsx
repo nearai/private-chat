@@ -85,12 +85,7 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
           )}
 
           {/* Form */}
-          <form
-            className="flex w-full flex-col"
-            onSubmit={(e) => {
-              e.preventDefault();
-            }}
-          >
+          <div className="flex w-full flex-col">
             {/* Address Field */}
             <div className="mb-3 flex w-full flex-col">
               <div className="mb-2 flex items-center justify-between text-foreground text-sm">
@@ -108,7 +103,7 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
               </div>
               <div className="flex-1">
                 <input
-                  className="w-full rounded border border-border bg-card/30 px-3 py-2 text-sm outline-hidden placeholder:text-muted-foreground"
+                  className="w-full rounded-lg border border-border bg-card/30 px-3 py-2 text-sm outline-hidden placeholder:text-muted-foreground dark:bg-secondary/10"
                   type="text"
                   autoComplete="off"
                   value={address}
@@ -136,7 +131,7 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
               </div>
               <div className="flex-1">
                 <textarea
-                  className="w-full rounded border border-border bg-card/30 px-3 py-2 text-sm outline-hidden placeholder:text-muted-foreground"
+                  className="w-full rounded-lg border border-border bg-card/30 px-3 py-2 text-sm outline-hidden placeholder:text-muted-foreground dark:bg-secondary/10"
                   rows={3}
                   required
                   value={message}
@@ -162,7 +157,7 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
               </div>
               <div className="flex-1">
                 <textarea
-                  className="w-full rounded border border-border bg-card/30 px-3 py-2 text-sm outline-hidden placeholder:text-muted-foreground"
+                  className="w-full rounded-lg border border-border bg-card/30 px-3 py-2 text-sm outline-hidden placeholder:text-muted-foreground dark:bg-secondary/10"
                   value={signature}
                   rows={3}
                   required
@@ -171,7 +166,7 @@ const VerifySignatureDialog: React.FC<VerifySignatureDialogProps> = ({
                 />
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
