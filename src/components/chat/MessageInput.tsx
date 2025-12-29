@@ -482,11 +482,17 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 type="file"
                 hidden
                 multiple
+                accept=".pdf,application/pdf"
                 disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
-                    await inputFilesHandler(inputFiles);
+                    const pdfs = inputFiles.filter((f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+                    const rejected = inputFiles.length - pdfs.length;
+                    if (rejected > 0) {
+                      toast.error("Only PDF files are supported.");
+                    }
+                    await inputFilesHandler(pdfs);
                   } else {
                     toast.error("File not found.");
                   }
