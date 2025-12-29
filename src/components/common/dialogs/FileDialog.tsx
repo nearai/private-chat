@@ -1,4 +1,5 @@
 import { DialogTrigger } from "@radix-ui/react-dialog";
+import { Document, Page, pdfjs } from 'react-pdf';
 import { useFile, useFileContent } from "@/api/chat/queries/useFiles";
 import Spinner from "@/components/common/Spinner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -7,6 +8,11 @@ import { formatFileSize, getLineCount } from "@/lib/index";
 import { cn } from "@/lib";
 import { decodeString } from "@/lib/time";
 import type { ContentItem } from "@/types/openai";
+import { useEffect, useState } from "react";
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `/lib/pdf.js`;
 
 export default function FileDialog({
   file,
@@ -21,13 +27,11 @@ export default function FileDialog({
   dismissible?: boolean;
   onDismiss?: () => void;
 }) {
-  // const [showModal, setShowModal] = useState(false);
   const fileId =
     file.type === "input_file" ? file.file_id : file.type === "input_audio" ? file.audio_file_id : undefined;
   const { data: fileData } = useFile(fileId);
-  console.log("fileData", fileData);
-  const { data: fileContent } = useFileContent(fileId);
-  console.log("fileContent", fileContent);
+  const { isLoading: isFileContentLoading, data: fileContent } = useFileContent(fileId);
+  const [processedFile, setProcessedFile] = useState<string | File | null>(null);
 
   const renderContent = () => {
     if (file.type === "input_file" || file.type === "output_file") {
@@ -41,6 +45,87 @@ export default function FileDialog({
     }
   };
 
+  const renderFileContent = () => {
+    if (!processedFile) return null;
+
+    if (processedFile instanceof File && processedFile.type === 'application/pdf') {
+      return (
+        <div className="h-[75vh] w-full overflow-auto rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
+          <Document
+            file={processedFile}
+            loading={<div className="flex items-center gap-2 text-sm"><Spinner className="size-4" /> Loading PDF…</div>}
+            error={<div className="text-red-600 text-sm">Failed to load PDF.</div>}
+          >
+            <Page pageNumber={1} width={800} />
+          </Document>
+        </div>
+      );
+    }
+
+    if (typeof processedFile === 'string') {
+      return (
+        <div className="flex w-full flex-col gap-1">
+          <div className="shrink-0 capitalize">
+            {getLineCount(processedFile)} extracted lines
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            Formatting may be inconsistent from source.
+          </div>
+          <div className="max-h-[75vh] w-full min-w-0 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+            {processedFile}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  useEffect(() => {
+    if (!fileContent || !fileData) return;
+
+    const ext = fileData.filename.split('.').pop()?.toLowerCase();
+    const fc: unknown = fileContent;
+
+    // Blob/File path (preferred)
+    if (fc instanceof Blob) {
+      if (ext === 'pdf' || fc.type === 'application/pdf') {
+        const fileObj = new File([fc], fileData.filename, { type: 'application/pdf' });
+        setProcessedFile(fileObj);
+      } else {
+        // For non-PDF blobs, try to display as text
+        (async () => {
+          try {
+            const text = await fc.text();
+            setProcessedFile(text);
+          } catch {
+            setProcessedFile(null);
+          }
+        })();
+      }
+      return;
+    }
+
+    // String path (fallback)
+    if (typeof fc === 'string') {
+      if (ext === 'pdf' || fc.startsWith('%PDF-')) {
+        // Convert raw/binary-like string to bytes -> Blob -> File
+        const len = fc.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = fc.charCodeAt(i) & 0xff;
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const fileObj = new File([blob], fileData.filename, { type: 'application/pdf' });
+        setProcessedFile(fileObj);
+      } else {
+        setProcessedFile(fc);
+      }
+      return;
+    }
+  }, [fileData, fileContent]);
+
   return (
     <Dialog>
       <DialogTrigger
@@ -49,19 +134,6 @@ export default function FileDialog({
           smallView ? "rounded-xl" : "rounded-2xl"
         )}
         type="button"
-        // onClick={async () => {
-        //   if (fileData?.content) {
-        //     setShowModal(!showModal);
-        //   } else {
-        //     if (file.url) {
-        //       if (file.type === "file") {
-        //         window.open(`${file.url}/content`, "_blank")?.focus();
-        //       } else {
-        //         window.open(`${file.url}`, "_blank")?.focus();
-        //       }
-        //     }
-        //   }
-        // }}
       >
         {!smallView && (
           <div className="rounded-xl bg-black/20 p-3 dark:bg-white/10">
@@ -123,7 +195,7 @@ export default function FileDialog({
           </div>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="min-h-[60vh]">
         <div className="flex w-full flex-col justify-center px-6 py-5 font-primary dark:text-gray-400">
           <div className="pb-2">
             <div className="flex items-start justify-between">
@@ -135,8 +207,29 @@ export default function FileDialog({
                     onClick={(e) => {
                       e.preventDefault();
 
-                      if (fileContent && typeof fileContent === "object" && !fileContent.url) {
-                        const jsonString = JSON.stringify(fileContent, null, 2);
+                      const fc: unknown = fileContent;
+
+                      // If we have a Blob/File, download it
+                      if (fc instanceof Blob) {
+                        const url = URL.createObjectURL(fc);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = fileData?.filename || "file";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        return;
+                      }
+
+                      // Legacy object with url
+                      if (fc && typeof fc === "object" && "url" in (fc as Record<string, unknown>)) {
+                        const obj = fc as { url: string; type?: string };
+                        window.open(obj.type === "file" ? `${obj.url}/content` : `${obj.url}`, "_blank");
+                        return;
+                      }
+
+                      // Fallback: JSON download of unknown object
+                      if (fc && typeof fc === "object") {
+                        const jsonString = JSON.stringify(fc, null, 2);
                         const blob = new Blob([jsonString], { type: "application/json" });
                         const url = URL.createObjectURL(blob);
 
@@ -147,13 +240,6 @@ export default function FileDialog({
 
                         URL.revokeObjectURL(url);
                         return;
-                      }
-
-                      if (fileContent?.url) {
-                        window.open(
-                          fileContent.type === "file" ? `${fileContent.url}/content` : `${fileContent.url}`,
-                          "_blank"
-                        );
                       }
                     }}
                   >
@@ -171,20 +257,14 @@ export default function FileDialog({
                       <div className="shrink-0 capitalize">{formatFileSize(fileData.bytes)}</div>•
                     </>
                   )}
-
-                  {fileContent && (
-                    <div className="flex w-full flex-col gap-1">
-                      <div className="shrink-0 capitalize">
-                        {getLineCount(fileContent.content ?? "1")} extracted lines
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1">
-                        Formatting may be inconsistent from source.
-                      </div>
-                      <div className="max-h-[75vh] w-full min-w-0 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
-                        {fileContent}
+                  {isFileContentLoading ? (
+                    <div className="flex w-full items-center justify-center py-10">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Spinner className="size-4" /> Loading file…
                       </div>
                     </div>
+                  ) : (
+                    renderFileContent()
                   )}
                 </div>
               </div>

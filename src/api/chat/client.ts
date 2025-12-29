@@ -371,7 +371,7 @@ class ChatClient extends ApiClient {
     return this.get(`/files/${id}`, { apiVersion: "v2" });
   }
 
-  async getFileContent(id: string | undefined): Promise<any> {
+  async getFileContent(id: string | undefined): Promise<Blob> {
     try {
       if (!id) {
         throw new Error("File ID is required");
@@ -381,9 +381,7 @@ class ChatClient extends ApiClient {
         apiVersion: "v2",
       });
       const blob = await response.blob();
-      const text = await blob.text();
-      console.log("response 222", text);
-      return text;
+      return blob;
     } catch (error) {
       console.error("error", error);
       throw error;
