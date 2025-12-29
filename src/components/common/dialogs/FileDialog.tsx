@@ -4,7 +4,8 @@ import Spinner from "@/components/common/Spinner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatFileSize, getLineCount } from "@/lib/index";
-import { cn, decodeString } from "@/lib/time";
+import { cn } from "@/lib";
+import { decodeString } from "@/lib/time";
 import type { ContentItem } from "@/types/openai";
 
 export default function FileDialog({
