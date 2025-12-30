@@ -196,7 +196,7 @@ export default function FileDialog({
         )}
       </DialogTrigger>
       <DialogContent className="min-h-[60vh]">
-        <div className="flex w-full flex-col justify-center px-6 py-5 font-primary dark:text-gray-400">
+        <div className="flex w-full flex-col px-6 py-5 font-primary dark:text-gray-400">
           <div className="pb-2">
             <div className="flex items-start justify-between">
               <div>

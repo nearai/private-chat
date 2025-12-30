@@ -21,7 +21,6 @@ export const useFile = (id: string | undefined) => {
 };
 
 export const useFileContent = (id: string | undefined) => {
-  console.log("useFileContent id", id);
   return useQuery({
     queryKey: queryKeys.chat.fileContent(id ?? ""),
     queryFn: () => chatClient.getFileContent(id ?? ""),
