@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import { chatClient, isUploadError } from "@/api/chat/client";
 
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
+import { ACCEPTED_FILE_TYPES, SUPPORTED_TEXT_EXTENSIONS } from "@/lib/constants";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
-import { compressImage } from "@/lib/image";
+// import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -116,13 +117,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const uploadFileHandler = useCallback(
     async (file: File): Promise<FileContentItem | undefined> => {
       try {
-        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         const maxFileSize = 10 * 1024 * 1024;
         if (file.size > maxFileSize) {
           toast.error(`File size should not exceed 10 MB.`);
           return;
         }
-
+        
+        if (file.type.startsWith("image/")) {
+          toast.info("Images are not supported yet.");
+          return;
+        }
+        
+        /*
+        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         if (imageTypes.includes(file.type)) {
           const imageUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -149,6 +156,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
           return newFile;
         }
+        */
+
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const isText = file.type === "text/plain" || SUPPORTED_TEXT_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (!isPdf && !isText) {
+          toast.error(t("The file type is not yet supported."));
+          return;
+        }
 
         const data = await chatClient.uploadFile(file);
 
@@ -160,7 +176,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       } catch (errorObj: unknown) {
         if (isUploadError(errorObj)) {
           if (errorObj.error.type === "invalid_request_error") {
-            toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+            toast.error("This file type is not supported. Please upload PDF or plain text files.");
           }
         } else {
           toast.error(t("Error uploading file."));
@@ -169,7 +185,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         return undefined;
       }
     },
-    [settings.imageCompression, settings.imageCompressionSize, t]
+    [t]
   );
 
   const disabledSendButton = useMemo(() => {
@@ -324,10 +340,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (clipboardData?.items) {
       for (const item of Array.from(clipboardData.items)) {
         if (item.type.indexOf("image") !== -1) {
-          const blob = item.getAsFile();
-          if (blob) {
-            await uploadFileHandler(blob);
-          }
+          // const blob = item.getAsFile();
+          // if (blob) {
+          //   await uploadFileHandler(blob);
+          // }
+           toast.info("Images are not supported yet.");
         } else if (item.type === "text/plain") {
           if (settings.largeTextAsFile ?? false) {
             const text = clipboardData.getData("text/plain");
@@ -477,16 +494,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 type="file"
                 hidden
                 multiple
-                // accept=".pdf,application/pdf"
+                accept={ACCEPTED_FILE_TYPES}
                 disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
-                    // const pdfs = inputFiles.filter((f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
-                    // const rejected = inputFiles.length - pdfs.length;
-                    // if (rejected > 0) {
-                    //   toast.error("Only PDF files are supported.");
-                    // }
                     await inputFilesHandler(inputFiles);
                   } else {
                     toast.error("File not found.");
