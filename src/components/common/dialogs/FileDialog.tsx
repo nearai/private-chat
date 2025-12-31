@@ -32,6 +32,11 @@ export default function FileDialog({
   const { data: fileData } = useFile(fileId);
   const { isLoading: isFileContentLoading, data: fileContent } = useFileContent(fileId);
   const [processedFile, setProcessedFile] = useState<string | File | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+  }
 
   const renderContent = () => {
     if (file.type === "input_file" || file.type === "output_file") {
@@ -55,8 +60,16 @@ export default function FileDialog({
             file={processedFile}
             loading={<div className="flex items-center gap-2 text-sm"><Spinner className="size-4" /> Loading PDF…</div>}
             error={<div className="text-red-600 text-sm">Failed to load PDF.</div>}
+            onLoadSuccess={onDocumentLoadSuccess}
           >
-            <Page pageNumber={1} width={800} />
+            {Array.from(new Array(numPages), (_, index) => (
+              <Page
+                key={`page_${index + 1}`}
+                pageNumber={index + 1}
+                width={800}
+                className="mb-4 last:mb-0"
+              />
+            ))}
           </Document>
         </div>
       );
@@ -153,8 +166,8 @@ export default function FileDialog({
         )}
 
         {!smallView ? (
-          <div className="-space-y-0.5 flex w-full flex-col justify-center px-2.5">
-            <div className="mb-1 line-clamp-1 font-medium text-sm dark:text-gray-100">
+          <div className="-space-y-0.5 flex w-full min-w-0 flex-col justify-center px-2.5">
+            <div className="mb-1 truncate font-medium text-sm dark:text-gray-100">
               {decodeString(fileData?.filename ?? "")}
             </div>
 
