@@ -143,7 +143,7 @@ export default function FileDialog({
     <Dialog>
       <DialogTrigger
         className={cn(
-          "group relative flex w-60 items-center gap-1 bg-card p-1.5 text-left",
+          "group relative flex w-60 items-center gap-1 overflow-hidden bg-card p-1.5 text-left",
           smallView ? "rounded-xl" : "rounded-2xl"
         )}
         type="button"
