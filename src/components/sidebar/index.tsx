@@ -74,7 +74,6 @@ const LeftSidebar: React.FC = () => {
 
     // Sort groups by the first conversation in each group (newest first)
     return Object.entries(grouped)
-      .filter(([, chats]) => chats.length > 0)
       .sort(([, chatsA], [, chatsB]) => getTimestamp(chatsB[0]) - getTimestamp(chatsA[0]));
   }, [unpinned]);
 

@@ -85,7 +85,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
         )}
         to={toChatRoute(chat.id)}
         draggable="false"
-        onClick={onNavigate}
+        onClick={!showRename ? onNavigate : undefined}
       >
         {showRename ? (
           <>
