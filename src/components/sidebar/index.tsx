@@ -21,7 +21,14 @@ const LeftSidebar: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
-  const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
+  const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile } = useViewStore();
+
+  // Helper to close sidebar on mobile
+  const handleMobileNavigation = () => {
+    if (isMobile) {
+      setIsLeftSidebarOpen(false);
+    }
+  };
 
   const openCrisp = () => {
     if ((window as any).$crisp) {
@@ -104,7 +111,7 @@ const LeftSidebar: React.FC = () => {
             className="flex h-9 w-full justify-start rounded-xl"
             asChild
           >
-            <Link id="sidebar-new-chat-button" to="/">
+            <Link id="sidebar-new-chat-button" to="/" onClick={handleMobileNavigation}>
               <PencilIcon />
               <p className="text-sm">{t("New Chat")}</p>
             </Link>
@@ -159,6 +166,7 @@ const LeftSidebar: React.FC = () => {
                         handleDeleteSuccess={() => {
                           if (chat.id === chatId) navigate("/");
                         }}
+                        onNavigate={handleMobileNavigation}
                       />
                     ))}
                 </div>
@@ -194,6 +202,7 @@ const LeftSidebar: React.FC = () => {
                             if (chat.id === chatId) navigate("/");
                           }}
                           isPinned={false}
+                          onNavigate={handleMobileNavigation}
                         />
                       ))}
                     </div>
