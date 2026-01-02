@@ -46,18 +46,27 @@ const LeftSidebar: React.FC = () => {
   }, [conversations]);
 
   const chatsGrouped = useMemo(() => {
-    const list = unpinned.sort((a, b) => {
-      const aTime = a.metadata?.initial_created_at ? Number(a.metadata.initial_created_at) : a.created_at;
-      const bTime = b.metadata?.initial_created_at ? Number(b.metadata.initial_created_at) : b.created_at;
-      return bTime - aTime;
-    });
-    return Object.entries(
-      list.reduce((acc, chat) => {
-        const timeRange = getTimeRange(chat.metadata?.initial_created_at ? Number(chat.metadata.initial_created_at) : chat.created_at);
+    // Helper function to get timestamp
+    const getTimestamp = (chat: ConversationInfo): number => {
+      return chat.metadata?.initial_created_at ? Number(chat.metadata.initial_created_at) : chat.created_at;
+    };
+
+    // Sort chats by timestamp (newest first)
+    const list = unpinned.sort((a, b) => getTimestamp(b) - getTimestamp(a));
+
+    // Group chats by time range
+    const grouped = list.reduce(
+      (acc, chat) => {
+        const timestamp = getTimestamp(chat);
+        const timeRange = getTimeRange(timestamp);
         acc[timeRange] = [...(acc[timeRange] || []), chat];
         return acc;
-      }, {} as Record<string, ConversationInfo[]>)
+      },
+      {} as Record<string, ConversationInfo[]>
     );
+
+    // Sort groups by the first conversation in each group (newest first)
+    return Object.entries(grouped).sort(([, chatsA], [, chatsB]) => getTimestamp(chatsB[0]) - getTimestamp(chatsA[0]));
   }, [unpinned]);
 
   return (
