@@ -52,7 +52,7 @@ const LeftSidebar: React.FC = () => {
     };
 
     // Sort chats by timestamp (newest first)
-    const list = unpinned.sort((a, b) => getTimestamp(b) - getTimestamp(a));
+    const list = [...unpinned].sort((a, b) => getTimestamp(b) - getTimestamp(a));
 
     // Group chats by time range
     const grouped = list.reduce(
@@ -66,7 +66,9 @@ const LeftSidebar: React.FC = () => {
     );
 
     // Sort groups by the first conversation in each group (newest first)
-    return Object.entries(grouped).sort(([, chatsA], [, chatsB]) => getTimestamp(chatsB[0]) - getTimestamp(chatsA[0]));
+    return Object.entries(grouped)
+      .filter(([, chats]) => chats.length > 0)
+      .sort(([, chatsA], [, chatsB]) => getTimestamp(chatsB[0]) - getTimestamp(chatsA[0]));
   }, [unpinned]);
 
   return (
