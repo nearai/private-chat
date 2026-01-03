@@ -14,9 +14,6 @@
       "all": false,
       "notification": {
         "all": true
-      },
-      "updater": {
-        "all": true
       }
     },
     "bundle": {
@@ -28,7 +25,6 @@
     "security": {
       "csp": null
     },
-    "systemTray": {},
     "updater": {
       "active": true,
       "dialog": true,
