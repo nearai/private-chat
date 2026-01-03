@@ -5,13 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useResponse } from "@/api/chat/queries/useResponse";
-import { DEFAULT_MODEL, MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
+import { MODEL_FOR_TITLE_GENERATION } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import type { Prompt } from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
 import Navbar from "@/components/chat/Navbar";
-import { useAppInitialization } from "@/hooks/useAppInitialization";
 import {
   DEFAULT_CONVERSATION_TITLE,
   FALLBACK_CONVERSATION_TITLE,
@@ -19,14 +18,21 @@ import {
   TITLE_GENERATION_DELAY,
 } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
+import { useConversationStore } from "@/stores/useConversationStore";
 import type { Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function NewChat({
   startStream,
 }: {
-  startStream: (content: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => Promise<void>;
+  startStream: (
+    content: ContentItem[],
+    webSearchEnabled: boolean,
+    conversationId?: string,
+    previous_response_id?: string
+  ) => Promise<void>;
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
@@ -34,19 +40,19 @@ export default function NewChat({
   const modelInitializedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
   const { createConversation, updateConversation } = useConversation();
+  const { generateChatTitle } = useResponse();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { generateChatTitle } = useResponse();
-
-  const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
+  const { resetConversation } = useConversationStore();
+  const { data: remoteConfig } = useRemoteConfig();
 
   useEffect(() => {
     const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcomePagePrompt && !isAppLoading && isInitialized) {
+    if (welcomePagePrompt) {
       setInputValue(welcomePagePrompt);
       localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
     }
-  }, [isAppLoading, isInitialized]);
+  }, []);
 
   useEffect(() => {
     if (inputValue.length > 500) {
@@ -92,15 +98,6 @@ export default function NewChat({
       }
     );
 
-    // Update conversation data
-    queryClient.setQueryData(["conversation", newConversation.id], (old: Conversation) => {
-      return {
-        ...old,
-        id: newConversation.id,
-      };
-    });
-
-    // Optimistically update the conversations list
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
       const newConversationInfo: ConversationInfo = {
         id: newConversation.id,
@@ -112,17 +109,17 @@ export default function NewChat({
       return [newConversationInfo, ...oldConversations];
     });
 
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.conversation.all,
-    });
-
     await navigate(`/c/${newConversation.id}?new`);
 
     startStream(contentItems, webSearchEnabled, newConversation.id);
 
-    // wait several seconds before checking title generation
+    // Capture conversationId before the async operation, as the conversation object may change
     setTimeout(async () => {
-      const conversation = queryClient?.getQueryData<Conversation>(["conversation", newConversation.id]);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.conversation.all,
+      });
+      const conversationId = newConversation.id;
+      const conversation = queryClient?.getQueryData<Conversation>(["conversation", conversationId]);
 
       // Generate a new title if the title is still the default title or the fallback title
       if (
@@ -135,7 +132,7 @@ export default function NewChat({
         if (title) {
           // update the conversation details
           await updateConversation.mutateAsync({
-            conversationId: newConversation.id,
+            conversationId: conversationId,
             metadata: {
               title: title,
             },
@@ -144,7 +141,7 @@ export default function NewChat({
           // update the conversations list
           queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) =>
             oldConversations.map((conversation) =>
-              conversation.id === newConversation.id
+              conversation.id === conversationId
                 ? {
                     ...conversation,
                     metadata: {
@@ -165,13 +162,16 @@ export default function NewChat({
     const validSelectedModels = selectedModels.filter((modelId) => models.some((model) => model.modelId === modelId));
     if (validSelectedModels.length === 0 && models.length > 0) {
       // set default model
-      const selectedDefaultModel = models.find((model) => model.modelId === DEFAULT_MODEL);
-      if (selectedDefaultModel) {
-        setSelectedModels([selectedDefaultModel.modelId]);
+      if (remoteConfig?.default_model) {
+        const selectedDefaultModel = models.find((model) => model.modelId === remoteConfig.default_model);
+        if (selectedDefaultModel) {
+          setSelectedModels([selectedDefaultModel.modelId]);
+        }
       }
     }
     modelInitializedRef.current = true;
-  }, [selectedModels, models, setSelectedModels]);
+    resetConversation();
+  }, [selectedModels, models, remoteConfig?.default_model, setSelectedModels, resetConversation]);
 
   return (
     <div id="chat-container" className="relative flex h-full grow flex-col">

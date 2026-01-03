@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { MessageSignature } from "@/api/nearai/client";
 
 export type ExtendedMessageSignature = MessageSignature & {
@@ -16,44 +15,34 @@ interface MessagesSignaturesState {
   clearAllSignatures: () => void;
 }
 
-export const useMessagesSignaturesStore = create<MessagesSignaturesState>()(
-  persist(
-    (set) => ({
-      messagesSignatures: {},
-      messagesSignaturesErrors: {},
-      setMessageSignature: (chatCompletionId: string, signature: MessageSignature) =>
-        set((state) => ({
-          messagesSignatures: {
-            ...state.messagesSignatures,
-            [chatCompletionId]: signature,
-          },
-        })),
-      removeMessageSignature: (chatCompletionId: string) =>
-        set((state) => {
-          const newSignatures = { ...state.messagesSignatures };
-          delete newSignatures[chatCompletionId];
-          return { messagesSignatures: newSignatures };
-        }),
-      clearAllSignatures: () => set({ messagesSignatures: {}, messagesSignaturesErrors: {} }),
-      setMessageSignatureError: (chatCompletionId: string, error: string) =>
-        set((state) => ({
-          messagesSignaturesErrors: {
-            ...state.messagesSignaturesErrors,
-            [chatCompletionId]: error,
-          },
-        })),
-      removeMessageSignatureError: (chatCompletionId: string) =>
-        set((state) => {
-          const newErrors = { ...state.messagesSignaturesErrors };
-          delete newErrors[chatCompletionId];
-          return { messagesSignaturesErrors: newErrors };
-        }),
+export const useMessagesSignaturesStore = create<MessagesSignaturesState>()((set) => ({
+  messagesSignatures: {},
+  messagesSignaturesErrors: {},
+  setMessageSignature: (chatCompletionId: string, signature: MessageSignature) =>
+    set((state) => ({
+      messagesSignatures: {
+        ...state.messagesSignatures,
+        [chatCompletionId]: signature,
+      },
+    })),
+  removeMessageSignature: (chatCompletionId: string) =>
+    set((state) => {
+      const newSignatures = { ...state.messagesSignatures };
+      delete newSignatures[chatCompletionId];
+      return { messagesSignatures: newSignatures };
     }),
-    {
-      name: "messages-signatures-storage",
-      partialize: (state) => ({
-        messagesSignatures: state.messagesSignatures,
-      }),
-    }
-  )
-);
+  clearAllSignatures: () => set({ messagesSignatures: {}, messagesSignaturesErrors: {} }),
+  setMessageSignatureError: (chatCompletionId: string, error: string) =>
+    set((state) => ({
+      messagesSignaturesErrors: {
+        ...state.messagesSignaturesErrors,
+        [chatCompletionId]: error,
+      },
+    })),
+  removeMessageSignatureError: (chatCompletionId: string) =>
+    set((state) => {
+      const newErrors = { ...state.messagesSignaturesErrors };
+      delete newErrors[chatCompletionId];
+      return { messagesSignaturesErrors: newErrors };
+    }),
+}));

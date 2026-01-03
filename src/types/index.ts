@@ -67,6 +67,7 @@ export interface ConversationUserInput {
   role: ConversationRoles.USER;
   content: ContentItem[];
   model: string;
+  previous_response_id?: string;
 }
 
 export interface ConversationModelOutput {
@@ -79,6 +80,7 @@ export interface ConversationModelOutput {
   role: ConversationRoles.ASSISTANT;
   content: ContentItem[];
   model: string;
+  previous_response_id?: string;
 }
 
 export interface ConversationWebSearchCall {
@@ -90,6 +92,7 @@ export interface ConversationWebSearchCall {
   status: "completed" | "failed" | "pending";
   role: ConversationRoles.ASSISTANT;
   action: SearchAction;
+  previous_response_id?: string;
   model: string;
 }
 
@@ -99,7 +102,7 @@ export interface ConversationReasoning {
   id: string;
   model: string;
   next_response_ids: string[];
-  previous_response_id: string;
+  previous_response_id?: string;
   response_id: string;
   status: "completed" | "failed" | "pending";
   summary: string;
@@ -107,8 +110,14 @@ export interface ConversationReasoning {
   type: ConversationTypes.REASONING;
 }
 
+export type ConversationItem =
+  | ConversationUserInput
+  | ConversationModelOutput
+  | ConversationWebSearchCall
+  | ConversationReasoning;
+
 export interface ConversationItemsResponse {
-  data: (ConversationUserInput | ConversationModelOutput | ConversationWebSearchCall | ConversationReasoning)[];
+  data: ConversationItem[];
   first_id: string;
   has_more: boolean;
   last_id: string;
@@ -247,7 +256,7 @@ export interface Message {
 }
 
 export interface ChatHistory {
-  messages: Record<string, Message>;
+  messages: Record<string, ConversationItem>;
   currentId: string | null;
 }
 
@@ -310,6 +319,7 @@ export interface ModelsResponse {
 
 export interface ModelV1 {
   modelId: string;
+  public: boolean;
   inputCostPerToken: {
     amount: number;
     scale: number;
@@ -455,6 +465,10 @@ export interface Config {
   onboarding?: boolean;
 }
 
+export interface RemoteConfig {
+  default_model: string;
+}
+
 // Banner types
 export interface Banner {
   id: string;
@@ -529,12 +543,6 @@ export interface ConfigStore {
   setConfig: (config: Config) => void;
 }
 
-// Chat History types
-export interface ChatHistory {
-  messages: Record<string, Message>;
-  currentId: string | null;
-}
-
 export interface HistoryMessage {
   done?: boolean;
 }
@@ -549,8 +557,9 @@ export interface StartStreamProps {
   model: string;
   role: "user" | "assistant";
   content: string | any[];
-  conversation: string;
+  conversation?: string;
   queryClient: QueryClient;
   tools?: Tool[];
   include?: string[];
+  previous_response_id?: string;
 }

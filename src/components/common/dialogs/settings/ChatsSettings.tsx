@@ -38,9 +38,41 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       }
 
       if (conv.items && conv.items.length > 0) {
-        const batchSize = 20;
-        for (let i = 0; i < conv.items.length; i += batchSize) {
-          const batch = conv.items.slice(i, i + batchSize) as ResponseInputItem[];
+        const batches: ResponseInputItem[][] = [];
+        let currentBatch: ResponseInputItem[] = [];
+        let hasResponseInBatch = false;
+        for (const item of conv.items) {
+          const castItem = item as ResponseInputItem;
+          if ("role" in castItem && castItem.role === "user") {
+            // If the current batch already contains a response (non-user),
+            // close it before starting a new user-initiated batch.
+            if (currentBatch.length > 0 && hasResponseInBatch) {
+              batches.push([...currentBatch]);
+              currentBatch = [];
+              hasResponseInBatch = false;
+            }
+            currentBatch.push(castItem);
+          } else {
+            currentBatch.push(castItem);
+            if ("role" in castItem && castItem.role !== "user") {
+              hasResponseInBatch = true;
+            }
+          }
+        }
+        if (currentBatch.length > 0) {
+          if (hasResponseInBatch || batches.length === 0) {
+            // Either this batch has a response, or it's the only batch.
+            batches.push([...currentBatch]);
+          } else {
+            // Trailing user-only messages with prior context:
+            // merge them into the previous batch to avoid an incomplete
+            // standalone user-only batch.
+            const lastIndex = batches.length - 1;
+            batches[lastIndex] = [...batches[lastIndex], ...currentBatch];
+          }
+        }
+
+        for (const batch of batches) {
           await addItemsToConversation.mutateAsync({
             conversationId: newConversation.id,
             items: batch,
@@ -55,6 +87,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   };
 
   const handleImport = async (json: any) => {
+    let loadingId: string | number = "";
     try {
       const conversions = historiesToConversations(json);
       console.log("Imported JSON:", conversions);
@@ -62,7 +95,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
       const errors: string[] = [];
       const newConversations: string[] = [];
       
-      toast.loading("Importing conversations...");
+      loadingId = toast.loading("Importing conversations...");
       setImporting(true);
 
       const batchSize = 10;
@@ -91,9 +124,12 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
       onImportFinish && onImportFinish();
     } catch (error) {
+      console.warn("Import error:", error);
       toast.error(`Failed to import chats: ${error}`);
     } finally {
-      toast.dismiss();
+      if (loadingId) {
+        toast.dismiss(loadingId);
+      }
       setImporting(false);
     }
   };

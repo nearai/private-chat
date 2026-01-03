@@ -15,3 +15,6 @@ export const FALLBACK_CONVERSATION_TITLE = "Conversation";
 export const TITLE_GENERATION_DELAY = 6000; // milliseconds
 
 export const IMPORTED_MESSAGE_SIGNATURE_TIP = "Verification is not available for imported chats";
+
+export const MOCK_MESSAGE_RESPONSE_ID_PREFIX = "mock_resp_";
+export const RESPONSE_MESSAGE_CLASSNAME = "chat-response-message";

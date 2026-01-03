@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { nearAIClient } from "@/api/nearai/client";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib";
 import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
-import { cn } from "@/lib/time";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
+import { useConversationStore } from "@/stores/useConversationStore";
 
 interface MessageVerifierProps {
   conversation?: ConversationInfo;
@@ -32,7 +33,15 @@ interface MessageVerifierProps {
 
 const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message, index, isLastIndex }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const { messagesSignatures, messagesSignaturesErrors, setMessageSignature, setMessageSignatureError, removeMessageSignatureError } = useMessagesSignaturesStore();
+  const conversationState = useConversationStore((state) => state.conversation);
+  const importedMessagesIdMapping = conversationState?.importedMessagesIdMapping || {};
+  const {
+    messagesSignatures,
+    messagesSignaturesErrors,
+    setMessageSignature,
+    setMessageSignatureError,
+    removeMessageSignatureError,
+  } = useMessagesSignaturesStore();
   const { selectedMessageIdForVerifier, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails } =
     useViewStore();
 
@@ -60,8 +69,14 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   const fetchSignature = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token || !message.chatCompletionId) return;
-
     if (signature) return;
+
+    if (isImportedConversation) {
+      if (importedMessagesIdMapping[message.chatCompletionId]) {
+        setMessageSignatureError(message.chatCompletionId, IMPORTED_MESSAGE_SIGNATURE_TIP);
+        return;
+      }
+    }
 
     setIsLoading(true);
     removeMessageSignatureError(message.chatCompletionId);
@@ -91,7 +106,16 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     } finally {
       setIsLoading(false);
     }
-  }, [signature, message.chatCompletionId, message.content, setMessageSignature]);
+  }, [
+    signature,
+    message.chatCompletionId,
+    message.content,
+    isImportedConversation,
+    importedMessagesIdMapping,
+    setMessageSignature,
+    removeMessageSignatureError,
+    setMessageSignatureError,
+  ]);
 
   useEffect(() => {
     if (signature?.signature && signature?.signing_address && signature?.text) {
@@ -171,16 +195,13 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     if (isImportedConversation) {
       return (
         <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-blue-400/10 p-3">
-          <p
-            className="flex-1 text-blue-600 text-xs leading-[160%]"
-            title={t(IMPORTED_MESSAGE_SIGNATURE_TIP)}
-          >
+          <p className="flex-1 text-blue-600 text-xs leading-[160%]" title={t(IMPORTED_MESSAGE_SIGNATURE_TIP)}>
             {t(IMPORTED_MESSAGE_SIGNATURE_TIP)}
           </p>
         </div>
       );
     }
-    
+
     return (
       <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-destructive/5 p-3">
         <p
@@ -212,7 +233,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
         showDetails && "bg-card/30 dark:bg-card",
         (isVerified === false || signatureError) && !isLoading && "bg-destructive/10",
         isSelected && "ring ring-border",
-        signatureError && isImportedConversation && 'bg-blue-400/10!',
+        signatureError && isImportedConversation && "bg-blue-400/10!"
       )}
       data-message-id={message.chatCompletionId}
     >
@@ -230,9 +251,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
             {t("Message")} {index + 1} {isLastIndex ? " (latest)" : ""}
           </p>
         </div>
-        <p className="line-clamp-2 max-w-[230px] font-normal text-sm leading-[140%] opacity-80">
-          {content}
-        </p>
+        <p className="line-clamp-2 max-w-[230px] font-normal text-sm leading-[140%] opacity-80">{content}</p>
       </div>
 
       {isLoading ? (

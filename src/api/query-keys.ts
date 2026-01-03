@@ -16,6 +16,7 @@ export const queryKeys = {
   },
   config: {
     all: [CONFIG_KEY],
+    remote: [CONFIG_KEY, "remote"],
   },
 
   models: {
