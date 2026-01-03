@@ -1,0 +1,52 @@
+{
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "devPath": "http://localhost:3000",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Private Chat",
+    "version": "0.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "notification": {
+        "all": true
+      },
+      "updater": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": ["app", "dmg"],
+      "identifier": "ai.near.privatechat",
+      "icon": []
+    },
+    "security": {
+      "csp": null
+    },
+    "systemTray": {},
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "endpoints": [
+        "https://github.com/nearai/private-chat/releases/latest/download/latest.json"
+      ],
+      "pubkey": "REPLACE_WITH_TAURI_PUBLIC_KEY"
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Private Chat",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true
+      }
+    ]
+  }
+}

@@ -15,5 +15,8 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
+    rollupOptions: {
+      external: ["@tauri-apps/api/notification", "@tauri-apps/api/updater"],
+    },
   },
 });

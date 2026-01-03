@@ -11,7 +11,10 @@
     "lint": "pnpm run typecheck && biome lint --fix",
     "check": "biome check --fix",
     "format": "biome format --write && pnpm run check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.19.0",
@@ -40,6 +43,7 @@
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-query": "^5.90.2",
     "@tanstack/react-query-devtools": "^5.90.2",
+    "@tauri-apps/api": "^1.6.0",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -77,6 +81,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
+    "@tauri-apps/cli": "^1.6.0",
     "@types/file-saver": "^2.0.7",
     "@types/he": "^1.2.3",
     "@types/node": "^24.5.2",
