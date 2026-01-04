@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
@@ -98,6 +99,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
+  const isOnline = useIsOnline();
 
   useEffect(() => {
     if (isLowBalance) {
@@ -593,9 +595,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         ref={chatInputRef}
                         id="chat-input"
                         className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
-                        placeholder={placeholder || "How can I help you today?"}
+                        placeholder={!isOnline ? t("Not available offline (yet).") : placeholder || t("How can I help you today?")}
                         value={prompt}
-                        disabled={isLowBalance}
+                        disabled={isLowBalance || !isOnline}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
@@ -682,7 +684,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           className={cn("size-10 rounded-full")}
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={disabledSendButton}
+                          disabled={disabledSendButton || !isOnline}
                           size="icon"
                         >
                           {isMessageCompleted ? (

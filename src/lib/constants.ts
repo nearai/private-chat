@@ -3,6 +3,7 @@ export const LOCAL_STORAGE_KEYS = {
   SESSION: "sessionId",
   CONVERSATIONS: "conversations",
   USER_DATA: "userData",
+  SIGNATURES: "messageSignatures",
   AGREED_TERMS: "agreedTerms",
   WELCOME_PAGE_PROMPT: "welcomePagePrompt",
   IMPORT_GUIDE_BANNER_CLOSED: "importGuideBannerClosed",

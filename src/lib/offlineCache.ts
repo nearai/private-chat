@@ -1,5 +1,6 @@
 import type { Conversation, ConversationInfo, User } from "@/types";
 import { LOCAL_STORAGE_KEYS, OFFLINE_CACHE_KEYS } from "./constants";
+import type { ExtendedMessageSignature } from "@/stores/useMessagesSignaturesStore";
 
 const hasStorage = () => typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
@@ -73,9 +74,22 @@ export const offlineCache = {
   clearUserData() {
     removeItem(LOCAL_STORAGE_KEYS.USER_DATA);
   },
+  saveMessageSignatures(signatures: Record<string, ExtendedMessageSignature>) {
+    safelyStore(LOCAL_STORAGE_KEYS.SIGNATURES, signatures);
+  },
+  getMessageSignatures(): Record<string, ExtendedMessageSignature> | null {
+    if (!hasStorage()) return null;
+    return safelyParse<Record<string, ExtendedMessageSignature>>(
+      window.localStorage.getItem(LOCAL_STORAGE_KEYS.SIGNATURES)
+    );
+  },
+  clearMessageSignatures() {
+    removeItem(LOCAL_STORAGE_KEYS.SIGNATURES);
+  },
   clearAll() {
     this.clearConversationList();
     this.clearConversationDetails();
     this.clearUserData();
+    this.clearMessageSignatures();
   },
 };
