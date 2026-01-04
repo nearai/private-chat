@@ -249,7 +249,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       dropzoneElement?.removeEventListener("drop", onDrop);
       dropzoneElement?.removeEventListener("dragleave", onDragLeave);
     };
-  }, [inputFilesHandler]);
+  }, [inputFilesHandler, isEditingChatName]);
 
   const scrollToBottom = () => {
     const element = document.getElementById("messages-container");

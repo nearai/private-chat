@@ -130,7 +130,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
     let prevResponseId = batch?.parentResponseId || undefined;
-    if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+    if (prevResponseId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
       prevResponseId = unwrapMockResponseID(prevResponseId);
     }
     await regenerateResponse(

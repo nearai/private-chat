@@ -7,7 +7,11 @@ type DeleteChatParams = {
   id: string;
 };
 
-type MutationSuccessCallback = (data: void, variables: DeleteChatParams, context: unknown) => void | Promise<void>;
+type MutationSuccessCallback = (
+  data: undefined,
+  variables: DeleteChatParams,
+  context: unknown
+) => void | Promise<void>;
 
 type UseDeleteChatOptions = Omit<UseMutationOptions<void, Error, DeleteChatParams>, "mutationFn" | "onSuccess"> & {
   onSuccess?: MutationSuccessCallback;

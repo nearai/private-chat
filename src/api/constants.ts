@@ -3,11 +3,10 @@ export const DEPRECATED_API_BASE_URL = (import.meta.env.VITE_DEPRECATED_API_URL 
   /\/+$/,
   ""
 );
+const browserOrigin = typeof window !== "undefined" ? window.location?.origin : undefined;
 const runtimeOrigin =
-  typeof window !== "undefined" &&
-  window.location?.origin &&
-  !window.location.origin.includes("localhost")
-    ? window.location.origin
+  browserOrigin && !browserOrigin.includes("localhost")
+    ? browserOrigin
     : undefined;
 
 export const CHAT_API_BASE_URL = (

@@ -51,7 +51,7 @@ function App() {
   const isLoading = isAppLoading || isSettingsLoading || isDataLoading;
 
   useEffect(() => {
-    posthogPageView();
+    posthogPageView(location.pathname);
   }, [location.pathname]);
 
   const handleLogout = useCallback(() => {

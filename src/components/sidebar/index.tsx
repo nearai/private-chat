@@ -18,6 +18,18 @@ import { Button } from "../ui/button";
 import ChatItem from "./ChatItem";
 import UserMenu from "./UserMenu";
 
+type CrispCommand = [string, string];
+type CrispWindow = Window & {
+  $crisp?: {
+    push: (value: CrispCommand) => number;
+  };
+};
+
+const getCrispWindow = (): CrispWindow | undefined => {
+  if (typeof window === "undefined") return undefined;
+  return window as CrispWindow;
+};
+
 const LeftSidebar: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -25,10 +37,9 @@ const LeftSidebar: React.FC = () => {
   const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
 
   const openCrisp = () => {
-    if ((window as any).$crisp) {
-      (window as any).$crisp.push(["do", "chat:show"]);
-      (window as any).$crisp.push(["do", "chat:open"]);
-    }
+    const crispWindow = getCrispWindow();
+    crispWindow?.$crisp?.push(["do", "chat:show"]);
+    crispWindow?.$crisp?.push(["do", "chat:open"]);
   };
 
   const { data: conversations, isLoading } = useGetConversations();

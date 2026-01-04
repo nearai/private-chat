@@ -1,15 +1,17 @@
+import posthog from "posthog-js";
 import { sha256 } from "js-sha256";
 import { POSTHOG_HOST, POSTHOG_KEY } from "@/api/constants";
 
-const W: any = window;
+let posthogInitialized = false;
+
+const canUseBrowserApis = () => typeof window !== "undefined";
 
 export function initPosthog() {
-  if (!W.posthog) {
-    console.warn("PostHog library is not loaded.");
-    return;
-  }
+  if (!canUseBrowserApis()) return;
+  if (posthogInitialized) return;
+  if (!POSTHOG_KEY || !POSTHOG_HOST) return;
 
-  W.posthog.init(POSTHOG_KEY, {
+  posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     person_profiles: "always",
     autocapture: false,
@@ -28,50 +30,52 @@ export function initPosthog() {
     },
   });
 
-  // Respect Global Privacy Control (required by our cookie policy)
-  if (W.navigator.globalPrivacyControl === true) {
-    W.posthog.opt_out_capturing();
+  if (navigator?.globalPrivacyControl === true) {
+    posthog.opt_out_capturing();
     console.log("GPC signal detected - PostHog tracking disabled");
   }
+
+  posthogInitialized = true;
 }
 
 export function posthogReset() {
-  if (!W.posthog) return console.warn("PostHog not initialized");
+  if (!posthogInitialized) return;
   try {
-    W.posthog.reset();
+    posthog.reset();
   } catch (err) {
     console.error("PostHog reset error:", err);
   }
 }
 
-export function posthogTrack(event: string, properties?: Record<string, any>) {
-  if (!W.posthog) return;
+export function posthogTrack(event: string, properties?: Record<string, unknown>) {
+  if (!posthogInitialized) return;
   try {
-    W.posthog.capture(event, properties);
+    posthog.capture(event, properties);
   } catch (err) {
     console.error("PostHog tracking error:", err);
   }
 }
 
-export function posthogIdentify(rawUserId: string, properties?: Record<string, any>) {
-  if (!W.posthog) return;
+export function posthogIdentify(rawUserId: string, properties?: Record<string, unknown>) {
+  if (!posthogInitialized) return;
 
   const userIdHash = sha256(rawUserId);
 
   try {
-    W.posthog.identify(userIdHash, { 
+    posthog.identify(userIdHash, {
       ...properties,
-      $user_id: userIdHash 
+      $user_id: userIdHash,
     });
   } catch (err) {
     console.error("PostHog identify error:", err);
   }
 }
 
-export function posthogPageView() {
+export function posthogPageView(path?: string) {
+  if (!canUseBrowserApis()) return;
   posthogTrack("page_view", {
-    page_url: location.href,
-    page_path: location.pathname,
+    page_url: window.location.href,
+    page_path: path ?? window.location.pathname,
     page_title: document.title,
     referrer: document.referrer,
   });

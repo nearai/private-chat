@@ -32,6 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { useDeleteChat, useUnarchiveChat } from "@/api/chat/queries";
 import { queryKeys } from "@/api/query-keys";
+import type { ConversationInfo } from "@/types";
 
 dayjs.extend(localizedFormat);
 const { saveAs } = fileSaver;
@@ -58,7 +59,12 @@ function ConversationSkeletonRow() {
 }
 
 
-export default function ArchivedChatsModal({ open, onOpenChange }: any) {
+interface ArchivedChatsModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChatsModalProps) {
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const queryClient = useQueryClient();
@@ -81,16 +87,18 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
     return archived.filter((c) => c.metadata.title.toLowerCase().includes(s));
   }, [archived, searchValue]);
 
-  const optimisticUpdate = (updater: (old: any[]) => any[]) => {
-    const prev = queryClient.getQueryData(queryKeys.conversation.all) as any[] | undefined;
+  const optimisticUpdate = useCallback(
+    (updater: (old: ConversationInfo[]) => ConversationInfo[]) => {
+      const prev = queryClient.getQueryData<ConversationInfo[]>(queryKeys.conversation.all);
 
-    queryClient.setQueryData(
-      queryKeys.conversation.all,
-      (old: any[] = []) => updater(old)
-    );
+      queryClient.setQueryData<ConversationInfo[] | undefined>(queryKeys.conversation.all, (old = []) =>
+        updater(old)
+      );
 
-    return () => queryClient.setQueryData(queryKeys.conversation.all, prev ?? []);
-  };
+      return () => queryClient.setQueryData(queryKeys.conversation.all, prev ?? []);
+    },
+    [queryClient]
+  );
 
   const handleUnarchive = useCallback(
     async (id: string) => {
@@ -108,7 +116,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
         toast.error(String(err));
       }
     },
-    [unarchiveChat, queryClient]
+    [unarchiveChat, t, optimisticUpdate]
   );
 
   const handleDelete = useCallback(
@@ -123,7 +131,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
         toast.error(String(err));
       }
     },
-    [deleteChat, queryClient]
+    [deleteChat, t, optimisticUpdate]
   );
 
   const handleUnarchiveAll = useCallback(async () => {
@@ -142,7 +150,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
       rollback();
       toast.error(String(err));
     }
-  }, [archived, unarchiveChat, queryClient]);
+  }, [archived, unarchiveChat, t, optimisticUpdate]);
 
   const handleExport = () => {
     try {
