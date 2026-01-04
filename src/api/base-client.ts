@@ -5,6 +5,7 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { isOfflineError, isOnline } from "@/lib/network";
 import { eventEmitter } from "@/lib/event";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
@@ -98,6 +99,10 @@ export class ApiClient {
           throw new Error(`No token found, ${endpoint} request aborted`);
         }
       }
+      if (!isOnline()) {
+        throw { detail: "You are offline. Please check your internet connection.", status: 0, offline: true };
+      }
+
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
       const requestUrl = `${baseURL}${endpoint}`;
       const response = await fetch(requestUrl, {
@@ -153,7 +158,9 @@ export class ApiClient {
         return { detail: fallbackText || response.statusText } as T;
       }
     } catch (err) {
-      console.error(err);
+      if (!isOfflineError(err)) {
+        console.error(err);
+      }
       // biome-ignore lint/suspicious/noExplicitAny: explanation
       throw (err as any)?.detail || err || "An unknown error occurred";
     }

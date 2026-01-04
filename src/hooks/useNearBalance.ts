@@ -3,6 +3,7 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { usersClient } from "@/api/users/client";
 import type { User } from "@/types";
 import { NEAR_RPC_URL } from "@/api/constants";
+import { useIsOnline } from "@/hooks/useIsOnline";
 
 export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
@@ -54,12 +55,12 @@ export const useNearBalance = () => {
   const [balance, setBalance] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLowBalance, setIsLowBalance] = useState(false);
+  const isOnline = useIsOnline();
 
   const checkBalance = useCallback(async (): Promise<boolean> => {
-    if (!userInfo) return false;
+    if (!userInfo || !isOnline) return false;
     const userData = userInfo.user;
-    
-    const nearAccount = userInfo.linked_accounts?.find(a => a.provider === 'near');
+    const nearAccount = userInfo.linked_accounts?.find((a) => a.provider === "near");
     if (!nearAccount) return false;
 
     setLoading(true);
@@ -79,21 +80,26 @@ export const useNearBalance = () => {
     } finally {
       setLoading(false);
     }
-  }, [userInfo])
+  }, [userInfo, isOnline]);
 
   useEffect(() => {
+    if (!isOnline) return;
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token) return;
-    usersClient.getUserData().then((u) => {
-      setUserInfo(u);
-    }).catch((err) => {
-      console.error("Failed to fetch user data:", err);
-    });
-  }, [])
+    usersClient
+      .getUserData()
+      .then((u) => {
+        setUserInfo(u);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch user data:", err);
+      });
+  }, [isOnline]);
 
   useEffect(() => {
+    if (!isOnline) return;
     checkBalance();
-  }, [checkBalance]);
+  }, [checkBalance, isOnline]);
 
   return { balance, isLowBalance, loading, refetch: checkBalance };
 };

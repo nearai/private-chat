@@ -32,7 +32,12 @@
       "suspicious": {
         "noConsole": {
           "options": {
-            "allow": ["assert", "error", "info", "warn"]
+            "allow": [
+              "assert",
+              "error",
+              "info",
+              "warn"
+            ]
           }
         },
         "noArrayIndexKey": "off"
@@ -53,8 +58,13 @@
           "level": "warn",
           "fix": "safe",
           "options": {
-            "attributes": ["className"],
-            "functions": ["cn", "cva"]
+            "attributes": [
+              "className"
+            ],
+            "functions": [
+              "cn",
+              "cva"
+            ]
           }
         }
       },
