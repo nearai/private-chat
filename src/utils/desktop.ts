@@ -5,7 +5,12 @@ export const initializeDesktopIntegrations = async () => {
 
   try {
     const { check } = await import("@tauri-apps/plugin-updater");
-    await check();
+    const update = await check();
+    if (update?.available) {
+      await update.downloadAndInstall();
+      const { relaunch } = await import("@tauri-apps/api/process");
+      await relaunch();
+    }
   } catch (error) {
     console.warn("Tauri updater check failed:", error);
   }
