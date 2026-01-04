@@ -15,23 +15,5 @@ export const initializeDesktopIntegrations = async () => {
     console.warn("Tauri updater check failed:", error);
   }
 
-  try {
-    const { isPermissionGranted, requestPermission, sendNotification } = await import(
-      "@tauri-apps/plugin-notification"
-    );
-    let permissionGranted = await isPermissionGranted();
-    if (!permissionGranted) {
-      const permission = await requestPermission();
-      permissionGranted = permission === "granted";
-    }
-
-    if (permissionGranted) {
-      sendNotification({
-        title: "Private Chat",
-        body: "Private Chat is running in the background.",
-      });
-    }
-  } catch (error) {
-    console.warn("Tauri notification setup failed:", error);
-  }
+  // Notification toast handled on the Rust side during setup (src-tauri/src/main.rs)
 };
