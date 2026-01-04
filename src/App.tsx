@@ -28,18 +28,19 @@ function App() {
   const location = useLocation();
   const { setUser } = useUserStore();
   const navigate = useNavigate();
-  const { isSettingsLoading } = useInitRemoteSettings();
   const queryClient = useQueryClient();
+  const hasAuthToken = typeof window !== "undefined" && Boolean(localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN));
+  const { isSettingsLoading } = useInitRemoteSettings(hasAuthToken);
 
   const {
     isFetching: isRemoteConfigFetching,
     data: remoteConfig,
-  } = useRemoteConfig();
+  } = useRemoteConfig({ enabled: hasAuthToken });
   const { isFetching: isModelsFetching } = useModels({
-    enabled: !!remoteConfig?.default_model && !isRemoteConfigFetching,
+    enabled: hasAuthToken && !!remoteConfig?.default_model && !isRemoteConfigFetching,
     defaultModel: remoteConfig?.default_model,
   });
-  const { isFetching: isUserDataFetching } = useUserData();
+  const { isFetching: isUserDataFetching } = useUserData({ enabled: hasAuthToken });
 
   const isDataLoading = isModelsFetching || isUserDataFetching || isRemoteConfigFetching;
   const isLoading = isAppLoading || isDataLoading || isSettingsLoading;

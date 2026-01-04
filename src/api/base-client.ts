@@ -60,8 +60,11 @@ export class ApiClient {
     } = options;
     const openAIToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
-    this.baseURLV1 = `${baseURL}${apiPrefix}`;
-    this.baseURLV2 = `${baseURLNgrok}/v1`;
+    const normalizeUrl = (value: string) => value.replace(/\/+$/, "");
+    const normalizePath = (value: string) => (value.startsWith("/") ? value : `/${value}`);
+
+    this.baseURLV1 = `${normalizeUrl(baseURL)}${normalizePath(apiPrefix)}`;
+    this.baseURLV2 = `${normalizeUrl(baseURLNgrok)}/v1`;
     this.defaultHeaders = defaultHeaders;
     this.includeAuth = includeAuth;
     this.openAIClient = new OpenAI({
@@ -96,13 +99,39 @@ export class ApiClient {
         }
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
-      const response = await fetch(`${baseURL}${endpoint}`, {
+      const requestUrl = `${baseURL}${endpoint}`;
+      const response = await fetch(requestUrl, {
         ...options,
         headers,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      const isHtmlResponse = contentType.includes("text/html");
+
+      if (!response.ok || isHtmlResponse) {
+        let error: unknown;
+        if (isHtmlResponse) {
+          const text = await response.text().catch(() => "");
+          error = {
+            detail: `Received an HTML response from ${requestUrl}. This usually means the API base URL is pointing at the frontend instead of the backend. Check your VITE_DEPRECATED_API_URL and VITE_CHAT_API_URL settings.`,
+            status: response.status,
+            snippet: text ? text.slice(0, 200) : undefined,
+          };
+        } else if (contentType.includes("application/json")) {
+          try {
+            error = await response.json();
+          } catch (parseError) {
+            const text = await response.text().catch(() => "");
+            error = { detail: text || (parseError as Error).message || response.statusText };
+          }
+        } else {
+          const text = await response.text().catch(() => "");
+          try {
+            error = text ? JSON.parse(text) : { detail: response.statusText };
+          } catch {
+            error = { detail: text || response.statusText };
+          }
+        }
         if (response.status === 401) {
           eventEmitter.emit("logout");
         }
@@ -114,7 +143,15 @@ export class ApiClient {
         return {} as T; // Return empty object for 204 No Content
       }
 
-      return await response.json();
+      if (contentType.includes("application/json")) {
+        return (await response.json()) as T;
+      }
+      const fallbackText = await response.text();
+      try {
+        return JSON.parse(fallbackText || "{}") as T;
+      } catch {
+        return { detail: fallbackText || response.statusText } as T;
+      }
     } catch (err) {
       console.error(err);
       // biome-ignore lint/suspicious/noExplicitAny: explanation
