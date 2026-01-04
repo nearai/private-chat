@@ -94,30 +94,23 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
                 ref={renameRef}
                 className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  startEditingChatName(chat.id);
-                }}
+                onClick={() => startEditingChatName(chat.id)}
                 onChange={(e) => setRenameInput(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
               <CompactTooltip content="Confirm" align="center">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    confirmRename();
-                  }}
+                  type="button"
+                  onClick={confirmRename}
                 >
                   <CheckIcon className="size-4" />
                 </button>
               </CompactTooltip>
               <CompactTooltip content="Cancel" align="center">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCancelRename();
-                  }}
+                  type="button"
+                  onClick={handleCancelRename}
                 >
                   <XMarkIcon className="size-4" />
                 </button>
