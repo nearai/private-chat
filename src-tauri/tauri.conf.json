@@ -1,42 +1,22 @@
 {
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "NEAR AI",
+  "version": "0.0.0",
+  "identifier": "ai.near.private",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
-    "devPath": "http://localhost:3000",
-    "distDir": "../dist"
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../dist"
   },
-  "package": {
-    "productName": "Private Chat",
-    "version": "0.0.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "notification": {
-        "all": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "targets": ["app", "dmg"],
-      "identifier": "ai.near.privatechat",
-      "icon": []
-    },
+  "app": {
     "security": {
       "csp": null
-    },
-    "updater": {
-      "active": true,
-      "dialog": true,
-      "endpoints": [
-        "https://github.com/nearai/private-chat/releases/latest/download/latest.json"
-      ],
-      "pubkey": "REPLACE_WITH_TAURI_PUBLIC_KEY"
     },
     "windows": [
       {
         "label": "main",
-        "title": "Private Chat",
+        "title": "NEAR AI",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
@@ -44,5 +24,20 @@
         "resizable": true
       }
     ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": ["icons/icon.png"]
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "endpoints": [
+        "https://github.com/nearai/private-chat/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4QTkyRTU1NUQ0QzE2OTMKUldTVEZreGRWUzZwR0pSNTVKQ05DSW9nTmVYaEdUUERVd2pFR04xZlNVUW5ZcEx3b1ZpdXZjUWMK"
+    }
   }
 }

@@ -4,15 +4,15 @@ export const initializeDesktopIntegrations = async () => {
   if (!isTauri()) return;
 
   try {
-    const { checkUpdate } = await import("@tauri-apps/api/updater");
-    await checkUpdate();
+    const { check } = await import("@tauri-apps/plugin-updater");
+    await check();
   } catch (error) {
     console.warn("Tauri updater check failed:", error);
   }
 
   try {
     const { isPermissionGranted, requestPermission, sendNotification } = await import(
-      "@tauri-apps/api/notification"
+      "@tauri-apps/plugin-notification"
     );
     let permissionGranted = await isPermissionGranted();
     if (!permissionGranted) {

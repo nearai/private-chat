@@ -103,8 +103,13 @@ class AuthClient extends ApiClient {
     );
   }
 
-  oauth2SignIn(provider: OAuth2Provider) {
-    window.location.href = `${this.baseURLV2}/auth/${provider}?frontend_callback=${window.location.origin}`;
+  getOAuthUrl(provider: OAuth2Provider, frontendCallback: string) {
+    const callback = frontendCallback || window.location.origin;
+    return `${this.baseURLV2}/auth/${provider}?frontend_callback=${encodeURIComponent(callback)}`;
+  }
+
+  oauth2SignIn(provider: OAuth2Provider, frontendCallback?: string) {
+    window.location.href = this.getOAuthUrl(provider, frontendCallback ?? window.location.origin);
   }
 
   /**

@@ -1,64 +1,76 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
+use tauri::{
+    menu::MenuBuilder,
+    tray::{TrayIconBuilder, TrayIconEvent},
+    AppHandle, Manager,
+};
+use tauri_plugin_notification::NotificationExt;
 
-fn build_tray() -> SystemTray {
-  let show = CustomMenuItem::new("show".to_string(), "Show");
-  let hide = CustomMenuItem::new("hide".to_string(), "Hide");
-  let quit = CustomMenuItem::new("quit".to_string(), "Quit");
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let tray_menu = MenuBuilder::new(app)
+        .text("show", "Show")
+        .text("hide", "Hide")
+        .text("quit", "Quit")
+        .build()?;
 
-  let tray_menu = SystemTrayMenu::new()
-    .add_item(show)
-    .add_item(hide)
-    .add_item(quit);
+    let mut tray = TrayIconBuilder::with_id("main")
+        .menu(&tray_menu)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "hide" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray_icon, event| {
+            if let TrayIconEvent::Click { .. } = event {
+                if let Some(window) = tray_icon.app_handle().get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+        });
 
-  SystemTray::new().with_menu(tray_menu)
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+
+    tray.build(app)?;
+    Ok(())
 }
 
 fn main() {
-  let tray = build_tray();
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            build_tray(&app.handle())?;
 
-  tauri::Builder::default()
-    .system_tray(tray)
-    .on_system_tray_event(|app, event| match event {
-      SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
-        "show" => {
-          if let Some(window) = app.get_window("main") {
-            let _ = window.show();
-            let _ = window.set_focus();
-          }
-        }
-        "hide" => {
-          if let Some(window) = app.get_window("main") {
-            let _ = window.hide();
-          }
-        }
-        "quit" => {
-          app.exit(0);
-        }
-        _ => {}
-      },
-      SystemTrayEvent::LeftClick { .. } => {
-        if let Some(window) = app.get_window("main") {
-          let _ = window.show();
-          let _ = window.set_focus();
-        }
-      }
-      _ => {}
-    })
-    .setup(|app| {
-      if let Some(window) = app.get_window("main") {
-        let _ = window.show();
-      }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+            }
 
-      let identifier = app.config().tauri.bundle.identifier.clone();
-      let _ = tauri::api::notification::Notification::new(identifier)
-        .title("Private Chat")
-        .body("Private Chat is running in the background.")
-        .show();
+            let _ = app
+                .notification()
+                .builder()
+                .title("Private Chat")
+                .body("Private Chat is running in the background.")
+                .show();
 
-      Ok(())
-    })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

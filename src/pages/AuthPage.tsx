@@ -2,7 +2,7 @@ import { NearConnector } from "@hot-labs/near-connect";
 import { useQueryClient } from "@tanstack/react-query";
 import { fromHotConnect, generateNonce, Near } from "near-kit";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
@@ -19,24 +19,35 @@ import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
+import { isTauri } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
 
 const TERMS_VERSION = "V1";
+const AUTH_PAGE_PATH = APP_ROUTES.AUTH.replace("/*", "") || "/auth";
+
+type OAuthCompleteEvent = {
+  token: string;
+  sessionId: string;
+  isNewUser: boolean;
+};
 
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const connectorRef = useRef<NearConnector | null>(null);
+  const oauthChannelRef = useRef<BroadcastChannel | null>(null);
 
   const token = searchParams.get("token");
   const sessionId = searchParams.get("session_id");
   const isNewUser = searchParams.get("is_new_user") === "true";
+  const oauthChannelParam = searchParams.get("oauth_channel");
 
   const [agreedTerms, setAgreedTerms] = useState(
     localStorage.getItem(LOCAL_STORAGE_KEYS.AGREED_TERMS) === TERMS_VERSION
   );
+  const [showCloseTabMessage, setShowCloseTabMessage] = useState(false);
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
@@ -46,29 +57,135 @@ const AuthPage: React.FC = () => {
     return true;
   };
 
-  const completeLogin = async (token: string, sessionId: string, isNewUser: boolean) => {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
-    queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+  const completeLogin = useCallback(
+    async (userToken: string, userSessionId: string, newUser: boolean) => {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, userToken);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, userSessionId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+
+      try {
+        const u = await usersClient.getUserData();
+        if (u) {
+          const provider = u.linked_accounts?.[0]?.provider ?? "near";
+          if (newUser) {
+            posthogOauthSignup(u.user.id, provider);
+          } else {
+            posthogOauthLogin(u.user.id, provider);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data for tracking:", error);
+      }
+    },
+    [queryClient]
+  );
+
+  const cleanupOAuthChannel = useCallback(() => {
+    if (oauthChannelRef.current) {
+      oauthChannelRef.current.close();
+      oauthChannelRef.current = null;
+    }
+  }, []);
+
+  const startOAuthChannelListener = useCallback(
+    (channelId: string) => {
+      try {
+        cleanupOAuthChannel();
+        const channel = new BroadcastChannel(channelId);
+        oauthChannelRef.current = channel;
+        channel.onmessage = (event) => {
+          const payload = event.data as OAuthCompleteEvent;
+          cleanupOAuthChannel();
+          completeLogin(payload.token, payload.sessionId, payload.isNewUser)
+            .then(() => navigate(APP_ROUTES.HOME, { replace: true }))
+            .catch((error) => {
+              console.error("Failed to finalize OAuth login:", error);
+              toast.error("Failed to complete login. Please try again.");
+            });
+        };
+      } catch (error) {
+        console.error("Failed to create OAuth channel:", error);
+        toast.error("Unable to start login flow. Please try again.");
+      }
+    },
+    [cleanupOAuthChannel, completeLogin, navigate]
+  );
+
+  useEffect(() => () => cleanupOAuthChannel(), [cleanupOAuthChannel]);
+
+  const openExternalOAuthUrl = async (url: string) => {
+    if (!isTauri()) return false;
 
     try {
-      const u = await usersClient.getUserData();
-      if (u) {
-        const provider = u.linked_accounts?.[0]?.provider ?? "near";
-        if (isNewUser) {
-          posthogOauthSignup(u.user.id, provider);
-        } else {
-          posthogOauthLogin(u.user.id, provider);
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(url);
+      return true;
+    } catch (pluginError) {
+      console.error("Tauri shell plugin open failed:", pluginError);
+      const tauriGlobal = (window as typeof window & {
+        __TAURI__?: {
+          shell?: { open: (path: string) => Promise<void> };
+          core?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
+        };
+      }).__TAURI__;
+
+      try {
+        if (tauriGlobal?.shell?.open) {
+          await tauriGlobal.shell.open(url);
+          return true;
         }
+
+        if (tauriGlobal?.core?.invoke) {
+          await tauriGlobal.core.invoke("plugin:shell|open", { path: url });
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error("Tauri core fallback open failed:", fallbackError);
       }
+    }
+
+    return false;
+  };
+
+  const buildOAuthCallbackUrl = (channelId: string) => {
+    const baseFromEnv = import.meta.env.VITE_DESKTOP_OAUTH_CALLBACK_URL;
+    const baseUrl = isTauri() ? baseFromEnv || "http://localhost:3000" : window.location.origin;
+    const callbackTarget = `${baseUrl.replace(/\/+$/, "")}${AUTH_PAGE_PATH}`;
+
+    try {
+      const callbackUrl = new URL(callbackTarget);
+      callbackUrl.searchParams.set("oauth_channel", channelId);
+      return callbackUrl.toString();
     } catch (error) {
-      console.error("Failed to fetch user data for tracking:", error);
+      console.error("Invalid OAuth callback target:", callbackTarget, error);
+      throw new Error("Invalid OAuth callback URL. Please configure VITE_DESKTOP_OAUTH_CALLBACK_URL.");
     }
   };
 
-  const handleOAuthLogin = (provider: OAuth2Provider) => {
+  const handleOAuthLogin = async (provider: OAuth2Provider) => {
     if (!checkAgreeTerms()) return;
+
+    if (isTauri()) {
+      try {
+        const channelId = crypto.randomUUID();
+        const callbackUrl = buildOAuthCallbackUrl(channelId);
+        const popupUrl = authClient.getOAuthUrl(provider, callbackUrl);
+        startOAuthChannelListener(channelId);
+        const openedExternally = await openExternalOAuthUrl(popupUrl);
+        if (!openedExternally) {
+          const openedWindow = window.open(popupUrl, "_blank", "noopener,noreferrer");
+          if (!openedWindow) throw new Error("Unable to open browser window");
+        }
+        toast.message("Continue the sign-in process in your browser.");
+      } catch (error) {
+        console.error("Failed to start OAuth in browser:", error);
+        cleanupOAuthChannel();
+        toast.error("Unable to open the browser for login. Please try again.");
+      }
+      return;
+    }
+
     authClient.oauth2SignIn(provider);
   };
 
@@ -105,20 +222,33 @@ const AuthPage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
 
+    if (oauthChannelParam && !isTauri()) {
+      try {
+        const channel = new BroadcastChannel(oauthChannelParam);
+        channel.postMessage({
+          token,
+          sessionId: sessionId ?? "",
+          isNewUser,
+        } satisfies OAuthCompleteEvent);
+        channel.close();
+        setShowCloseTabMessage(true);
+      } catch (error) {
+        console.error("Failed to notify desktop app about OAuth completion:", error);
+        toast.error("Unable to complete login. Please return to the app.");
+      }
+      return;
+    }
+
     completeLogin(token, sessionId ?? "", isNewUser)
       .catch(() => toast.error("Failed to complete login."))
       .finally(() => navigate(APP_ROUTES.HOME, { replace: true }));
-  }, [token, sessionId, isNewUser, navigate]);
+  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam]);
 
-  if (!config) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  return (
+  const authContent = !config ? (
+    <div className="flex h-full items-center justify-center">
+      <Spinner />
+    </div>
+  ) : (
     <div className="relative">
       <div className="fixed z-50 m-10">
         <NearAIIcon className="h-8" />
@@ -220,6 +350,18 @@ const AuthPage: React.FC = () => {
       </div>
     </div>
   );
+
+  if (showCloseTabMessage) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <NearAIIcon className="h-10 w-10" />
+        <p className="font-semibold text-lg">You can close this tab.</p>
+        <p className="text-muted-foreground text-sm">Return to the NEAR AI application to continue.</p>
+      </div>
+    );
+  }
+
+  return authContent;
 };
 
 export default AuthPage;
