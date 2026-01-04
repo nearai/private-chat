@@ -94,7 +94,10 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
                 ref={renameRef}
                 className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
-                onClick={() => startEditingChatName(chat.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startEditingChatName(chat.id);
+                }}
                 onChange={(e) => setRenameInput(e.target.value)}
               />
             </div>
@@ -102,7 +105,11 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
               <CompactTooltip content="Confirm" align="center">
                 <button
                   type="button"
-                  onClick={confirmRename}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    confirmRename();
+                  }}
                 >
                   <CheckIcon className="size-4" />
                 </button>
@@ -110,7 +117,11 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
               <CompactTooltip content="Cancel" align="center">
                 <button
                   type="button"
-                  onClick={handleCancelRename}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCancelRename();
+                  }}
                 >
                   <XMarkIcon className="size-4" />
                 </button>
