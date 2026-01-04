@@ -11,7 +11,20 @@
   },
   "app": {
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "main",
+          "description": "Default capability for the main window with notification, updater, and shell access.",
+          "windows": ["main"],
+          "permissions": [
+            "core:default",
+            "notification:default",
+            "shell:allow-open",
+            "updater:default"
+          ]
+        }
+      ]
     },
     "windows": [
       {
