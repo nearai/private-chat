@@ -6,7 +6,8 @@
     "useIgnoreFile": false
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!public"]
   },
   "formatter": {
     "enabled": true,
@@ -21,6 +22,7 @@
   },
   "linter": {
     "enabled": true,
+    "includes": ["**", "!/public/**"],
     "rules": {
       "recommended": true,
       "correctness": {
