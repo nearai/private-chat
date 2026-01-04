@@ -66,7 +66,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
         <p className="font-medium text-green-dark text-xs leading-[normal]">{verifiedCount} Verified Messages</p>
         {!isOnline && (
           <p className="text-[11px] text-muted-foreground leading-[normal]">
-            {t("Offline. Showing cached verification results.")}
+            {t("Offline. Showing cached verification results.", { defaultValue: "Offline. Showing cached verification results." })}
           </p>
         )}
       </div>

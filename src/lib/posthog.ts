@@ -19,18 +19,19 @@ export function initPosthog() {
     persistence: "localStorage+cookie",
     cookie_expiration: 90,
     cross_subdomain_cookie: true,
-    cookie_domain: ".near.ai",
     respect_dnt: true,
     opt_out_capturing_by_default: false,
     disable_session_recording: true,
     session_recording: {
-      recordCanvas: false,
+      captureCanvas: {
+        recordCanvas: false,
+      },
       recordCrossOriginIframes: false,
       maskAllInputs: true,
     },
   });
 
-  if (navigator?.globalPrivacyControl === true) {
+  if (window.navigator && "globalPrivacyControl" in window.navigator && window.navigator.globalPrivacyControl === true) {
     posthog.opt_out_capturing();
     console.log("GPC signal detected - PostHog tracking disabled");
   }

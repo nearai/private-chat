@@ -104,7 +104,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
     async (id: string) => {
       const rollback = optimisticUpdate((old) =>
         old.map((c) =>
-          c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: null } } : c
+          c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
         )
       );
 
@@ -137,7 +137,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
   const handleUnarchiveAll = useCallback(async () => {
     const rollback = optimisticUpdate((old) =>
       old.map((c) =>
-        c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: null } } : c
+        c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
       )
     );
 

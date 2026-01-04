@@ -595,7 +595,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         ref={chatInputRef}
                         id="chat-input"
                         className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
-                        placeholder={!isOnline ? t("Not available offline (yet).") : placeholder || t("How can I help you today?")}
+                        placeholder={
+                          !isOnline ? t("Not available offline (yet).", { defaultValue: "Not available offline (yet)." }) : placeholder || t("How can I help you today?")
+                        }
                         value={prompt}
                         disabled={isLowBalance || !isOnline}
                         onChange={(e) => setPrompt(e.target.value)}

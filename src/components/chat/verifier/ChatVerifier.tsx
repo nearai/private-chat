@@ -153,7 +153,7 @@ const ChatVerifier: React.FC = () => {
         <div className="flex w-full flex-col gap-6 p-2">
           {!isOnline ? (
             <div className="flex items-center justify-center rounded-lg bg-muted/30 px-3 py-4 text-center text-muted-foreground text-sm">
-              {t("Offline. Using cached verification results.")}
+              {t("Offline. Using cached verification results.", { defaultValue: "Offline. Using cached verification results." })}
             </div>
           ) : modelVerificationStatus?.loading ? (
             <div className="flex items-center justify-center py-4">

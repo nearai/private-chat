@@ -299,14 +299,18 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
                     ? t("Verified ECDSA Signature")
                     : isVerified === false
                       ? t("Invalid ECDSA Signature")
-                      : t("Verification pending")}
+                      : t("Verification pending", { defaultValue: "Verification pending" })}
                 </button>
               ) : (
                 <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-muted/30 p-3 text-muted-foreground text-xs">
                   <p className="flex-1">
                     {isOnline
-                      ? t("Signature data will show when verification completes.")
-                      : t("Offline. Signature data will sync when you're back online.")}
+                      ? t("Signature data will show when verification completes.", {
+                          defaultValue: "Signature data will show when verification completes.",
+                        })
+                      : t("Offline. Signature data will sync when you're back online.", {
+                          defaultValue: "Offline. Signature data will sync when you're back online.",
+                        })}
                   </p>
                 </div>
               )}

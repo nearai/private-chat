@@ -8,7 +8,7 @@ type DeleteChatParams = {
 };
 
 type MutationSuccessCallback = (
-  data: undefined,
+  data: void,
   variables: DeleteChatParams,
   context: unknown
 ) => void | Promise<void>;
