@@ -87,6 +87,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       return null;
     }
 
+    if (signature?.verified === true) {
+      return "verified";
+    }
+
+    if (signature?.verified === false) {
+      return "failed";
+    }
+
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
@@ -95,7 +103,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           return "imported";
         }
       }
-      
+
       return "verifying";
     }
 
@@ -105,7 +113,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, conversationImportedAt, isBatchCompleted]);
+  }, [signature, signatureError, isMessageCompleted, conversationImportedAt, isBatchCompleted, messageId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
