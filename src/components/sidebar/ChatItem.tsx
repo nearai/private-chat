@@ -104,7 +104,9 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
             <div className="flex items-center gap-2">
               <CompactTooltip content="Confirm" align="center">
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     confirmRename();
                   }}
@@ -114,7 +116,9 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
               </CompactTooltip>
               <CompactTooltip content="Cancel" align="center">
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     handleCancelRename();
                   }}
