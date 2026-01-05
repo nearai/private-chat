@@ -15,10 +15,10 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: [
-        "icons/favicon.ico",
-        "icons/apple-touch-icon.png",
-        "icons/favicon.png",
-        "icons/favicon.svg",
+        "favicon.ico",
+        "apple-touch-icon-180x180.png",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
       ],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
@@ -34,19 +34,25 @@ export default defineConfig({
         orientation: "portrait",
         icons: [
           {
-            src: "icons/favicon-96x96.png",
-            sizes: "96x96",
+            src: "pwa-64x64.png",
+            sizes: "64x64",
             type: "image/png",
           },
           {
-            src: "icons/favicon.png",
+            src: "pwa-192x192.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "icons/favicon.png",
+            src: "pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
+          },
+          {
+            src: "maskable-icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
       },
