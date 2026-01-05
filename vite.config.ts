@@ -14,7 +14,12 @@ export default defineConfig({
     svgr(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/favicon.ico", "icons/apple-touch-icon.png"],
+      includeAssets: [
+        "icons/favicon.ico",
+        "icons/apple-touch-icon.png",
+        "icons/favicon.png",
+        "icons/favicon.svg",
+      ],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
       },
