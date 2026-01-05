@@ -8,7 +8,7 @@ export const initializeDesktopIntegrations = async () => {
     const update = await check();
     if (update?.available) {
       await update.downloadAndInstall();
-      const { relaunch } = await import("@tauri-apps/api/process");
+      const { relaunch } = await import("@tauri-apps/plugin-process");
       await relaunch();
     }
   } catch (error) {

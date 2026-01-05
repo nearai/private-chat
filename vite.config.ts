@@ -16,7 +16,11 @@ export default defineConfig({
   build: {
     sourcemap: true,
     rollupOptions: {
-      external: ["@tauri-apps/plugin-notification", "@tauri-apps/plugin-updater"],
+      external: [
+        "@tauri-apps/plugin-notification",
+        "@tauri-apps/plugin-updater",
+        "@tauri-apps/plugin-process",
+      ],
     },
   },
 });
