@@ -1,89 +1,129 @@
 import { useQueryClient } from "@tanstack/react-query";
+
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
-import { produce } from "immer";
-
 import { chatClient } from "@/api/chat/client";
-import { DEFAULT_MODEL } from "@/api/constants";
+import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
+
+import { useUserSettings } from "@/api/users/queries/useUserSettings";
+
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
-import { useSettingsStore } from "@/stores/useSettingsStore";
+import {
+  buildConversationEntry,
+  type ConversationStoreState,
+  createEmptyConversation,
+  useConversationStore,
+} from "@/stores/useConversationStore";
 import { useStreamStore } from "@/stores/useStreamStore";
+import type { Conversation, ConversationUserInput } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
-import type { Conversation } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
+import { produce } from "immer";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
   const params = useParams<{ chatId?: string }>();
   const queryClient = useQueryClient();
   const { selectedModels } = useChatStore();
-  const { settings } = useSettingsStore();
   const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
+  const updateConversation = useConversationStore((state) => state.updateConversation);
+  const userSettings = useUserSettings();
+  const remoteConfig = useRemoteConfig();
 
-  const initializeCache = useCallback(
-    (conversationId: string, contentItems: ContentItem[]) => {
-      const existingData = queryClient.getQueryData<Conversation>(["conversation", conversationId]);
-      const hasUserMessage = existingData?.data?.some(
-        (item) =>
-          item.type === "message" &&
-          item.role === "user" &&
-          JSON.stringify(item.content) === JSON.stringify(contentItems)
-      );
-      const userMessage = hasUserMessage
-        ? undefined
-        : {
-            id: `temp-${Date.now()}`,
-            response_id: `response-${Date.now()}`,
-            next_response_ids: [],
-            created_at: Date.now(),
-            status: "pending" as const,
-            role: "user" as const,
-            type: "message" as const,
-            content: contentItems,
-            model: selectedModels[0] || "",
+  // Push response used for adding new response to the end of the conversation
+  const pushResponse = useCallback(
+    (conversationId: string, contentItems: ContentItem[], previous_response_id?: string) => {
+      // Generate unique temp ID to prevent collisions in regenerate/branch scenarios
+      const tempId = `temp-message-${crypto.randomUUID()}`;
+
+      const updatedConversation = (draft: ConversationStoreState) => {
+        if (!draft.conversation) {
+          draft.conversation = {
+            conversation: createEmptyConversation(conversationId),
+            conversationId: conversationId,
+            history: { messages: {} },
+            allMessages: {},
+            importedMessagesIdMapping: {},
+            lastResponseId: null,
+            batches: [],
           };
-      const initialData = existingData
-        ? userMessage
-          ? {
-              ...existingData,
-              data: [...(existingData.data ?? []), userMessage] as Conversation["data"],
+        }
+        const userMessage: ConversationUserInput = {
+          id: tempId,
+          response_id: TEMP_RESPONSE_ID,
+          next_response_ids: [],
+          created_at: Date.now(),
+          status: "pending" as const,
+          role: ConversationRoles.USER,
+          type: ConversationTypes.MESSAGE,
+          content: contentItems,
+          model: selectedModels[0] || "",
+          previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
+        };
+
+        draft.conversation.conversation.data.push(userMessage);
+        const lastResponseParentId = previous_response_id ?? draft.conversation.lastResponseId;
+
+        // update conversation entry for rendering
+        const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
+          draft.conversation.conversation,
+          TEMP_RESPONSE_ID
+        );
+        draft.conversation.history = history;
+        draft.conversation.allMessages = allMessages;
+        draft.conversation.lastResponseId = lastResponseId;
+        draft.conversation.batches = batches;
+
+        //Don't change the order
+        if (lastResponseParentId) {
+          const lastResponseParent = draft.conversation.history.messages[lastResponseParentId];
+          if (lastResponseParent) {
+            // Add tempId because we don't have responseId yet
+            if (!lastResponseParent.nextResponseIds.includes(TEMP_RESPONSE_ID)) {
+              lastResponseParent.nextResponseIds = [...lastResponseParent.nextResponseIds, TEMP_RESPONSE_ID];
             }
-          : existingData
-        : {
-            id: conversationId,
-            created_at: Date.now(),
-            metadata: {
-              title: "New Conversation",
-            },
-            data: userMessage ? ([userMessage] as Conversation["data"]) : [],
-            has_more: false,
-            first_id: userMessage?.id || "",
-            last_id: userMessage?.id || "",
-            object: "list" as const,
-          };
-      queryClient.setQueryData(["conversation", conversationId], initialData);
-      return initialData;
+          }
+        }
+
+        draft.conversation.conversation.last_id = userMessage.id;
+        if (!draft.conversation.conversation.first_id) {
+          draft.conversation.conversation.first_id = userMessage.id;
+        }
+        return draft;
+      };
+      updateConversation(updatedConversation);
     },
-    [queryClient, selectedModels]
+    [selectedModels, updateConversation]
   );
 
   const startStream = useCallback(
-    async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId: string) => {
-      if (!conversationId) {
+    async (
+      contentItems: ContentItem[],
+      webSearchEnabled: boolean,
+      conversationId?: string,
+      previous_response_id?: string,
+      currentModel?: string,
+    ) => {
+      const conversationLocalId = conversationId || params.chatId;
+      if (!conversationLocalId) {
         console.error("Conversation ID is required to start stream");
         return;
       }
 
-      const model = selectedModels[0] || DEFAULT_MODEL;
+      const model = currentModel || selectedModels[0] || remoteConfig.data?.default_model;
+      if (!model) {
+        console.error("Model is required to start stream but none was available");
+        return;
+      }
 
-      const initialData = initializeCache(conversationId, contentItems);
+      pushResponse(conversationLocalId, contentItems, previous_response_id);
 
       let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-
       const streamPromise = chatClient.startStream({
         model,
         role: "user",
@@ -92,40 +132,45 @@ export default function ChatController({ children }: { children?: React.ReactNod
         queryClient,
         include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
+        previous_response_id: previous_response_id,
+        systemPrompt: userSettings.data?.settings.system_prompt,
         onReaderReady: (reader, abortController) => {
           streamReader = reader;
-          addStream(conversationId, streamPromise, initialData, reader, abortController);
+          addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
         },
       });
 
       if (!streamReader) {
-        addStream(conversationId, streamPromise, initialData);
+        addStream(conversationLocalId, streamPromise);
       }
 
       streamPromise
         .then(() => {
-          markStreamComplete(conversationId);
-          removeStream(conversationId);
+          markStreamComplete(conversationLocalId);
         })
         .catch((error) => {
           // ignore AbortError, it's expected when stopping
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
           }
-          markStreamComplete(conversationId);
-          removeStream(conversationId);
+          markStreamComplete(conversationLocalId);
+          removeStream(conversationLocalId);
+        })
+        .finally(() => {
+          removeStream(conversationLocalId);
+          queryClient.invalidateQueries({ queryKey: queryKeys.conversation.byId(conversationLocalId) });
         });
     },
     [
       selectedModels,
-      initializeCache,
       queryClient,
+      pushResponse,
       addStream,
       markStreamComplete,
       removeStream,
-      location.pathname,
       params.chatId,
-      settings.notificationEnabled,
+      userSettings,
+      remoteConfig.data?.default_model,
     ]
   );
 

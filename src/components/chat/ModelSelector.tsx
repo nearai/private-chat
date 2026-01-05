@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ModelV1 } from "@/types";
 import { Button } from "../ui/button";
@@ -136,7 +136,8 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  const disabledAdd = selectedModels.length >= models.length;
+  // const disabledAdd = selectedModels.length >= models.length;
+  const disabledAdd = true; // temporarily disable adding more models
 
   return (
     <div className="flex w-full flex-col items-start">

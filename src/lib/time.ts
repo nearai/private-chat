@@ -1,17 +1,11 @@
-import { type ClassValue, clsx } from "clsx";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { twMerge } from "tailwind-merge";
 
 dayjs.extend(relativeTime);
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export const getTimeRange = (timestamp: number | string) => {
   const now = new Date();

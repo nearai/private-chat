@@ -14,9 +14,9 @@ export const useCloneChat = (options?: UseCloneChatOptions) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, title }: CloneChatParams) => chatClient.cloneChatById(id, title),
+    mutationFn: ({ id }: CloneChatParams) => chatClient.cloneChatById(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversation.all });
     },
     ...options,
   });

@@ -2,7 +2,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type * as React from "react";
 import XMarkIcon from "@/assets/icons/x-mark.svg?react";
 
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { Button } from "./button";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -47,7 +47,7 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-3xl border border-border bg-primary-foreground p-4 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in lg:w-[56rem] dark:bg-card",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-[32px] rounded-3xl border border-border bg-primary-foreground p-4 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in lg:w-[56rem] dark:bg-card",
           className
         )}
         data-slot="dialog-content"
@@ -73,7 +73,7 @@ function DialogContent({
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("mt-8 flex flex-col items-center gap-2 text-center sm:text-left", className)}
+      className={cn("flex flex-col items-center gap-2 text-center sm:text-left", className)}
       data-slot="dialog-header"
       {...props}
     />
@@ -87,7 +87,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("text-center font-bold text-lg leading-[normal]", className)}
+      className={cn("w-full text-left font-bold text-lg leading-[normal]", className)}
       data-slot="dialog-title"
       {...props}
     />

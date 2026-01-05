@@ -3,7 +3,8 @@ import { useTheme } from "../common/ThemeProvider";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme } = useTheme();
-  return <Sonner theme={theme} className="toaster group" position="top-right" richColors {...props} />;
+  const lowerCaseTheme = theme.toLowerCase();
+  return <Sonner theme={lowerCaseTheme as 'dark' | 'light' | 'system'} className="toaster group" position="top-right" richColors {...props} />;
 };
 
 export { Toaster };

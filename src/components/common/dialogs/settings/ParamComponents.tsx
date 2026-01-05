@@ -1,7 +1,9 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { CompactTooltip } from "@/components/ui/tooltip";
 
 // Button component for toggle
@@ -119,7 +121,7 @@ export const TextInput = <T extends string | number = string | number>({
   return (
     <div className="mt-0.5 flex">
       <input
-        className="w-full rounded-lg px-4 py-2 text-sm outline-none"
+        className="w-full rounded-lg border border-border bg-input px-4 py-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
         type={type}
         placeholder={placeholder}
         value={value}
@@ -155,7 +157,7 @@ export const ToggleSwitch = ({
             onChange={(e) => onChange(e.target.checked)}
             className="peer sr-only"
           />
-          <div className="peer h-5 w-9 rounded-full bg-secondary/30 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
+          <div className="peer h-5 w-9 rounded-full bg-secondary/30 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-primary-foreground peer-focus:outline-none dark:after:bg-card dark:peer-checked:after:bg-primary-foreground" />
         </label>
       </div>
     </div>
@@ -173,7 +175,7 @@ interface CycleParamProps {
 export const CycleParam = ({ label, tooltip, value, onCycle }: CycleParamProps) => {
   const content = (
     <div className="flex w-full justify-between py-0.5">
-      <div className="self-center font-medium text-xs">{label}</div>
+      <div className="flex flex-row items-center gap-1 self-center font-medium text-base">{label}</div>
       <ParamButton onClick={onCycle}>
         <div className="self-center">{value}</div>
       </ParamButton>
@@ -185,4 +187,61 @@ export const CycleParam = ({ label, tooltip, value, onCycle }: CycleParamProps) 
   }
 
   return content;
+};
+
+export const SwitchParam = ({
+  label,
+  value,
+  onChange,
+  description,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  description?: string;
+}) => {
+  return (
+    <div className="flex w-full items-center justify-between py-0.5">
+      <div className="flex flex-col items-start gap-1 self-center font-medium text-sm">
+        {label}
+        {description && <div className="font-light text-sm">{description}</div>}
+      </div>
+      <Switch checked={value} onCheckedChange={onChange} />
+    </div>
+  );
+};
+
+export const SelectParam = ({
+  label,
+  value,
+  onChange,
+  description,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  description?: string;
+  options: { value: string; label: string }[];
+}) => {
+  return (
+    <div className="flex w-full items-center justify-between py-0.5">
+      <div className="flex grow flex-col items-start gap-1 self-center font-medium text-sm">
+        {label}
+        {description && <div className="font-light text-sm">{description}</div>}
+      </div>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={value} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 };

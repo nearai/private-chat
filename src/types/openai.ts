@@ -1,3 +1,7 @@
+import type { ResponseOutputText } from "openai/resources/responses/responses.mjs";
+import type { CombinedResponse } from "@/lib";
+import type { ConversationItem } from ".";
+
 export type FileContentItem =
   | { type: "input_file" | "input_audio"; id: string; name: string }
   | { type: "input_image"; id: string; name: string; image_url: string };
@@ -35,9 +39,16 @@ export const extractMessageContent = (
   return content.map((item) => (item.type === type ? item.text || "" : "")).join("");
 };
 
-export const extractCitations = (content: ContentItem[]): string[] => {
+export const extractCitations = (
+  content: ContentItem[]
+): Array<
+  | ResponseOutputText.FileCitation
+  | ResponseOutputText.URLCitation
+  | ResponseOutputText.ContainerFileCitation
+  | ResponseOutputText.FilePath
+> => {
   return content
-    .filter((item) => item.type === "input_text" && item.annotations)
+    .filter((item) => item.type === "output_text" && item.annotations)
     .flatMap((item) => item.annotations || []);
 };
 
@@ -48,6 +59,17 @@ export const extractFiles = (content: ContentItem[], type: "input_file" | "outpu
     audio_file_id?: string;
     image_url?: string;
   }>;
+};
+
+export const getModelAndCreatedTimestamp = (batch: CombinedResponse, allMessages: Record<string, ConversationItem>) => {
+  const messageId =
+    [batch.outputMessagesIds, batch.webSearchMessagesIds, batch.reasoningMessagesIds].find((ids) => ids.length > 0) ??
+    null;
+
+  const latestMessageId = messageId?.at(-1);
+  if (!latestMessageId || !allMessages[latestMessageId]) return { model: null, createdTimestamp: null };
+  const latestMessage = allMessages[latestMessageId];
+  return { model: latestMessage.model, createdTimestamp: latestMessage.created_at };
 };
 
 export const generateContentFileDataForOpenAI = (file: FileContentItem): ContentItem => {
@@ -70,5 +92,10 @@ export type ContentItem = {
   file_id?: string;
   audio_file_id?: string;
   image_url?: string;
-  annotations?: string[];
+  annotations?: Array<
+    | ResponseOutputText.FileCitation
+    | ResponseOutputText.URLCitation
+    | ResponseOutputText.ContainerFileCitation
+    | ResponseOutputText.FilePath
+  >;
 };

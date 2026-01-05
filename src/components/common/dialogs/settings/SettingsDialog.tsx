@@ -1,6 +1,8 @@
-import { ChatBubbleOvalLeftEllipsisIcon, Cog8ToothIcon, InformationCircleIcon } from "@heroicons/react/24/solid";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import ChatsIcon from "@/assets/icons/chats.svg?react";
+import AboutIcon from "@/assets/icons/info.svg?react";
+import SettingsIcon from "@/assets/icons/settings.svg?react";
 import TabbedContent from "@/components/common/TabbedContent";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AboutSettings from "./AboutSettings";
@@ -21,13 +23,13 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
         {
           id: "general",
           label: t("General"),
-          icon: Cog8ToothIcon,
+          icon: SettingsIcon,
           content: <GeneralSettings />,
         },
         {
           id: "chats",
           label: t("Chats"),
-          icon: ChatBubbleOvalLeftEllipsisIcon,
+          icon: ChatsIcon,
           content: (
             <ChatsSettings
               onImportFinish={() => {
@@ -39,7 +41,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
         {
           id: "about",
           label: t("About"),
-          icon: InformationCircleIcon,
+          icon: AboutIcon,
           content: <AboutSettings />,
         },
       ] as const,

@@ -36,11 +36,33 @@ import { queryKeys } from "@/api/query-keys";
 dayjs.extend(localizedFormat);
 const { saveAs } = fileSaver;
 
+function ConversationSkeletonRow() {
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell className="w-2/3 px-3 py-2">
+        <div className="h-4 w-40 animate-pulse rounded bg-muted/40" />
+      </TableCell>
+
+      <TableCell className="hidden px-3 py-2 md:table-cell">
+        <div className="h-4 w-24 animate-pulse rounded bg-muted/40" />
+      </TableCell>
+
+      <TableCell className="px-3 py-2 text-right">
+        <div className="flex justify-end gap-2">
+          <div className="h-6 w-6 animate-pulse rounded bg-muted/40" />
+          <div className="h-6 w-6 animate-pulse rounded bg-muted/40" />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+
 export default function ArchivedChatsModal({ open, onOpenChange }: any) {
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const queryClient = useQueryClient();
-  const { data: conversations } = useGetConversations();
+  const { data: conversations, isPending } = useGetConversations();
 
   const { mutateAsync: unarchiveChat } = useUnarchiveChat();
   const { mutateAsync: deleteChat } = useDeleteChat();
@@ -169,7 +191,27 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
 
           <hr className="my-2 border-muted/30" />
 
-          {archived.length > 0 ? (
+          {isPending ? (
+            <div className="mb-3 max-h-88 overflow-y-scroll text-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="px-3 py-2">{t("Name")}</TableHead>
+                    <TableHead className="hidden px-3 py-2 md:table-cell">
+                      {t("Created At")}
+                    </TableHead>
+                    <TableHead className="px-3 py-2 text-right" />
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <ConversationSkeletonRow key={i} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : archived.length > 0 ? (
             <>
               <div className="mb-3 max-h-88 overflow-y-scroll text-sm">
                 <Table>
@@ -185,7 +227,10 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
 
                   <TableBody>
                     {filteredChats.map((chat) => (
-                      <TableRow key={chat.id} className="border-muted/30 text-xs hover:bg-secondary/30">
+                      <TableRow
+                        key={chat.id}
+                        className="border-muted/30 text-xs hover:bg-secondary/30"
+                      >
                         <TableCell className="w-2/3 px-3 py-1">
                           <a
                             href={`/c/${chat.id}`}
@@ -198,7 +243,9 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                         </TableCell>
 
                         <TableCell className="hidden px-3 py-1 md:table-cell">
-                          {dayjs(chat.metadata.archived_at! * 1000).format("LLL")}
+                          {dayjs(Number(chat.metadata.archived_at!) * 1000).format(
+                            "LLL"
+                          )}
                         </TableCell>
 
                         <TableCell className="px-3 py-1 text-right">
@@ -227,7 +274,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                   </TableBody>
                 </Table>
               </div>
-
+              {/* Buttons */}
               <div className="mt-2 flex justify-end gap-2">
                 <Button
                   variant="secondary"
@@ -236,7 +283,6 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                 >
                   {t("Unarchive All Archived Chats")}
                 </Button>
-
                 <Button
                   variant="secondary"
                   className="h-9 rounded-3xl px-3.5"
@@ -247,7 +293,9 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
               </div>
             </>
           ) : (
-            <div className="mb-8 text-sm">{t("You have no archived conversations.")}</div>
+            <div className="mb-8 text-sm">
+              {t("You have no archived conversations.")}
+            </div>
           )}
         </DialogContent>
       </Dialog>

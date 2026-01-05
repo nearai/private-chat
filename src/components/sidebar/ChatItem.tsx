@@ -1,43 +1,47 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useConversation } from "@/api/chat/queries/useConversation";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { toChatRoute } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ConversationInfo } from "@/types";
 import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
 import { CompactTooltip } from "../ui/tooltip";
-
-const BASIC_PLACEHOLDER = "TEMP CHAT";
+import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
 
 type ChatItemProps = {
   chat: ConversationInfo;
   isCurrentChat: boolean;
   isPinned?: boolean;
   handleDeleteSuccess?: () => void;
+  onNavigate?: () => void;
 };
 
 function getChatTitle(chat: ConversationInfo) {
-  if (chat.metadata.title) return chat.metadata.title;
-  const conv = chat as ConversationInfo;
-  return conv.metadata?.title || BASIC_PLACEHOLDER;
+  return chat.metadata.title || DEFAULT_CONVERSATION_TITLE;
 }
 
-const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatItemProps) => {
+const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNavigate }: ChatItemProps) => {
   const { startEditingChatName, stopEditingChatName, editingChatId } = useChatStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
-  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? BASIC_PLACEHOLDER);
+  const [renameInput, setRenameInput] = useState(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
   const { isReloadingConversations, updateConversation, reloadConversations } = useConversation();
 
   const isRenaming = updateConversation.isPending || isReloadingConversations;
 
   const confirmRename = () => {
     updateConversation.mutate(
-      { conversationId: chat.id, metadata: { title: renameInput } },
+      {
+        conversationId: chat.id,
+        metadata: {
+          ...chat.metadata,
+          title: renameInput,
+        }
+      },
       {
         onSuccess: () => {
           reloadConversations({
@@ -68,6 +72,10 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
     stopEditingChatName();
   };
 
+  useEffect(() => {
+    setRenameInput(chat.metadata.title ?? DEFAULT_CONVERSATION_TITLE);
+  }, [chat?.metadata?.title]);
+
   return (
     <div className="group relative w-full" draggable="true">
       <Link
@@ -77,6 +85,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
         )}
         to={toChatRoute(chat.id)}
         draggable="false"
+        onClick={!showRename ? onNavigate : undefined}
       >
         {showRename ? (
           <>
@@ -85,18 +94,35 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
                 ref={renameRef}
                 className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
-                onClick={() => startEditingChatName(chat.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startEditingChatName(chat.id);
+                }}
                 onChange={(e) => setRenameInput(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
               <CompactTooltip content="Confirm" align="center">
-                <button onClick={confirmRename}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    confirmRename();
+                  }}
+                >
                   <CheckIcon className="size-4" />
                 </button>
               </CompactTooltip>
               <CompactTooltip content="Cancel" align="center">
-                <button onClick={handleCancelRename}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCancelRename();
+                  }}
+                >
                   <XMarkIcon className="size-4" />
                 </button>
               </CompactTooltip>

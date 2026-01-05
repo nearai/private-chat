@@ -1,7 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/solid";
 import * as React from "react";
 import { type ButtonProps, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 
 const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
   <nav

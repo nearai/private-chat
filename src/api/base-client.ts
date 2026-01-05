@@ -1,20 +1,22 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createParser, type EventSourceMessage } from "eventsource-parser";
-import { produce } from "immer";
 import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { MessageStatus } from "@/lib";
+import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { eventEmitter } from "@/lib/event";
+import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
-  Conversation,
   ConversationInfo,
   ConversationModelOutput,
+  ConversationReasoning,
   ConversationWebSearchCall,
   SearchAction,
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
-import { DEPRECATED_API_BASE_URL, CHAT_API_BASE_URL } from "./constants";
+import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 
 export interface ApiClientOptions {
@@ -29,6 +31,17 @@ export interface OpenApiEvent {
   event: string;
   data: string;
 }
+
+export type ConversationTitleUpdatedEvent = {
+  type: "conversation.title.updated";
+  conversation_title?: string;
+};
+
+export type ConversationReasoningUpdatedEvent = {
+  type: "response.reasoning.delta";
+  item_id: string;
+  delta: string;
+};
 
 export class ApiClient {
   protected baseURLV1: string;
@@ -79,7 +92,7 @@ export class ApiClient {
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
-          throw new Error("No token found");
+          throw new Error(`No token found, ${endpoint} request aborted`);
         }
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
@@ -90,7 +103,15 @@ export class ApiClient {
 
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 401) {
+          eventEmitter.emit("logout");
+        }
+
         throw error;
+      }
+
+      if (response.status === 204) {
+        return {} as T; // Return empty object for 204 No Content
       }
 
       return await response.json();
@@ -185,6 +206,14 @@ export class ApiClient {
         throw new Error("ReadableStream not supported in this browser.");
       }
 
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 401) {
+          eventEmitter.emit("logout");
+        }
+        throw error;
+      }
+
       const reader = response.body.getReader();
       
       // Notify reader is ready for cancellation
@@ -196,58 +225,112 @@ export class ApiClient {
         onEvent: onParse,
       });
 
-      function onParse(event: EventSourceMessage) {
+      async function onParse(event: EventSourceMessage) {
         if (!options.queryClient) return;
-        const data: Responses.ResponseStreamEvent = JSON.parse(event.data);
-        const conversationId = (body as { conversation?: string })?.conversation || "";
-
-        function updateConversationData(updater: (draft: Conversation) => void, setOptions?: { updatedAt?: number }) {
-          options.queryClient?.setQueryData(
-            ["conversation", conversationId],
-            (old: Conversation) =>
-              produce(old, (draft) => {
-                updater(draft);
-                (draft as Conversation & { lastUpdatedAt?: number }).lastUpdatedAt = Date.now();
-              }),
-            setOptions
-          );
-        }
-
+        const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
+          JSON.parse(event.data);
+        const updateConversationData = useConversationStore.getState().updateConversation;
         const model = (body as { model?: string })?.model || "";
 
         switch (data.type) {
-          case "response.output_text.delta":
-            updateConversationData(
-              (draft) => {
-                const currentConversationData = draft.data?.find((item) => item.id === data.item_id);
-                if (
-                  currentConversationData?.type === ConversationTypes.MESSAGE &&
-                  currentConversationData.role === ConversationRoles.ASSISTANT
-                ) {
-                  if (!currentConversationData.content?.length) {
-                    currentConversationData.content = [
-                      {
-                        type: "output_text",
-                        text: data.delta,
-                        annotations: [],
-                      },
-                    ];
-                  } else {
-                    const firstItem = currentConversationData.content[0];
-                    if (firstItem.type === "output_text") {
-                      firstItem.text = (firstItem.text || "") + data.delta;
-                    }
+          case "response.created":
+            updateConversationData((draft) => {
+              const tempUserMessage = draft.conversation?.conversation.data?.find(
+                (item) => item.response_id === TEMP_RESPONSE_ID
+              );
+
+              if (tempUserMessage) {
+                tempUserMessage.response_id = data.response.id;
+                const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
+                  draft.conversation!.conversation,
+                  data.response.id
+                );
+                draft.conversation!.history = history;
+                draft.conversation!.allMessages = allMessages;
+                draft.conversation!.lastResponseId = lastResponseId;
+                draft.conversation!.batches = batches;
+                //Order is important
+                if (tempUserMessage.previous_response_id) {
+                  const lastResponseParent = draft.conversation?.history.messages[tempUserMessage.previous_response_id];
+                  const userInputMessage = draft.conversation?.conversation.data?.find(
+                    (item) => item.id === lastResponseParent?.userPromptId
+                  );
+                  if (lastResponseParent) {
+                    lastResponseParent.nextResponseIds = [
+                      ...lastResponseParent.nextResponseIds,
+                      data.response.id,
+                    ].filter((id: string) => id !== TEMP_RESPONSE_ID);
+                  }
+                  // Optimistically associate the originating user input message with the new response ID
+
+                  if (userInputMessage) {
+                    userInputMessage.next_response_ids.push(data.response.id);
                   }
                 }
-              },
-              {
-                updatedAt: Date.now(),
               }
-            );
+              return draft;
+            });
+            break;
+
+          case "response.reasoning.delta":
+            updateConversationData((draft) => {
+              const currentConversationData = draft.conversation?.conversation.data?.find(
+                (item) => item.id === data.item_id
+              );
+              if (currentConversationData?.type === ConversationTypes.REASONING) {
+                currentConversationData.content = data.delta;
+              }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              // Optimize adding content only on needed message
+              draft.conversation!.allMessages = allMessages;
+
+              return draft;
+            });
+            break;
+          case "response.output_text.delta":
+            updateConversationData((draft) => {
+              const currentConversationData = draft.conversation?.conversation.data?.find(
+                (item) => item.id === data.item_id
+              );
+              if (
+                currentConversationData?.type === ConversationTypes.MESSAGE &&
+                currentConversationData.role === ConversationRoles.ASSISTANT
+              ) {
+                if (!currentConversationData.content?.length) {
+                  currentConversationData.content = [
+                    {
+                      type: "output_text",
+                      text: data.delta,
+                      annotations: [],
+                    },
+                  ];
+                } else {
+                  const firstItem = currentConversationData.content[0];
+                  if (firstItem.type === "output_text") {
+                    firstItem.text = (firstItem.text || "") + data.delta;
+                  }
+                }
+              }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              // Optimize adding content only on needed message
+              draft.conversation!.allMessages = allMessages;
+
+              return draft;
+            });
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
-              const currentConversationData = draft.data?.find((item) => item.id === data.item.id);
+              const currentConversationData = draft.conversation?.conversation.data?.find(
+                (item) => item.id === data.item.id
+              );
               switch (data.item.type) {
                 case "message":
                   if (currentConversationData && currentConversationData.type === ConversationTypes.MESSAGE) {
@@ -266,9 +349,7 @@ export class ApiClient {
                               type: "output_text",
                               text: "text" in item ? String(item.text) : "",
                               annotations:
-                                "annotations" in item && Array.isArray(item.annotations)
-                                  ? (item.annotations as string[])
-                                  : [],
+                                "annotations" in item && Array.isArray(item.annotations) ? item.annotations : [],
                             };
                           }
                         }
@@ -278,7 +359,10 @@ export class ApiClient {
                   }
                   break;
                 case "reasoning":
-                  draft.data = draft.data?.filter((item) => item.id !== data.item.id);
+                  //INVESTIGATE
+                  draft.conversation!.conversation.data = draft.conversation!.conversation.data?.filter(
+                    (item) => item.id !== data.item.id
+                  );
                   break;
                 case "web_search_call":
                   if (currentConversationData && currentConversationData.type === ConversationTypes.WEB_SEARCH_CALL) {
@@ -293,17 +377,47 @@ export class ApiClient {
                 default:
                   break;
               }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              draft.conversation!.allMessages = allMessages;
+              return draft;
             });
             break;
           case "response.output_item.added":
             updateConversationData((draft) => {
-              const prevMessage = draft.data?.find((item) => item.id === draft.last_id);
+              // const prevMessage = draft.conversation?.conversation.data?.find(
+              //   (item) => item.id === draft.conversation?.conversation.last_id
+              // );
               switch (data.item.type) {
-                case "reasoning":
-                  // Reasoning items are not in the new interfaces, skip them
+                case "reasoning": {
+                  draft.conversation!.conversation.last_id = data.item.id;
+                  const extendedData = data.item as Responses.ResponseReasoningItem & {
+                    created_at: number;
+                    response_id: string;
+                  };
+                  const reasoningItem: ConversationReasoning = {
+                    id: data.item.id,
+                    type: ConversationTypes.REASONING,
+                    response_id: extendedData.response_id,
+                    next_response_ids: [],
+                    created_at: extendedData.created_at,
+                    status: "pending",
+                    role: ConversationRoles.ASSISTANT,
+                    content: "",
+                    summary: "",
+                    model,
+                  };
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    reasoningItem,
+                  ];
                   break;
+                }
                 case "web_search_call": {
-                  draft.last_id = data.item.id;
+                  draft.conversation!.conversation.last_id = data.item.id;
                   const extendedData = data.item as Responses.ResponseFunctionWebSearch & {
                     action: SearchAction;
                     created_at: number;
@@ -320,13 +434,17 @@ export class ApiClient {
                     action: extendedData.action,
                     model,
                   };
-                  draft.data = [...(draft.data ?? []), webSearchItem];
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    webSearchItem,
+                  ];
                   break;
                 }
                 case "message": {
-                  if (prevMessage?.status === "pending") {
-                    break;
-                  }
+                  // if (prevMessage?.status === "pending") {
+                  //   break;
+                  // }
+                  //INVESTIGATE
                   const extendedData = data.item as Responses.ResponseOutputMessage & {
                     created_at: number;
                     response_id: string;
@@ -342,15 +460,63 @@ export class ApiClient {
                     content: [],
                     model,
                   };
-                  draft.data = [...(draft.data ?? []), messageItem];
-                  draft.last_id = data.item.id;
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    messageItem,
+                  ];
+                  draft.conversation!.conversation.last_id = data.item.id;
                   break;
                 }
                 default:
                   break;
               }
+              const { history, allMessages } = buildConversationEntry(
+                draft.conversation!.conversation,
+                draft.conversation!.lastResponseId
+              );
+              draft.conversation!.history = history;
+              draft.conversation!.allMessages = allMessages;
+              return draft;
             });
             break;
+          case "conversation.title.updated": {
+            const title = data.conversation_title;
+
+            // FALLBACK_CONVERSATION_TITLE is the fallback title returned by the server,
+            // which means probably the title generation failed, so we don't update the title.
+            // Conversation in zustand don't used to show title in sidebar, queryClient cache used for that.
+
+            if (title && title !== FALLBACK_CONVERSATION_TITLE) {
+              // Update the detail cache
+              updateConversationData((draft) => {
+                draft.conversation!.conversation.metadata = {
+                  ...(draft.conversation!.conversation.metadata ?? {}),
+                  title,
+                };
+                return draft;
+              });
+              options.queryClient?.setQueryData<ConversationInfo[]>(
+                queryKeys.conversation.all,
+                (oldConversations = []) =>
+                  oldConversations.map((conversation) =>
+                    conversation.id === (body as { conversation?: string })?.conversation
+                      ? { ...conversation, metadata: { ...conversation.metadata, title } }
+                      : conversation
+                  )
+              );
+            }
+            break;
+          }
+          case "response.completed": {
+            updateConversationData((draft) => {
+              const response = draft.conversation?.history.messages[data.response.id];
+              if (response) {
+                response.status = MessageStatus.COMPLETED;
+              }
+              return draft;
+            });
+            break;
+          }
         }
       }
 
