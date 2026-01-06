@@ -47,9 +47,10 @@ export default function NewChat({
   const { resetConversation } = useConversationStore();
   const { data: remoteConfig } = useRemoteConfig();
 
-  // Load prompt only after MessageInput is mounted
+  // TODO: intermediate solution that Load prompt only after MessageInput is mounted
   useEffect(() => {
     if (promptLoadedRef.current) return;
+
     const checkMessageInputMounted = () => {
       const chatInput = document.getElementById("chat-input");
       if (chatInput) {
