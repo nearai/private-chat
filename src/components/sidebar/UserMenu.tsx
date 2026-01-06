@@ -1,4 +1,4 @@
-import { ArchiveBoxIcon, ArrowRightStartOnRectangleIcon, Cog8ToothIcon } from "@heroicons/react/24/outline";
+import { ArchiveBoxIcon, ArrowRightStartOnRectangleIcon, Cog8ToothIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 // import { useNavigate } from "react-router";
@@ -24,7 +24,12 @@ interface DropdownItem {
   className?: string;
 }
 
-const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
+interface UserMenuProps {
+  collapsed?: boolean;
+  onSearchOpen?: () => void;
+}
+
+const UserMenu: React.FC<UserMenuProps> = ({ collapsed = false, onSearchOpen }) => {
   // const navigate = useNavigate();
   const { t } = useTranslation("translation", { useSuspense: false });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -37,6 +42,12 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
 
   const dropdownItems = useMemo<DropdownItem[]>(() => {
     const items: (DropdownItem | false)[] = [
+      {
+        title: t("Search"),
+        icon: <MagnifyingGlassIcon className="h-5 w-5" />,
+        type: "item",
+        action: () => onSearchOpen?.(),
+      },
       {
         title: t("Settings"),
         icon: <Cog8ToothIcon className="h-5 w-5" />,
@@ -67,7 +78,7 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
     ];
 
     return items.filter(Boolean) as DropdownItem[];
-  }, [t, signOut]);
+  }, [t, signOut, onSearchOpen]);
 
   return (
     <>
