@@ -95,6 +95,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
                 className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   startEditingChatName(chat.id);
                 }}
