@@ -95,7 +95,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           return "imported";
         }
       }
-      
+      if (signatureError) return "failed";
       return "verifying";
     }
 

@@ -369,6 +369,42 @@ const MessageInput: React.FC<MessageInputProps> = ({
     // This would be handled by parent component or store
   };
 
+  const renderSendButton = () => {
+    if (isConversationStreamActive) {
+      return (
+        <div className="mr-1 flex shrink-0 space-x-1 self-end">
+          <Button
+            id="stop-message-button"
+            className="size-10 rounded-full"
+            type="button"
+            title="Stop"
+            size="icon"
+            onClick={stopResponse}
+          >
+            <StopMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+        <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+          'cursor-not-allowed!': disabledSendButton,
+        })}>
+          <Button
+            id="send-message-button"
+            className="size-10 rounded-full"
+            type="submit"
+            title="Send"
+            disabled={disabledSendButton}
+            size="icon"
+          >
+            <SendMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
+  }
+
   if (!loaded) return null;
 
   return (
@@ -433,7 +469,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
             <div className="relative w-full">
               {(atSelectedModel !== undefined || selectedToolIds.length > 0 || webSearchEnabled) && (
-                <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-gradient-to-t from-background px-3 pt-1.5 pb-0.5 text-left">
+                <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-linear-to-t from-background px-3 pt-1.5 pb-0.5 text-left">
                   {atSelectedModel !== undefined && (
                     <div className="flex w-full items-center justify-between">
                       <div className="flex items-center gap-2 pl-px text-sm">
@@ -673,28 +709,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           <StopMessageIcon className="size-5" />
                         </Button>
                       </div>
-                    ) : (
-                      <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
-                        'cursor-not-allowed!': disabledSendButton,
-                      })}>
-                        <Button
-                          id="send-message-button"
-                          className={cn("size-10 rounded-full")}
-                          type="submit"
-                          title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={disabledSendButton}
-                          size="icon"
-                          onClick={isMessageCompleted ? undefined : stopResponse}
-                        >
-                          {isMessageCompleted ? (
-                            <SendMessageIcon className="size-5" />
-                          ) : (
-                            // TODO: use /responses/{response_id}/cancel api to cancel bg streaming response
-                            <StopMessageIcon className="size-5" />
-                          )}
-                        </Button>
-                      </div>
-                    )}
+                    ) : renderSendButton()}
                   </div>
                 </div>
               </form>
