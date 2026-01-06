@@ -21,7 +21,16 @@
             "core:default",
             "notification:default",
             "shell:allow-open",
-            "updater:default"
+            "updater:default",
+            {
+              "identifier": "http:default",
+              "allow": [
+                { "url": "https://private.near.ai/*" },
+                { "url": "https://*.near.ai/*" },
+                { "url": "http://localhost:*/*" },
+                { "url": "http://127.0.0.1:*/*" }
+              ]
+            }
           ]
         }
       ]

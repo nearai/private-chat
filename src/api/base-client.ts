@@ -19,6 +19,40 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
+import { isTauri } from "@/utils/desktop";
+
+type FetchImplementation = typeof fetch;
+
+let fetchPromise: Promise<FetchImplementation> | null = null;
+
+const getBrowserFetch = (): FetchImplementation => {
+  if (typeof window !== "undefined" && typeof window.fetch === "function") {
+    return window.fetch.bind(window);
+  }
+  if (typeof globalThis.fetch === "function") {
+    return globalThis.fetch.bind(globalThis);
+  }
+  throw new Error("Fetch API is unavailable in this environment.");
+};
+
+const getHttpClient = async (): Promise<FetchImplementation> => {
+  if (!isTauri()) {
+    return getBrowserFetch();
+  }
+
+  if (fetchPromise) {
+    return fetchPromise;
+  }
+
+  fetchPromise = import("@tauri-apps/plugin-http")
+    .then(({ fetch }) => fetch)
+    .catch((error) => {
+      console.warn("Falling back to browser fetch:", error);
+      return getBrowserFetch();
+    });
+
+  return fetchPromise;
+};
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -105,7 +139,17 @@ export class ApiClient {
 
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
       const requestUrl = `${baseURL}${endpoint}`;
-      const response = await fetch(requestUrl, {
+      if (isTauri()) {
+        try {
+          const { origin } = new URL(requestUrl);
+          headers.Origin = origin;
+          headers.origin = origin;
+        } catch (error) {
+          console.warn("Failed to normalize origin header:", error);
+        }
+      }
+      const httpFetch = await getHttpClient();
+      const response = await httpFetch(requestUrl, {
         ...options,
         headers,
       });
@@ -239,7 +283,18 @@ export class ApiClient {
         }
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
-      const response = await fetch(`${baseURL}${endpoint}`, {
+      const requestUrl = `${baseURL}${endpoint}`;
+      if (isTauri()) {
+        try {
+          const { origin } = new URL(requestUrl);
+          headers.Origin = origin;
+          headers.origin = origin;
+        } catch (error) {
+          console.warn("Failed to normalize origin header:", error);
+        }
+      }
+      const httpFetch = await getHttpClient();
+      const response = await httpFetch(requestUrl, {
         ...requestOptions,
         headers,
       });

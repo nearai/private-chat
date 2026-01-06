@@ -1,4 +1,18 @@
-export const isTauri = () => Boolean((window as Window & { __TAURI__?: unknown }).__TAURI__);
+const hasWindowBridge = () => {
+  if (typeof window === "undefined") return false;
+  const candidate = window as Window &
+    {
+      __TAURI__?: unknown;
+      __TAURI_IPC__?: unknown;
+      __TAURI_INTERNALS__?: unknown;
+    };
+  return Boolean(candidate.__TAURI__ || candidate.__TAURI_IPC__ || candidate.__TAURI_INTERNALS__);
+};
+
+export const isTauri = () =>
+  hasWindowBridge() ||
+  navigator?.userAgent?.includes?.("Tauri") ||
+  Boolean((globalThis as typeof globalThis & { __TAURI__?: unknown }).__TAURI__);
 
 export const initializeDesktopIntegrations = async () => {
   if (!isTauri()) return;

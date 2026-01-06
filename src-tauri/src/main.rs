@@ -5,7 +5,6 @@ use tauri::{
     tray::{TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
 };
-use tauri_plugin_notification::NotificationExt;
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let tray_menu = MenuBuilder::new(app)
@@ -56,19 +55,13 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_http::init())
         .setup(|app| {
             build_tray(&app.handle())?;
 
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
             }
-
-            let _ = app
-                .notification()
-                .builder()
-                .title("Private Chat")
-                .body("Private Chat is running in the background.")
-                .show();
 
             Ok(())
         })
