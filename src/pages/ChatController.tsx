@@ -174,21 +174,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
     ]
   );
 
-  // Wrapper function that matches the signature expected by NewChat and Home
-  // Accepts optional conversationId - if not provided, gets from route params
-  const startStreamWrapper = useCallback(
-    async (contentItems: ContentItem[], webSearchEnabled: boolean, conversationId?: string) => {
-      // Use provided conversationId or get from route params
-      const finalConversationId = conversationId || params.chatId;
-      if (!finalConversationId) {
-        console.error("Conversation ID not available");
-        return;
-      }
-      return startStream(contentItems, webSearchEnabled, finalConversationId);
-    },
-    [startStream, params.chatId]
-  );
-
   // Stop function to cancel active streams
   const stopResponse = useCallback(() => {
     const chatId = params.chatId;
@@ -233,13 +218,13 @@ export default function ChatController({ children }: { children?: React.ReactNod
   // Determine which component to render based on route
   const renderComponent = useMemo(() => {
     if (location.pathname === APP_ROUTES.HOME) {
-      return <NewChat startStream={startStreamWrapper} stopResponse={stopResponse} />;
+      return <NewChat startStream={startStream} stopResponse={stopResponse} />;
     }
     if (location.pathname.startsWith("/c/")) {
-      return <Home startStream={startStreamWrapper} stopResponse={stopResponse} />;
+      return <Home startStream={startStream} stopResponse={stopResponse} />;
     }
     return children;
-  }, [location.pathname, children, startStreamWrapper, stopResponse]);
+  }, [location.pathname, children, startStream, stopResponse]);
 
   return <>{renderComponent}</>;
 }

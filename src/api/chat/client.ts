@@ -338,8 +338,8 @@ class ChatClient extends ApiClient {
     queryClient,
     tools,
     include,
-    onReaderReady,
     previous_response_id,
+    onReaderReady,
   }: StartStreamProps & {
     onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
   }) {
