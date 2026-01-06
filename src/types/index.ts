@@ -467,7 +467,7 @@ export interface Config {
 
 export type RemoteConfig = {
   default_model: string;
-} | null
+} | null;
 
 // Banner types
 export interface Banner {

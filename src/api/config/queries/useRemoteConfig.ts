@@ -11,8 +11,7 @@ type NormalizedRemoteConfig = {
 type UseRemoteConfigOptions = Omit<UseQueryOptions<NormalizedRemoteConfig, Error>, "queryKey" | "queryFn">;
 
 const normalizeRemoteConfig = (config?: RemoteConfig | null): NormalizedRemoteConfig => ({
-  ...config,
-  default_model: config?.default_model ?? DEFAULT_MODEL,
+  default_model: config?.default_model || DEFAULT_MODEL,
 });
 
 export const useRemoteConfig = (options?: UseRemoteConfigOptions) => {
