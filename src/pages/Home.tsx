@@ -259,6 +259,7 @@ const Home = ({
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
         isConversationStreamActive={currentStreamIsActive}
+        autoFocusKey={chatId ?? "home"}
       />
     </div>
   );

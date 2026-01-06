@@ -61,6 +61,7 @@ interface MessageInputProps {
   toolsDisabled?: boolean;
   isMessageCompleted?: boolean;
   isConversationStreamActive?: boolean;
+  autoFocusKey?: string | number | boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
@@ -86,6 +87,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolsDisabled = false,
   isMessageCompleted = true,
   isConversationStreamActive = false,
+  autoFocusKey = "default",
 }) => {
   const { settings } = useSettingsStore();
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -110,6 +112,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const focusInput = useCallback(() => {
+    if (!chatInputRef.current) return;
+    setTimeout(() => chatInputRef.current?.focus(), 0);
+  }, []);
 
   const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : (selectedModels ?? []))].filter(
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
@@ -204,9 +210,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setLoaded(true);
     if (isEditingChatName) return;
 
-    const chatInput = document.getElementById("chat-input");
-    setTimeout(() => chatInput?.focus(), 0);
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setDragged(false);
@@ -250,6 +253,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
       dropzoneElement?.removeEventListener("dragleave", onDragLeave);
     };
   }, [inputFilesHandler, isEditingChatName]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (isEditingChatName) return;
+    if (autoFocusKey === undefined) return;
+    focusInput();
+  }, [autoFocusKey, focusInput, isEditingChatName, loaded]);
 
   const scrollToBottom = () => {
     const element = document.getElementById("messages-container");
