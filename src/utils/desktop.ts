@@ -30,8 +30,6 @@ export const initializeDesktopIntegrations = async () => {
   } catch (error) {
     console.warn("Tauri updater check failed:", error);
   }
-
-  // Notification toast handled on the Rust side during setup (src-tauri/src/main.rs)
 };
 
 export type DesktopOAuthPayload = {
