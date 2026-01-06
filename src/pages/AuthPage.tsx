@@ -19,6 +19,7 @@ import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
+import { KeyRound } from "lucide-react";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
 
@@ -70,6 +71,72 @@ const AuthPage: React.FC = () => {
   const handleOAuthLogin = (provider: OAuth2Provider) => {
     if (!checkAgreeTerms()) return;
     authClient.oauth2SignIn(provider);
+  };
+
+  const base64UrlToBytes = (value: string) => {
+    let padded = value.replace(/-/g, "+").replace(/_/g, "/");
+    if (padded.length % 4 !== 0) {
+      padded += "=".repeat(4 - (padded.length % 4));
+    }
+    const decoded = window.atob(padded);
+    return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
+  };
+
+  const bytesToBase64Url = (value: ArrayBuffer) => {
+    const bytes = new Uint8Array(value);
+    const binary = String.fromCharCode(...bytes);
+    return window.btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!checkAgreeTerms()) return;
+
+    if (!window.PublicKeyCredential) {
+      toast.error("Passkeys aren't supported in this browser.");
+      return;
+    }
+
+    try {
+      const options = await authClient.getPasskeyChallenge();
+      const publicKey: PublicKeyCredentialRequestOptions = {
+        challenge: base64UrlToBytes(options.challenge),
+        timeout: options.timeout,
+        rpId: options.rp_id,
+        allowCredentials: options.allow_credentials?.map((credential) => ({
+          id: base64UrlToBytes(credential.id),
+          type: credential.type,
+          transports: credential.transports,
+        })),
+        userVerification: options.user_verification,
+      };
+
+      const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
+
+      if (!credential) {
+        toast.error("Passkey authentication was cancelled.");
+        return;
+      }
+
+      const response = credential.response as AuthenticatorAssertionResponse;
+      const payload = {
+        id: credential.id,
+        raw_id: bytesToBase64Url(credential.rawId),
+        type: credential.type,
+        response: {
+          client_data_json: bytesToBase64Url(response.clientDataJSON),
+          authenticator_data: bytesToBase64Url(response.authenticatorData),
+          signature: bytesToBase64Url(response.signature),
+          user_handle: response.userHandle ? bytesToBase64Url(response.userHandle) : null,
+        },
+      };
+
+      const result = await authClient.verifyPasskey(payload);
+      await completeLogin(result.token, result.session_id, result.is_new_user);
+      navigate(APP_ROUTES.HOME, { replace: true });
+    } catch (error) {
+      console.error("Passkey login failed:", error);
+      toast.error("Failed to sign in with passkey.");
+    }
   };
 
   const handleNearLogin = async () => {
@@ -150,6 +217,13 @@ const AuthPage: React.FC = () => {
 
               <hr className="my-4 h-px w-full border-0" />
               <div className="flex flex-col space-y-2">
+                <Button onClick={handlePasskeyLogin} className="rounded-full" variant="secondary">
+                  <KeyRound className="mr-3 h-6 w-6" />
+                  <span className="flex min-w-40">Continue with Passkey</span>
+                </Button>
+                <p className="px-4 text-xs text-muted-foreground">
+                  Creates a NEAR account automatically so you can sign in without a wallet.
+                </p>
                 <Button className="rounded-full" onClick={() => handleOAuthLogin("google")} variant="secondary">
                   <GoogleIcon className="mr-3 h-6 w-6" />
                   <span className="flex min-w-40">Continue with Google</span>
