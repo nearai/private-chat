@@ -1,3 +1,5 @@
+import type { UnlistenFn } from "@tauri-apps/api/event";
+
 const hasWindowBridge = () => {
   if (typeof window === "undefined") return false;
   const candidate = window as Window &
@@ -30,4 +32,30 @@ export const initializeDesktopIntegrations = async () => {
   }
 
   // Notification toast handled on the Rust side during setup (src-tauri/src/main.rs)
+};
+
+export type DesktopOAuthPayload = {
+  token?: string;
+  sessionId?: string;
+  isNewUser?: boolean;
+  oauthChannel?: string | null;
+};
+
+export const getDesktopOAuthCallbackUrl = async (): Promise<string> => {
+  if (!isTauri()) {
+    throw new Error("Desktop OAuth callback URL requested outside of Tauri runtime.");
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string>("desktop_oauth_callback_url");
+};
+
+export const listenForDesktopOAuth = async (
+  handler: (payload: DesktopOAuthPayload) => void
+): Promise<UnlistenFn | null> => {
+  if (!isTauri()) return null;
+  const { listen } = await import("@tauri-apps/api/event");
+  const unlisten = await listen<DesktopOAuthPayload>("desktop://oauth-complete", (event) => {
+    handler(event.payload);
+  });
+  return unlisten;
 };

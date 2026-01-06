@@ -1,5 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod oauth;
+
+use oauth::ensure_oauth_server;
 use tauri::{
     menu::MenuBuilder,
     tray::{TrayIconBuilder, TrayIconEvent},
@@ -49,6 +52,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+#[tauri::command]
+fn desktop_oauth_callback_url(app: AppHandle) -> Result<String, String> {
+    ensure_oauth_server(app).map_err(|err| err.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -56,6 +64,7 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_http::init())
+        .invoke_handler(tauri::generate_handler![desktop_oauth_callback_url])
         .setup(|app| {
             build_tray(&app.handle())?;
 

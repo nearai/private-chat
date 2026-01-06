@@ -27,6 +27,7 @@
               "allow": [
                 { "url": "https://private.near.ai/*" },
                 { "url": "https://*.near.ai/*" },
+                { "url": "https://*.ngrok-free.app/*" },
                 { "url": "http://localhost:*/*" },
                 { "url": "http://127.0.0.1:*/*" }
               ]
@@ -53,6 +54,9 @@
     "icon": ["icons/icon.png"]
   },
   "plugins": {
+    "shell": {
+      "open": "https?://.+"
+    },
     "updater": {
       "active": true,
       "dialog": true,

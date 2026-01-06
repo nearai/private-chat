@@ -139,15 +139,6 @@ export class ApiClient {
 
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
       const requestUrl = `${baseURL}${endpoint}`;
-      if (isTauri()) {
-        try {
-          const { origin } = new URL(requestUrl);
-          headers.Origin = origin;
-          headers.origin = origin;
-        } catch (error) {
-          console.warn("Failed to normalize origin header:", error);
-        }
-      }
       const httpFetch = await getHttpClient();
       const response = await httpFetch(requestUrl, {
         ...options,
@@ -284,15 +275,6 @@ export class ApiClient {
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
       const requestUrl = `${baseURL}${endpoint}`;
-      if (isTauri()) {
-        try {
-          const { origin } = new URL(requestUrl);
-          headers.Origin = origin;
-          headers.origin = origin;
-        } catch (error) {
-          console.warn("Failed to normalize origin header:", error);
-        }
-      }
       const httpFetch = await getHttpClient();
       const response = await httpFetch(requestUrl, {
         ...requestOptions,

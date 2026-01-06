@@ -19,12 +19,11 @@ import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
-import { isTauri } from "@/utils/desktop";
+import { getDesktopOAuthCallbackUrl, isTauri, listenForDesktopOAuth } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
 
 const TERMS_VERSION = "V1";
-const AUTH_PAGE_PATH = APP_ROUTES.AUTH.replace("/*", "") || "/auth";
 
 type OAuthCompleteEvent = {
   token: string;
@@ -32,12 +31,18 @@ type OAuthCompleteEvent = {
   isNewUser: boolean;
 };
 
+const OAUTH_STORAGE_PREFIX = "desktop-oauth-channel:";
+const buildOAuthChannelStorageKey = (channelId: string) => `${OAUTH_STORAGE_PREFIX}${channelId}`;
+
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const connectorRef = useRef<NearConnector | null>(null);
   const oauthChannelRef = useRef<BroadcastChannel | null>(null);
+  const storageListenerRef = useRef<((event: StorageEvent) => void) | null>(null);
+  const desktopOAuthUnlistenRef = useRef<(() => void) | null>(null);
+  const activeChannelIdRef = useRef<string | null>(null);
 
   const token = searchParams.get("token");
   const sessionId = searchParams.get("session_id");
@@ -86,30 +91,96 @@ const AuthPage: React.FC = () => {
       oauthChannelRef.current.close();
       oauthChannelRef.current = null;
     }
+    if (storageListenerRef.current) {
+      window.removeEventListener("storage", storageListenerRef.current);
+      storageListenerRef.current = null;
+    }
+    if (desktopOAuthUnlistenRef.current) {
+      desktopOAuthUnlistenRef.current();
+      desktopOAuthUnlistenRef.current = null;
+    }
+    if (activeChannelIdRef.current) {
+      try {
+        localStorage.removeItem(buildOAuthChannelStorageKey(activeChannelIdRef.current));
+      } catch (error) {
+        console.warn("Failed to clear OAuth storage cache:", error);
+      }
+      activeChannelIdRef.current = null;
+    }
   }, []);
 
-  const startOAuthChannelListener = useCallback(
-    (channelId: string) => {
-      try {
-        cleanupOAuthChannel();
-        const channel = new BroadcastChannel(channelId);
-        oauthChannelRef.current = channel;
-        channel.onmessage = (event) => {
-          const payload = event.data as OAuthCompleteEvent;
-          cleanupOAuthChannel();
-          completeLogin(payload.token, payload.sessionId, payload.isNewUser)
-            .then(() => navigate(APP_ROUTES.HOME, { replace: true }))
-            .catch((error) => {
-              console.error("Failed to finalize OAuth login:", error);
-              toast.error("Failed to complete login. Please try again.");
-            });
-        };
-      } catch (error) {
-        console.error("Failed to create OAuth channel:", error);
-        toast.error("Unable to start login flow. Please try again.");
-      }
+  const finalizeOAuth = useCallback(
+    (payload: OAuthCompleteEvent) => {
+      cleanupOAuthChannel();
+      completeLogin(payload.token, payload.sessionId, payload.isNewUser)
+        .then(() => navigate(APP_ROUTES.HOME, { replace: true }))
+        .catch((error) => {
+          console.error("Failed to finalize OAuth login:", error);
+          toast.error("Failed to complete login. Please try again.");
+        });
     },
     [cleanupOAuthChannel, completeLogin, navigate]
+  );
+
+  const startOAuthChannelListener = useCallback(
+    async (channelId: string) => {
+      cleanupOAuthChannel();
+      activeChannelIdRef.current = channelId;
+
+      const handlePayload = (payload: OAuthCompleteEvent) => finalizeOAuth(payload);
+
+      if (typeof window.BroadcastChannel === "function") {
+        try {
+          const channel = new BroadcastChannel(channelId);
+          oauthChannelRef.current = channel;
+          channel.onmessage = (event) => {
+            handlePayload(event.data as OAuthCompleteEvent);
+          };
+        } catch (error) {
+          console.error("Failed to create OAuth BroadcastChannel:", error);
+        }
+      }
+
+      const storageListener = (event: StorageEvent) => {
+        if (
+          event.key === buildOAuthChannelStorageKey(channelId) &&
+          typeof event.newValue === "string" &&
+          event.newValue.length > 0
+        ) {
+          try {
+            const parsed = JSON.parse(event.newValue) as OAuthCompleteEvent;
+            handlePayload(parsed);
+          } catch (error) {
+            console.error("Failed to parse OAuth payload from storage:", error);
+          }
+        }
+      };
+      window.addEventListener("storage", storageListener);
+      storageListenerRef.current = storageListener;
+
+      if (isTauri()) {
+        try {
+          const unlisten = await listenForDesktopOAuth((payload) => {
+            if (payload.oauthChannel && payload.oauthChannel !== channelId) {
+              return;
+            }
+            if (!payload.token || !payload.sessionId) {
+              console.warn("Received incomplete OAuth payload from desktop callback:", payload);
+              return;
+            }
+            handlePayload({
+              token: payload.token,
+              sessionId: payload.sessionId,
+              isNewUser: Boolean(payload.isNewUser),
+            });
+          });
+          desktopOAuthUnlistenRef.current = unlisten;
+        } catch (error) {
+          console.error("Failed to subscribe to desktop OAuth bridge:", error);
+        }
+      }
+    },
+    [cleanupOAuthChannel, finalizeOAuth]
   );
 
   useEffect(() => () => cleanupOAuthChannel(), [cleanupOAuthChannel]);
@@ -148,30 +219,15 @@ const AuthPage: React.FC = () => {
     return false;
   };
 
-  const buildOAuthCallbackUrl = (channelId: string) => {
-    const baseFromEnv = import.meta.env.VITE_DESKTOP_OAUTH_CALLBACK_URL;
-    const baseUrl = isTauri() ? baseFromEnv || "http://localhost:3000" : window.location.origin;
-    const callbackTarget = `${baseUrl.replace(/\/+$/, "")}${AUTH_PAGE_PATH}`;
-
-    try {
-      const callbackUrl = new URL(callbackTarget);
-      callbackUrl.searchParams.set("oauth_channel", channelId);
-      return callbackUrl.toString();
-    } catch (error) {
-      console.error("Invalid OAuth callback target:", callbackTarget, error);
-      throw new Error("Invalid OAuth callback URL. Please configure VITE_DESKTOP_OAUTH_CALLBACK_URL.");
-    }
-  };
-
   const handleOAuthLogin = async (provider: OAuth2Provider) => {
     if (!checkAgreeTerms()) return;
 
     if (isTauri()) {
       try {
         const channelId = crypto.randomUUID();
-        const callbackUrl = buildOAuthCallbackUrl(channelId);
-        const popupUrl = authClient.getOAuthUrl(provider, callbackUrl);
-        startOAuthChannelListener(channelId);
+        await startOAuthChannelListener(channelId);
+        const callbackUrl = await getDesktopOAuthCallbackUrl();
+        const popupUrl = authClient.getOAuthUrl(provider, callbackUrl, { oauthChannel: channelId });
         const openedExternally = await openExternalOAuthUrl(popupUrl);
         if (!openedExternally) {
           const openedWindow = window.open(popupUrl, "_blank", "noopener,noreferrer");
@@ -239,7 +295,51 @@ const AuthPage: React.FC = () => {
       return;
     }
 
-    completeLogin(token, sessionId ?? "", isNewUser)
+    const payload: OAuthCompleteEvent = {
+      token,
+      sessionId: sessionId ?? "",
+      isNewUser,
+    };
+
+    if (oauthChannelParam) {
+      let delivered = false;
+
+      if (typeof window.BroadcastChannel === "function") {
+        try {
+          const channel = new BroadcastChannel(oauthChannelParam);
+          channel.postMessage(payload);
+          channel.close();
+          delivered = true;
+        } catch (error) {
+          console.error("Failed to notify desktop app via BroadcastChannel:", error);
+        }
+      }
+
+      try {
+        localStorage.setItem(buildOAuthChannelStorageKey(oauthChannelParam), JSON.stringify(payload));
+        // storage event will fire on the desktop window; remove our copy shortly after
+        setTimeout(() => {
+          try {
+            localStorage.removeItem(buildOAuthChannelStorageKey(oauthChannelParam));
+          } catch (removeError) {
+            console.warn("Failed to cleanup OAuth storage cache:", removeError);
+          }
+        }, 250);
+        delivered = true;
+      } catch (storageError) {
+        console.error("Failed to notify desktop app via storage:", storageError);
+      }
+
+      if (delivered) {
+        setShowCloseTabMessage(true);
+        return;
+      }
+
+      toast.error("Unable to notify the desktop app. Please return to the application and try again.");
+      return;
+    }
+
+    completeLogin(payload.token, payload.sessionId, payload.isNewUser)
       .catch(() => toast.error("Failed to complete login."))
       .finally(() => navigate(APP_ROUTES.HOME, { replace: true }));
   }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam]);
