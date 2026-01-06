@@ -17,8 +17,10 @@ export default defineConfig({
       includeAssets: [
         "favicon.ico",
         "apple-touch-icon-180x180.png",
+        "pwa-64x64.png",
         "pwa-192x192.png",
         "pwa-512x512.png",
+        "maskable-icon-512x512.png",
       ],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
