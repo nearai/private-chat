@@ -11,6 +11,30 @@ export interface NearAuthResponse {
   is_new_user: boolean;
 }
 
+export interface PasskeyRequestOptions {
+  challenge: string;
+  timeout?: number;
+  rp_id?: string;
+  allow_credentials?: Array<{
+    id: string;
+    type: PublicKeyCredentialType;
+    transports?: AuthenticatorTransport[];
+  }>;
+  user_verification?: UserVerificationRequirement;
+}
+
+export interface PasskeyAssertionPayload {
+  id: string;
+  raw_id: string;
+  type: PublicKeyCredentialType;
+  response: {
+    client_data_json: string;
+    authenticator_data: string;
+    signature: string;
+    user_handle?: string | null;
+  };
+}
+
 class AuthClient extends ApiClient {
   constructor() {
     super({
@@ -105,6 +129,14 @@ class AuthClient extends ApiClient {
 
   oauth2SignIn(provider: OAuth2Provider) {
     window.location.href = `${this.baseURLV2}/auth/${provider}?frontend_callback=${window.location.origin}`;
+  }
+
+  async getPasskeyChallenge(): Promise<PasskeyRequestOptions> {
+    return this.get("/auth/passkey/options", { apiVersion: "v2" });
+  }
+
+  async verifyPasskey(payload: PasskeyAssertionPayload): Promise<NearAuthResponse> {
+    return this.post("/auth/passkey/verify", payload, { apiVersion: "v2" });
   }
 
   /**
