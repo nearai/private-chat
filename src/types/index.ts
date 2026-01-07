@@ -465,9 +465,9 @@ export interface Config {
   onboarding?: boolean;
 }
 
-export interface RemoteConfig {
+export type RemoteConfig = {
   default_model: string;
-}
+} | null;
 
 // Banner types
 export interface Banner {
