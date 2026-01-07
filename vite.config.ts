@@ -56,6 +56,11 @@ export default defineConfig({
             type: "image/png",
             purpose: "maskable",
           },
+          {
+            src: "apple-touch-icon-180x180.png",
+            sizes: "180x180",
+            type: "image/png",
+          },
         ],
       },
     }) as PluginOption,
