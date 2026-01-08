@@ -6,10 +6,10 @@ import { type JSX, useMemo } from "react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib";
 import markedExtension from "@/lib/utils/extension";
-import { processResponseContent, repairMalformedMarkup, replaceTokens, unescapeHtml } from "@/lib/utils/markdown";
+import { processResponseContent, replaceTokens, unescapeHtml } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import Collapsible from "../../common/Collapsible";
-import CodeBlock, { TAG_BASED_LANGUAGES } from "./CodeBlock";
+import CodeBlock from "./CodeBlock";
 import KatexRenderer from "./KatexRenderer";
 
 interface MarkdownTokensProps {
