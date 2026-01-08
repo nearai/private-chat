@@ -7,7 +7,11 @@ type DeleteChatParams = {
   id: string;
 };
 
-type MutationSuccessCallback = (data: void, variables: DeleteChatParams, context: unknown) => void | Promise<void>;
+type MutationSuccessCallback = (
+  data: undefined,
+  variables: DeleteChatParams,
+  context: unknown
+) => void | Promise<void>;
 
 type UseDeleteChatOptions = Omit<UseMutationOptions<void, Error, DeleteChatParams>, "mutationFn" | "onSuccess"> & {
   onSuccess?: MutationSuccessCallback;
@@ -19,10 +23,10 @@ export const useDeleteChat = (options?: UseDeleteChatOptions) => {
 
   return useMutation({
     mutationFn: ({ id }: DeleteChatParams) => chatClient.deleteConversation(id),
-    onSuccess: async (data, variables, context) => {
+    onSuccess: async (_data, variables, context) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.conversation.all });
       if (onSuccess) {
-        await onSuccess(data, variables, context);
+        await onSuccess(undefined, variables, context);
       }
     },
     ...restOptions,

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { useIsOnline } from "@/hooks/useIsOnline";
 
 interface DropdownItem {
   title?: string;
@@ -32,6 +33,7 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
 
   const { data: userData } = useUserData();
   const { mutateAsync: signOut } = useSignOut();
+  const isOnline = useIsOnline();
 
   // const isAdmin = user?.role === "admin";
 
@@ -73,10 +75,18 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger className="flex w-full items-center outline-none">
-          <Avatar className="size-[30px] self-center">
-            <AvatarImage src={userData?.user.avatar_url} alt={userData?.user.name ? `${userData.user.name}'s avatar` : "User avatar"} />
-            <AvatarFallback className="bg-muted/35">{(userData?.user.name || "U").slice(0, 2)}</AvatarFallback>
-          </Avatar>
+          <div className="relative self-center">
+            <Avatar className="size-[30px]">
+              <AvatarImage src={userData?.user.avatar_url} alt={userData?.user.name ? `${userData.user.name}'s avatar` : "User avatar"} />
+              <AvatarFallback className="bg-muted/35">{(userData?.user.name || "U").slice(0, 2)}</AvatarFallback>
+            </Avatar>
+            <span
+              className={cn(
+                "-bottom-0.5 -right-0.5 absolute h-2.5 w-2.5 rounded-full border border-background",
+                isOnline ? "bg-green-500" : "bg-red-500"
+              )}
+            />
+          </div>
           {!collapsed && <div className="ml-3 self-center whitespace-pre-wrap break-all font-medium">{userData?.user.name}</div>}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-full min-w-[240px] rounded-xl px-1 py-1.5" side="top" align="start">

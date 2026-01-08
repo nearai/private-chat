@@ -24,6 +24,13 @@ export type FileOpenAIResponse = {
     | "user_data";
 };
 
+export type FileContentResponse = {
+  content?: string;
+  url?: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
 export type FilesOpenaiResponse = {
   object: "list";
   data: FileOpenAIResponse[];

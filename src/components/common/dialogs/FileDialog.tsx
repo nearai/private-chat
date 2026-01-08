@@ -132,7 +132,7 @@ export default function FileDialog({
                     className="line-clamp-1 hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
-                      if (fileContent && fileContent.url) {
+                      if (fileContent?.url) {
                         window.open(
                           fileContent.type === "file" ? `${fileContent.url}/content` : `${fileContent.url}`,
                           "_blank"

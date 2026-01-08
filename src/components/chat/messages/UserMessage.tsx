@@ -102,7 +102,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
     await regenerateResponse(contentItems, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
     setEdit(false);
     setEditedContent("");
-  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, editedContent]);
+  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, editedContent, disabledSendButton]);
 
   useEffect(() => {
     if (edit && messageEditTextAreaRef.current) {

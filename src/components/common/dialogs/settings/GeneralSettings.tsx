@@ -74,6 +74,9 @@ const GeneralSettings = () => {
       setLanguages(langs);
     };
     loadLanguages();
+  }, []);
+
+  useEffect(() => {
     setNotificationEnabled(settings.notificationEnabled ?? false);
     setSystem(settings.system || "");
 
@@ -118,7 +121,7 @@ const GeneralSettings = () => {
         logit_bias: settingsParams.logit_bias ?? null,
       }));
     }
-  }, []);
+  }, [settings]);
 
   useEffect(() => {
     if (!remoteSettings) return;

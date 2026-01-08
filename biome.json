@@ -1,12 +1,9 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
   "vcs": {
-    "enabled": false,
+    "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": false
-  },
-  "files": {
-    "ignoreUnknown": false
+    "useIgnoreFile": true
   },
   "formatter": {
     "enabled": true,
@@ -32,7 +29,12 @@
       "suspicious": {
         "noConsole": {
           "options": {
-            "allow": ["assert", "error", "info", "warn"]
+            "allow": [
+              "assert",
+              "error",
+              "info",
+              "warn"
+            ]
           }
         },
         "noArrayIndexKey": "off"
@@ -53,8 +55,13 @@
           "level": "warn",
           "fix": "safe",
           "options": {
-            "attributes": ["className"],
-            "functions": ["cn", "cva"]
+            "attributes": [
+              "className"
+            ],
+            "functions": [
+              "cn",
+              "cva"
+            ]
           }
         }
       },
