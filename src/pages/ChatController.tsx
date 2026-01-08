@@ -180,7 +180,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
     if (chatId) {
       // Update conversation data to mark last assistant message as failed (stopped message)
       queryClient.setQueryData<Conversation>(queryKeys.conversation.byId(chatId), (old) => {
-        
         if (!old) return old;
 
         return produce(old, (draft) => {
@@ -208,6 +207,32 @@ export default function ChatController({ children }: { children?: React.ReactNod
           });
         });
       });
+
+      updateConversation((draft) => {
+        if (!draft.conversation) return draft;
+
+        const messages = draft.conversation.conversation.data ?? [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const item = messages[i];
+          if (
+            item.type === ConversationTypes.MESSAGE &&
+            item.role === ConversationRoles.ASSISTANT &&
+            item.status === "pending"
+          ) {
+            item.status = "completed";
+
+            if (draft.conversation.allMessages?.[item.id]) {
+              draft.conversation.allMessages[item.id].status = "completed";
+            }
+            if (draft.conversation.history?.messages?.[item.id]) {
+              draft.conversation.history.messages[item.id].status = "completed";
+            }
+            break;
+          }
+        }
+        return draft;
+      });
+
       stopStream(chatId);
     } else {
       // If no specific chat, stop all streams
