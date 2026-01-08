@@ -45,4 +45,5 @@ export const SUPPORTED_TEXT_EXTENSIONS = [
   ".desktop", ".service", ".plist", ".reg", ".inf", ".spec", ".feature", ".story", ".test", ".snap"
 ];
 
-export const ACCEPTED_FILE_TYPES = [".pdf", ...SUPPORTED_TEXT_EXTENSIONS].join(",");
+export const ACCEPTED_FILE_TYPES = SUPPORTED_TEXT_EXTENSIONS.join(",");
+// export const ACCEPTED_FILE_TYPES = [".pdf", ...SUPPORTED_TEXT_EXTENSIONS].join(",");
