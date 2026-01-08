@@ -275,7 +275,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                 </Table>
               </div>
               {/* Buttons */}
-              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:justify-end sm:gap-2">
+              <div className="mt-2 flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
                 <Button
                   variant="secondary"
                   className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
