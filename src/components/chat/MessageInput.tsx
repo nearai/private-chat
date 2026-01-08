@@ -255,9 +255,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, [inputFilesHandler, isEditingChatName]);
 
   useEffect(() => {
-    if (!loaded) return;
-    if (isEditingChatName) return;
-    if (autoFocusKey === undefined) return;
+    if (!loaded || isEditingChatName || autoFocusKey === undefined) return;
     focusInput();
   }, [autoFocusKey, focusInput, isEditingChatName, loaded]);
 
