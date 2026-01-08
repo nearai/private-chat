@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import AdminLayout from "@/components/layout/AdminLayot";
@@ -20,6 +21,7 @@ import { useUserStore } from "./stores/useUserStore";
 import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
 import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
+import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -27,11 +29,19 @@ function App() {
   const { setUser } = useUserStore();
   const navigate = useNavigate();
   const { isSettingsLoading } = useInitRemoteSettings();
+  const queryClient = useQueryClient();
 
-  const { isFetching: isModelsFetching } = useModels();
+  const {
+    isFetching: isRemoteConfigFetching,
+    data: remoteConfig,
+  } = useRemoteConfig();
+  const { isFetching: isModelsFetching } = useModels({
+    enabled: !!remoteConfig?.default_model && !isRemoteConfigFetching,
+    defaultModel: remoteConfig?.default_model,
+  });
   const { isFetching: isUserDataFetching } = useUserData();
 
-  const isDataLoading = isModelsFetching || isUserDataFetching;
+  const isDataLoading = isModelsFetching || isUserDataFetching || isRemoteConfigFetching;
   const isLoading = isAppLoading || isDataLoading || isSettingsLoading;
 
   useEffect(() => {
@@ -43,8 +53,9 @@ function App() {
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
+    queryClient.clear();
     navigate(APP_ROUTES.AUTH, { replace: true });
-  }, [navigate, setUser]);
+  }, [navigate, setUser, queryClient]);
 
   useEffect(() => {
     eventEmitter.on('logout', handleLogout);

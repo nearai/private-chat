@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 import MenuLines from "@/assets/icons/menu-lines.svg?react";
-import { cn } from "@/lib/time";
+import { cn } from "@/lib";
 import { ADMIN_ROUTES } from "@/pages/routes";
 import { useViewStore } from "@/stores/useViewStore";
 

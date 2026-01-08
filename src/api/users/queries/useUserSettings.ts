@@ -9,6 +9,7 @@ export const useUserSettings = (options?: UseUserSettingsOptions) => {
   return useQuery({
     queryKey: queryKeys.users.meSettings,
     queryFn: async () => await usersClient.getUserSettings(),
+    staleTime: Infinity,
     ...options,
   });
 };

@@ -170,7 +170,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
       />
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="font-medium text-lg">
               {t("Archived Chats")}
@@ -275,17 +275,17 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                 </Table>
               </div>
               {/* Buttons */}
-              <div className="mt-2 flex justify-end gap-2">
+              <div className="mt-2 flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
                 <Button
                   variant="secondary"
-                  className="h-9 rounded-3xl px-3.5"
+                  className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
                   onClick={() => setShowUnarchiveAllConfirmDialog(true)}
                 >
                   {t("Unarchive All Archived Chats")}
                 </Button>
                 <Button
                   variant="secondary"
-                  className="h-9 rounded-3xl px-3.5"
+                  className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
                   onClick={handleExport}
                 >
                   {t("Export All Archived Chats")}

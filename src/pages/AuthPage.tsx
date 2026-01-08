@@ -15,9 +15,9 @@ import GoogleIcon from "@/assets/icons/google-icon.svg?react";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import NearIcon from "@/assets/icons/near-icon-green.svg?react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
-import { cn } from "@/lib/time";
 import type { OAuth2Provider } from "@/types";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
@@ -152,15 +152,15 @@ const AuthPage: React.FC = () => {
               <div className="flex flex-col space-y-2">
                 <Button className="rounded-full" onClick={() => handleOAuthLogin("google")} variant="secondary">
                   <GoogleIcon className="mr-3 h-6 w-6" />
-                  <span>Continue with Google</span>
+                  <span className="flex min-w-40">Continue with Google</span>
                 </Button>
                 <Button onClick={() => handleOAuthLogin("github")} className="rounded-full" variant="secondary">
                   <GitHubIcon className="mr-3 h-6 w-6" />
-                  <span>Continue with GitHub</span>
+                  <span className="flex min-w-40">Continue with GitHub</span>
                 </Button>
                 <Button onClick={handleNearLogin} className="rounded-full" variant="secondary">
                   <NearIcon className="mr-3 h-6 w-6" />
-                  <span>Continue with NEAR</span>
+                  <span className="flex min-w-40">Continue with NEAR</span>
                 </Button>
               </div>
 
