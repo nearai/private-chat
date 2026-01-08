@@ -13,6 +13,7 @@ import type {
 
 import MessageVerifier from "./MessageVerifier";
 import { useStreamStore } from "@/stores/useStreamStore";
+import { useIsOnline } from "@/hooks/useIsOnline";
 
 interface MessagesVerifierProps {
   conversation?: ConversationInfo;
@@ -37,6 +38,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
   const { isStreamActive } = useStreamStore();
+  const isOnline = useIsOnline();
 
   const chatCompletions = useMemo(() => {
     if (!history) return [];
@@ -60,7 +62,14 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
 
   return (
     <div className="relative flex flex-1 flex-col gap-y-2 overflow-hidden">
-      <p className="font-medium text-green-dark text-xs leading-[normal]">{verifiedCount} Verified Messages</p>
+      <div className="flex flex-col gap-1">
+        <p className="font-medium text-green-dark text-xs leading-[normal]">{verifiedCount} Verified Messages</p>
+        {!isOnline && (
+          <p className="text-[11px] text-muted-foreground leading-[normal]">
+            {t("Offline. Showing cached verification results.", { defaultValue: "Offline. Showing cached verification results." })}
+          </p>
+        )}
+      </div>
 
       <div className="pointer-events-none absolute top-4 left-0 z-10 h-4 w-full bg-linear-to-b from-input via-50% via-input to-transparent" />
       <div className="pointer-events-none absolute bottom-0 left-0 z-10 h-4 w-full bg-linear-to-t from-input via-50% via-input to-transparent" />
@@ -71,7 +80,8 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
           const isCompleted = message.content.every((item) => item.status === "completed");
           if (!isCompleted) return null;
 
-          const msgHasSignature = messagesSignatures[message.chatCompletionId] || messagesSignaturesErrors[message.chatCompletionId];
+          const msgHasSignature =
+            messagesSignatures[message.chatCompletionId] || messagesSignaturesErrors[message.chatCompletionId];
           if (!msgHasSignature && conversation && isStreamActive(conversation.id)) {
             return null;
           }

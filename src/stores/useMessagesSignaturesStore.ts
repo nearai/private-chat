@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { MessageSignature } from "@/api/nearai/client";
+import { offlineCache } from "@/lib/offlineCache";
 
 export type ExtendedMessageSignature = MessageSignature & {
   verified?: boolean;
@@ -15,23 +16,32 @@ interface MessagesSignaturesState {
   clearAllSignatures: () => void;
 }
 
+const loadCachedSignatures = () => offlineCache.getMessageSignatures() ?? {};
+
 export const useMessagesSignaturesStore = create<MessagesSignaturesState>()((set) => ({
-  messagesSignatures: {},
+  messagesSignatures: loadCachedSignatures(),
   messagesSignaturesErrors: {},
   setMessageSignature: (chatCompletionId: string, signature: MessageSignature) =>
-    set((state) => ({
-      messagesSignatures: {
+    set((state) => {
+      const updated = {
         ...state.messagesSignatures,
         [chatCompletionId]: signature,
-      },
-    })),
+      };
+      offlineCache.saveMessageSignatures(updated);
+      return { messagesSignatures: updated };
+    }),
   removeMessageSignature: (chatCompletionId: string) =>
     set((state) => {
       const newSignatures = { ...state.messagesSignatures };
       delete newSignatures[chatCompletionId];
+      offlineCache.saveMessageSignatures(newSignatures);
       return { messagesSignatures: newSignatures };
     }),
-  clearAllSignatures: () => set({ messagesSignatures: {}, messagesSignaturesErrors: {} }),
+  clearAllSignatures: () =>
+    set(() => {
+      offlineCache.clearMessageSignatures();
+      return { messagesSignatures: {}, messagesSignaturesErrors: {} };
+    }),
   setMessageSignatureError: (chatCompletionId: string, error: string) =>
     set((state) => ({
       messagesSignaturesErrors: {

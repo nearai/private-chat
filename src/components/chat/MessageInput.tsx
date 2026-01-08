@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
@@ -60,6 +61,7 @@ interface MessageInputProps {
   toolsDisabled?: boolean;
   isMessageCompleted?: boolean;
   isConversationStreamActive?: boolean;
+  autoFocusKey?: string | number | boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
@@ -85,6 +87,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolsDisabled = false,
   isMessageCompleted = true,
   isConversationStreamActive = false,
+  autoFocusKey = "default",
 }) => {
   const { settings } = useSettingsStore();
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -98,6 +101,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
+  const isOnline = useIsOnline();
 
   useEffect(() => {
     if (isLowBalance) {
@@ -108,6 +112,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const focusInput = useCallback(() => {
+    if (!chatInputRef.current) return;
+    setTimeout(() => chatInputRef.current?.focus(), 0);
+  }, []);
 
   const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : (selectedModels ?? []))].filter(
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
@@ -202,9 +210,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setLoaded(true);
     if (isEditingChatName) return;
 
-    const chatInput = document.getElementById("chat-input");
-    setTimeout(() => chatInput?.focus(), 0);
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setDragged(false);
@@ -247,7 +252,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
       dropzoneElement?.removeEventListener("drop", onDrop);
       dropzoneElement?.removeEventListener("dragleave", onDragLeave);
     };
-  }, [inputFilesHandler]);
+  }, [inputFilesHandler, isEditingChatName]);
+
+  useEffect(() => {
+    if (!loaded || isEditingChatName || autoFocusKey === undefined) return;
+    focusInput();
+  }, [autoFocusKey, focusInput, isEditingChatName, loaded]);
 
   const scrollToBottom = () => {
     const element = document.getElementById("messages-container");
@@ -593,9 +603,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         ref={chatInputRef}
                         id="chat-input"
                         className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
-                        placeholder={placeholder || "How can I help you today?"}
+                        placeholder={
+                          !isOnline ? t("Not available offline (yet).", { defaultValue: "Not available offline (yet)." }) : placeholder || t("How can I help you today?")
+                        }
                         value={prompt}
-                        disabled={isLowBalance}
+                        disabled={isLowBalance || !isOnline}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
@@ -682,7 +694,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           className={cn("size-10 rounded-full")}
                           type="submit"
                           title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={disabledSendButton}
+                          disabled={disabledSendButton || !isOnline}
                           size="icon"
                         >
                           {isMessageCompleted ? (

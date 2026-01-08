@@ -23,7 +23,7 @@ const AdminUsersPage = () => {
           content: <Groups />,
         },
       ] as const,
-    []
+    [t]
   );
 
   return <TabbedContent tabs={tabs} defaultTab="overview" />;

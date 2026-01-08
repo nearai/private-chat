@@ -86,7 +86,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
     }
   };
 
-  const handleImport = async (json: any) => {
+  const handleImport = async (json: unknown) => {
     let loadingId: string | number = "";
     try {
       const conversions = historiesToConversations(json);
@@ -122,7 +122,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         refetch();
       }
 
-      onImportFinish && onImportFinish();
+      onImportFinish?.();
     } catch (error) {
       console.warn("Import error:", error);
       toast.error(`Failed to import chats: ${error}`);

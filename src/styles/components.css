@@ -238,17 +238,17 @@ pre code {
   height: 100%;
   font-size: 0.875rem;
   font-family: "Consolas", "Monaco", "Courier New", monospace;
-  overflow-anchor: none !important;
+  overflow-anchor: none;
 }
 
 .cm-scroller {
   overflow: auto;
-  overflow-anchor: none !important;
+  overflow-anchor: none;
 }
 
 .cm-content {
   padding: 0.5rem;
-  overflow-anchor: none !important;
+  overflow-anchor: none;
 }
 
 .cm-gutters {
