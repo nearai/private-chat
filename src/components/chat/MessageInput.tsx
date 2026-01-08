@@ -23,13 +23,14 @@ import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { History, Message, Model } from "@/types";
+import { ConversationRoles, ConversationTypes, type ConversationItem, type History, type Message, type Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
 import UserMenu from "../sidebar/UserMenu";
 import { Button } from "../ui/button";
 
 interface MessageInputProps {
   messages?: Message[];
+  allMessages?: Record<string, ConversationItem>
   onChange?: (data: {
     prompt: string;
     files: FileContentItem[];
@@ -66,6 +67,7 @@ const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
+  allMessages,
   createMessagePair = () => {},
   stopResponse = () => {},
   autoScroll = false,
@@ -276,7 +278,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     const isCtrlPressed = e.ctrlKey || e.metaKey;
 
     if (e.key === "Escape") {
-      stopResponse();
+      handleStopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
       // setImageGenerationEnabled(false);
@@ -369,8 +371,28 @@ const MessageInput: React.FC<MessageInputProps> = ({
     // This would be handled by parent component or store
   };
 
+  const disabledStopButton = useMemo(() => {
+    if (!isConversationStreamActive) return false;
+    if (!allMessages) return false;
+    const hasUnfinishedNonReasoning = Object.values(allMessages).some(
+      (msg) =>
+        msg.role === ConversationRoles.ASSISTANT &&
+        msg.status === "pending" &&
+        msg.type !== ConversationTypes.REASONING
+        && msg.type !== ConversationTypes.WEB_SEARCH_CALL
+    );
+
+    return !hasUnfinishedNonReasoning;
+  }, [isConversationStreamActive, allMessages]);
+
+  const handleStopResponse = () => {
+    if (!isConversationStreamActive) return;
+    if (disabledStopButton) return;
+    stopResponse();
+  }
+
   const renderSendButton = () => {
-    if (isConversationStreamActive) {
+    if (isConversationStreamActive && !disabledStopButton) {
       return (
         <div className="mr-1 flex shrink-0 space-x-1 self-end">
           <Button
@@ -379,7 +401,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
             type="button"
             title="Stop"
             size="icon"
-            onClick={stopResponse}
+            onClick={handleStopResponse}
           >
             <StopMessageIcon className="size-5" />
           </Button>
@@ -705,7 +727,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                     {(taskIds && taskIds.length > 0) ||
                     (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
                       <div className="mr-1 flex shrink-0 space-x-1 self-end">
-                        <Button size="icon" onClick={stopResponse} className="size-10">
+                        <Button size="icon" onClick={handleStopResponse} className="size-10">
                           <StopMessageIcon className="size-5" />
                         </Button>
                       </div>

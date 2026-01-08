@@ -252,6 +252,7 @@ const Home = ({
         isMessageCompleted={isMessageCompleted}
         stopResponse={stopResponse}
         isConversationStreamActive={currentStreamIsActive}
+        allMessages={allMessages}
       />
     </div>
   );
