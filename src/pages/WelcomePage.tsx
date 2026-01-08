@@ -80,6 +80,7 @@ const WelcomePage: React.FC = () => {
           fullWidth={false}
           setPrompt={handleInputChange}
           toolsDisabled={true}
+          autoFocusKey="welcome"
         />
       </ChatPlaceholder>
 
