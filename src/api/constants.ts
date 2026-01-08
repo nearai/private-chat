@@ -1,5 +1,6 @@
 export const APP_NAME = "NEAR AI Private Chat";
-export const DEPRECATED_API_BASE_URL = (import.meta.env.VITE_DEPRECATED_API_URL || "https://private.near.ai").replace(
+// TODO: remove DEPRECATED_API_BASE_URL from the project as there's no dependency on the legacy Private Chat any more
+export const DEPRECATED_API_BASE_URL = (import.meta.env.VITE_DEPRECATED_API_URL || "https://private-chat-legacy.near.ai").replace(
   /\/+$/,
   ""
 );
