@@ -1,6 +1,6 @@
 [package]
 name = "private-chat"
-version = "0.0.0"
+version = "0.1.10"
 description = "NEAR AI Private Chat"
 authors = ["NEAR AI"]
 license = "MIT"
