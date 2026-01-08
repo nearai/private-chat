@@ -92,57 +92,57 @@ export function posthogSignupStarted(authUrl: string) {
 export function posthogOauthSignup(userId: string, provider: string) {
   const userIdHash = sha256(userId);
 
+  posthogIdentify(userId, {
+    plan: "free",
+    signup_date: new Date().toISOString(),
+    oauth_provider: provider,
+  });
+
   posthogTrack("signup_completed", {
     user_id: userIdHash,
     method: "oauth",
     oauth_provider: provider,
     plan: "free",
-  });
-
-  posthogIdentify(userId, {
-    plan: "free",
-    signup_date: new Date().toISOString(),
-    oauth_provider: provider,
   });
 }
 
 export function posthogOauthLogin(userId: string, provider: string) {
   const userIdHash = sha256(userId);
 
+  posthogIdentify(userId);
+
   posthogTrack("login_completed", {
     user_id: userIdHash,
     method: "oauth",
     oauth_provider: provider,
     plan: "free",
   });
-
-  posthogIdentify(userId);
 }
 
 export function posthogEmailSignup(userId: string, email: string) {
   const userIdHash = sha256(userId);
-
-  posthogTrack("signup_completed", {
-    user_id: userIdHash,
-    method: "email",
-    plan: "free",
-  });
 
   posthogIdentify(userId, {
     plan: "free",
     signup_date: new Date().toISOString(),
     email_hash: sha256(email.toLowerCase()),
   });
+
+  posthogTrack("signup_completed", {
+    user_id: userIdHash,
+    method: "email",
+    plan: "free",
+  });
 }
 
 export function posthogEmailLogin(userId: string) {
   const userIdHash = sha256(userId);
+
+  posthogIdentify(userId);
 
   posthogTrack("login_completed", {
     user_id: userIdHash,
     method: "email",
     plan: "free",
   });
-
-  posthogIdentify(userId);
 }
