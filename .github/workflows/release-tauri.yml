@@ -30,6 +30,9 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install x86_64-apple-darwin target
+        run: rustup target add x86_64-apple-darwin
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
         env:
