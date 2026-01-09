@@ -28,7 +28,7 @@ export default defineConfig({
       manifest: {
         name: "NEAR AI",
         short_name: "NEAR AI",
-        description: "NEAR AI",
+        description: "NEAR AI Private Chat",
         theme_color: "#171717",
         background_color: "#171717",
         display: "standalone",
