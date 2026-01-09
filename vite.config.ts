@@ -26,8 +26,8 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
       },
       manifest: {
-        name: "NEAR AI Private Chat",
-        short_name: "Private Chat",
+        name: "NEAR AI",
+        short_name: "NEAR AI",
         description: "NEAR AI Private Chat",
         theme_color: "#171717",
         background_color: "#171717",
