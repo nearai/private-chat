@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { registerSW } from "virtual:pwa-register";
 
 export interface PWAUpdateState {
@@ -10,12 +10,16 @@ export interface PWAUpdateState {
 export function usePWAUpdate(): PWAUpdateState {
   const [needRefresh, setNeedRefresh] = useState(false);
   const [updateSW, setUpdateSW] = useState<((reloadPage?: boolean) => Promise<void>) | null>(null);
+  const isUpdatingRef = useRef(false);
 
   useEffect(() => {
     const updateServiceWorker = registerSW({
       immediate: true,
       onNeedRefresh() {
-        setNeedRefresh(true);
+        // Only set needRefresh if we're not already updating
+        if (!isUpdatingRef.current) {
+          setNeedRefresh(true);
+        }
       },
       onOfflineReady() {
         console.log("PWA offline ready");
@@ -32,8 +36,25 @@ export function usePWAUpdate(): PWAUpdateState {
   }, []);
 
   const handleUpdate = async (reloadPage = false) => {
-    if (updateSW) {
+    if (isUpdatingRef.current || !updateSW) {
+      return;
+    }
+
+    try {
+      isUpdatingRef.current = true;
+      setNeedRefresh(false);
+
       await updateSW(reloadPage);
+      
+      if (!reloadPage) {
+        isUpdatingRef.current = false;
+      }
+
+    } catch (error) {
+      console.error("Failed to update service worker:", error);
+      isUpdatingRef.current = false;
+      setNeedRefresh(true);
+      
       if (reloadPage) {
         window.location.reload();
       }
