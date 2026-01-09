@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./styles/global.css";
 import React from "react";
@@ -11,8 +10,6 @@ import { initPosthog } from "./lib/posthog.ts";
 
 initPosthog();
 initI18n(localStorage?.locale);
-
-registerSW({ immediate: true });
 
 const queryClient = new QueryClient({
   defaultOptions: {
