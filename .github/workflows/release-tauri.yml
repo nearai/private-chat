@@ -2,6 +2,8 @@ name: Release Tauri (macOS)
 
 on:
   push:
+    branches:
+      - ci/build-macos-app
     tags:
       - "v*"
 
@@ -45,6 +47,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "Private Chat ${{ github.ref_name }}"
           releaseBody: "See the assets to download this version."
-          releaseDraft: false
-          prerelease: false
+          releaseDraft: true
+          prerelease: true
           args: "--target universal-apple-darwin"
