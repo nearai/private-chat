@@ -356,7 +356,10 @@ class ChatClient extends ApiClient {
     tools,
     include,
     previous_response_id,
-  }: StartStreamProps) {
+    onReaderReady,
+  }: StartStreamProps & {
+    onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
+  }) {
     const input = Array.isArray(content)
       ? [{ role, content }]
       : [{ role, content: [{ type: "input_text", text: content }] }];
@@ -373,7 +376,7 @@ class ChatClient extends ApiClient {
         signing_algo: DEFAULT_SIGNING_ALGO,
         previous_response_id,
       },
-      { apiVersion: "v2", queryClient }
+      { apiVersion: "v2", queryClient, onReaderReady }
     );
   }
 
