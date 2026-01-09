@@ -556,7 +556,7 @@ export interface StartStreamProps {
   systemPrompt?: string;
   model: string;
   role: "user" | "assistant";
-  content: string | any[];
+  content: string | ContentItem[];
   conversation?: string;
   queryClient: QueryClient;
   tools?: Tool[];

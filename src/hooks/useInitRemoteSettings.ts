@@ -3,10 +3,12 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import { useChatStore } from "@/stores/useChatStore";
 import { useEffect } from "react";
 
-export default function useInitRemoteSettings() {
+export default function useInitRemoteSettings(enabled: boolean) {
   const { setTheme } = useTheme();
   const { setWebSearchEnabled } = useChatStore();
-  const { data: remoteSettings, isLoading } = useUserSettings();
+  const { data: remoteSettings, isLoading } = useUserSettings({
+    enabled,
+  });
 
   useEffect(() => {
     if (!remoteSettings?.settings) return;
@@ -19,6 +21,6 @@ export default function useInitRemoteSettings() {
   }, [remoteSettings, setTheme, setWebSearchEnabled]);
 
   return {
-    isSettingsLoading: isLoading,
+    isSettingsLoading: enabled ? isLoading : false,
   };
 }

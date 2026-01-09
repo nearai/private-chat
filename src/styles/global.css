@@ -176,6 +176,6 @@
 
 .pdf-export-container {
   .message-verification-badge, .message-codeblock-buttons {
-    opacity: 0 !important;
+    opacity: 0;
   }
 }

@@ -20,6 +20,7 @@ import {
 import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
 import { useConversationStore } from "@/stores/useConversationStore";
+import { useIsOnline } from "@/hooks/useIsOnline";
 
 interface MessageVerifierProps {
   conversation?: ConversationInfo;
@@ -44,6 +45,10 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   } = useMessagesSignaturesStore();
   const { selectedMessageIdForVerifier, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails } =
     useViewStore();
+  const signature = messagesSignatures[message.chatCompletionId];
+  const signatureError = messagesSignaturesErrors[message.chatCompletionId];
+  const hasSignatureData = Boolean(signature?.signature && signature?.signing_address && signature?.text);
+  const isOnline = useIsOnline();
 
   const isSelected = useMemo(() => {
     return selectedMessageIdForVerifier === message.chatCompletionId;
@@ -56,10 +61,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   const [showDetails, setShowDetails] = useState(false);
   const [showVerifySignatureDialog, setShowVerifySignatureDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerified, setIsVerified] = useState<boolean | null>(null);
-
-  const signature = messagesSignatures[message.chatCompletionId];
-  const signatureError = messagesSignaturesErrors[message.chatCompletionId];
+  const [isVerified, setIsVerified] = useState<boolean | null>(hasSignatureData ? signature?.verified ?? null : null);
 
   const content = message.content
     .filter((item) => item.type === ConversationTypes.MESSAGE)
@@ -77,6 +79,8 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
         return;
       }
     }
+
+    if (!isOnline) return;
 
     setIsLoading(true);
     removeMessageSignatureError(message.chatCompletionId);
@@ -115,10 +119,11 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     setMessageSignature,
     removeMessageSignatureError,
     setMessageSignatureError,
+    isOnline,
   ]);
 
   useEffect(() => {
-    if (signature?.signature && signature?.signing_address && signature?.text) {
+    if (hasSignatureData && signature) {
       if (isVerified === null) {
         const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
         setIsVerified(isValid);
@@ -127,10 +132,20 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
           setMessageSignature(message.chatCompletionId, { ...signature, verified: isValid });
         }
       }
-    } else if (!signature && !isLoading && !signatureError) {
+    } else if (!signature && !isLoading && !signatureError && isOnline) {
       fetchSignature();
     }
-  }, [signature, message.chatCompletionId, isVerified, isLoading, signatureError, fetchSignature, setMessageSignature]);
+  }, [
+    signature,
+    hasSignatureData,
+    message.chatCompletionId,
+    isVerified,
+    isLoading,
+    signatureError,
+    fetchSignature,
+    setMessageSignature,
+    isOnline,
+  ]);
 
   useEffect(() => {
     if (isSelected) {
@@ -267,16 +282,38 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
             renderErrorDetails()
           ) : (
             <>
-              <button
-                className={cn(
-                  "flex items-center text-xs transition-colors",
-                  isVerified ? "text-green hover:text-green-dark" : "text-destructive hover:text-destructive/80"
-                )}
-                onClick={openVerifySignatureDialog}
-              >
-                <ArrowTopRightOnSquareIcon className="mr-1 h-3 w-3" />
-                {isVerified ? t("Verified ECDSA Signature") : t("Invalid ECDSA Signature")}
-              </button>
+              {hasSignatureData ? (
+                <button
+                  className={cn(
+                    "flex items-center text-xs transition-colors",
+                    isVerified === true
+                      ? "text-green hover:text-green-dark"
+                      : isVerified === false
+                        ? "text-destructive hover:text-destructive/80"
+                        : "text-muted-foreground"
+                  )}
+                  onClick={openVerifySignatureDialog}
+                >
+                  <ArrowTopRightOnSquareIcon className="mr-1 h-3 w-3" />
+                  {isVerified === true
+                    ? t("Verified ECDSA Signature")
+                    : isVerified === false
+                      ? t("Invalid ECDSA Signature")
+                      : t("Verification pending", { defaultValue: "Verification pending" })}
+                </button>
+              ) : (
+                <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-muted/30 p-3 text-muted-foreground text-xs">
+                  <p className="flex-1">
+                    {isOnline
+                      ? t("Signature data will show when verification completes.", {
+                          defaultValue: "Signature data will show when verification completes.",
+                        })
+                      : t("Offline. Signature data will sync when you're back online.", {
+                          defaultValue: "Offline. Signature data will sync when you're back online.",
+                        })}
+                  </p>
+                </div>
+              )}
               <div className="flex flex-col gap-4">
                 {details.map((detail) => (
                   <div key={detail.label} className="flex flex-col gap-1">

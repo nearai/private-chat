@@ -45,7 +45,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           content: <AboutSettings />,
         },
       ] as const,
-    [t]
+    [t, onOpenChange]
   );
 
   return (

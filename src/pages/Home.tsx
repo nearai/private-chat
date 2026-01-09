@@ -75,7 +75,7 @@ const Home = ({
         const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
         if (lastMsg) {
           prevRespId = lastMsg.getAttribute("data-response-id") || undefined;
-          if (prevRespId && prevRespId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+          if (prevRespId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
             prevRespId = unwrapMockResponseID(prevRespId);
           }
         }
@@ -104,6 +104,8 @@ const Home = ({
   }, [chatId, isStreamActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
+  const lastConversationMessage = conversationData?.data?.at(-1);
+
   useEffect(() => {
     if (!conversationData?.id) return;
     if (modelInitializedRef.current) return;
@@ -118,7 +120,7 @@ const Home = ({
       return;
     }
 
-    const lastMsg = conversationData.data.at(-1);
+    const lastMsg = lastConversationMessage;
     const newModels = [...selectedModelsRef.current];
     const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
     let msgModel = lastMsg?.model;
@@ -132,7 +134,14 @@ const Home = ({
     newModels[0] = msgModel ?? newModels[0] ?? "";
     setSelectedModels(newModels);
     modelInitializedRef.current = true;
-  }, [conversationData?.id, searchParams, remoteConfig.data?.default_model, setSelectedModels]);
+  }, [
+    conversationData?.id,
+    lastConversationMessage,
+    searchParams,
+    remoteConfig.data?.default_model,
+    setSelectedModels,
+    setSearchParams,
+  ]);
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
@@ -253,6 +262,7 @@ const Home = ({
         stopResponse={stopResponse}
         isConversationStreamActive={currentStreamIsActive}
         allMessages={allMessages}
+        autoFocusKey={chatId ?? "home"}
       />
     </div>
   );

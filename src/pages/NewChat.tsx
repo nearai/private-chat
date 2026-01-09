@@ -212,6 +212,7 @@ export default function NewChat({
             prompt={inputValue}
             setPrompt={setInputValue}
             stopResponse={stopResponse}
+            autoFocusKey="new-chat"
           />
           <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
             <div className="mx-5">

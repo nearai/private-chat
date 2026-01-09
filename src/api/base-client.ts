@@ -5,6 +5,7 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { isOfflineError, isOnline } from "@/lib/network";
 import { eventEmitter } from "@/lib/event";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
@@ -18,6 +19,40 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
+import { isTauri } from "@/utils/desktop";
+
+type FetchImplementation = typeof fetch;
+
+let fetchPromise: Promise<FetchImplementation> | null = null;
+
+const getBrowserFetch = (): FetchImplementation => {
+  if (typeof window !== "undefined" && typeof window.fetch === "function") {
+    return window.fetch.bind(window);
+  }
+  if (typeof globalThis.fetch === "function") {
+    return globalThis.fetch.bind(globalThis);
+  }
+  throw new Error("Fetch API is unavailable in this environment.");
+};
+
+const getHttpClient = async (): Promise<FetchImplementation> => {
+  if (!isTauri()) {
+    return getBrowserFetch();
+  }
+
+  if (fetchPromise) {
+    return fetchPromise;
+  }
+
+  fetchPromise = import("@tauri-apps/plugin-http")
+    .then(({ fetch }) => fetch)
+    .catch((error) => {
+      console.warn("Falling back to browser fetch:", error);
+      return getBrowserFetch();
+    });
+
+  return fetchPromise;
+};
 
 export interface ApiClientOptions {
   baseURL?: string;
@@ -60,8 +95,11 @@ export class ApiClient {
     } = options;
     const openAIToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
-    this.baseURLV1 = `${baseURL}${apiPrefix}`;
-    this.baseURLV2 = `${baseURLNgrok}/v1`;
+    const normalizeUrl = (value: string) => value.replace(/\/+$/, "");
+    const normalizePath = (value: string) => (value.startsWith("/") ? value : `/${value}`);
+
+    this.baseURLV1 = `${normalizeUrl(baseURL)}${normalizePath(apiPrefix)}`;
+    this.baseURLV2 = `${normalizeUrl(baseURLNgrok)}/v1`;
     this.defaultHeaders = defaultHeaders;
     this.includeAuth = includeAuth;
     this.openAIClient = new OpenAI({
@@ -95,14 +133,45 @@ export class ApiClient {
           throw new Error(`No token found, ${endpoint} request aborted`);
         }
       }
+      if (!isOnline()) {
+        throw { detail: "You are offline. Please check your internet connection.", status: 0, offline: true };
+      }
+
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
-      const response = await fetch(`${baseURL}${endpoint}`, {
+      const requestUrl = `${baseURL}${endpoint}`;
+      const httpFetch = await getHttpClient();
+      const response = await httpFetch(requestUrl, {
         ...options,
         headers,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      const isHtmlResponse = contentType.includes("text/html");
+
+      if (!response.ok || isHtmlResponse) {
+        let error: unknown;
+        if (isHtmlResponse) {
+          const text = await response.text().catch(() => "");
+          error = {
+            detail: `Received an HTML response from ${requestUrl}. This usually means the API base URL is pointing at the frontend instead of the backend. Check your VITE_DEPRECATED_API_URL and VITE_CHAT_API_URL settings.`,
+            status: response.status,
+            snippet: text ? text.slice(0, 200) : undefined,
+          };
+        } else if (contentType.includes("application/json")) {
+          try {
+            error = await response.json();
+          } catch (parseError) {
+            const text = await response.text().catch(() => "");
+            error = { detail: text || (parseError as Error).message || response.statusText };
+          }
+        } else {
+          const text = await response.text().catch(() => "");
+          try {
+            error = text ? JSON.parse(text) : { detail: response.statusText };
+          } catch {
+            error = { detail: text || response.statusText };
+          }
+        }
         if (response.status === 401) {
           eventEmitter.emit("logout");
         }
@@ -114,9 +183,19 @@ export class ApiClient {
         return {} as T; // Return empty object for 204 No Content
       }
 
-      return await response.json();
+      if (contentType.includes("application/json")) {
+        return (await response.json()) as T;
+      }
+      const fallbackText = await response.text();
+      try {
+        return JSON.parse(fallbackText || "{}") as T;
+      } catch {
+        return { detail: fallbackText || response.statusText } as T;
+      }
     } catch (err) {
-      console.error(err);
+      if (!isOfflineError(err)) {
+        console.error(err);
+      }
       // biome-ignore lint/suspicious/noExplicitAny: explanation
       throw (err as any)?.detail || err || "An unknown error occurred";
     }
@@ -198,7 +277,9 @@ export class ApiClient {
         }
       }
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
-      const response = await fetch(`${baseURL}${endpoint}`, {
+      const requestUrl = `${baseURL}${endpoint}`;
+      const httpFetch = await getHttpClient();
+      const response = await httpFetch(requestUrl, {
         ...requestOptions,
         headers,
       });

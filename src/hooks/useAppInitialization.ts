@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useConfig } from "@/api/config/queries";
 import { queryKeys } from "@/api/query-keys";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { initializeDesktopIntegrations } from "@/utils/desktop";
 
 export const useAppInitialization = () => {
   const queryClient = useQueryClient();
@@ -18,6 +19,8 @@ export const useAppInitialization = () => {
       setIsLoading(true);
 
       try {
+        await initializeDesktopIntegrations();
+
         const hash = window.location.hash.substring(1);
         if (hash) {
           const params = new URLSearchParams(hash);

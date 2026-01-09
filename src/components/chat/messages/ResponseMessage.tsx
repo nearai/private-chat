@@ -87,6 +87,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       return null;
     }
 
+    if (signature?.verified === true) {
+      return "verified";
+    }
+
+    if (signature?.verified === false) {
+      return "failed";
+    }
+
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
@@ -105,7 +113,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, conversationImportedAt, isBatchCompleted]);
+  }, [signature, signatureError, isMessageCompleted, conversationImportedAt, isBatchCompleted, messageId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
@@ -122,7 +130,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
     let prevResponseId = batch?.parentResponseId || undefined;
-    if (prevResponseId && prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+    if (prevResponseId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
       prevResponseId = unwrapMockResponseID(prevResponseId);
     }
     await regenerateResponse(

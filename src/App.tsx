@@ -22,30 +22,36 @@ import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
 import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
+import { offlineCache } from "./lib/offlineCache";
+import { useIsOnline } from "./hooks/useIsOnline";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
   const { setUser } = useUserStore();
   const navigate = useNavigate();
-  const { isSettingsLoading } = useInitRemoteSettings();
   const queryClient = useQueryClient();
+  const hasAuthToken = typeof window !== "undefined" && Boolean(localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN));
+  const isOnline = useIsOnline();
+  const canFetchAuthenticatedData = hasAuthToken && isOnline;
+  const { isSettingsLoading } = useInitRemoteSettings(canFetchAuthenticatedData);
 
   const {
     isFetching: isRemoteConfigFetching,
     data: remoteConfig,
-  } = useRemoteConfig();
+  } = useRemoteConfig({ enabled: canFetchAuthenticatedData });
   const { isFetching: isModelsFetching } = useModels({
-    enabled: !!remoteConfig?.default_model && !isRemoteConfigFetching,
+    enabled: canFetchAuthenticatedData && !!remoteConfig?.default_model && !isRemoteConfigFetching,
     defaultModel: remoteConfig?.default_model,
   });
-  const { isFetching: isUserDataFetching } = useUserData();
+  const { isFetching: isUserDataFetching } = useUserData({ enabled: canFetchAuthenticatedData });
 
-  const isDataLoading = isModelsFetching || isUserDataFetching || isRemoteConfigFetching;
-  const isLoading = isAppLoading || isDataLoading || isSettingsLoading;
+  const shouldFetchData = canFetchAuthenticatedData;
+  const isDataLoading = shouldFetchData ? isModelsFetching || isUserDataFetching || isRemoteConfigFetching : false;
+  const isLoading = isAppLoading || isSettingsLoading || isDataLoading;
 
   useEffect(() => {
-    posthogPageView();
+    posthogPageView(location.pathname);
   }, [location.pathname]);
 
   const handleLogout = useCallback(() => {
@@ -53,6 +59,7 @@ function App() {
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
+    offlineCache.clearAll();
     queryClient.clear();
     navigate(APP_ROUTES.AUTH, { replace: true });
   }, [navigate, setUser, queryClient]);
