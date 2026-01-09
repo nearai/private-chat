@@ -17,13 +17,12 @@ import {
   useConversationStore,
 } from "@/stores/useConversationStore";
 import { useStreamStore } from "@/stores/useStreamStore";
-import type { Conversation, ConversationUserInput } from "@/types";
+import type { ConversationUserInput } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
-import { produce } from "immer";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -178,36 +177,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const stopResponse = useCallback(() => {
     const chatId = params.chatId;
     if (chatId) {
-      // Update conversation data to mark last assistant message as failed (stopped message)
-      queryClient.setQueryData<Conversation>(queryKeys.conversation.byId(chatId), (old) => {
-        if (!old) return old;
-
-        return produce(old, (draft) => {
-          const lastAssistantMessage = [...(draft.data ?? [])]
-            .reverse()
-            .find(
-              (item) =>
-                item.type === ConversationTypes.MESSAGE &&
-                item.role === ConversationRoles.ASSISTANT &&
-                item.status === "pending"
-            );
-
-          if (lastAssistantMessage && lastAssistantMessage.type === ConversationTypes.MESSAGE) {
-            lastAssistantMessage.status = "failed";
-          }
-
-          // mark any pending web_search_call messages as failed
-          draft.data?.forEach((item) => {
-            if (
-              item.type === ConversationTypes.WEB_SEARCH_CALL &&
-              item.status === "pending"
-            ) {
-              item.status = "failed";
-            }
-          });
-        });
-      });
-
       updateConversation((draft) => {
         if (!draft.conversation) return draft;
 
