@@ -105,7 +105,7 @@
     "workbox-window": "^7.1.0"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,json,md}": [
+    "**/*.{js,jsx,ts,tsx,json}": [
       "pnpm run lint"
     ]
   },
