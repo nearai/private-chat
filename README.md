@@ -16,6 +16,7 @@
 - [About](#about)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
+- [Backend](#backend)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
@@ -87,6 +88,19 @@ NEAR AI Private Chat is a secure, privacy-focused AI chat application that lets 
 - **Highlight.js** - Code syntax highlighting
 - **Axios** - HTTP client
 - **i18next** - Internationalization
+
+## 🔌 Backend
+
+This frontend application connects to the chat API backend. For backend setup and documentation, please refer to:
+
+- **Backend Repository**: [https://github.com/nearai/chat-api](https://github.com/nearai/chat-api)
+
+The backend handles:
+- Chat API endpoints
+- Authentication and authorization
+- Model management and execution
+- User data management
+- NEAR blockchain integration
 
 ## 📦 Prerequisites
 
