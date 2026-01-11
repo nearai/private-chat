@@ -94,6 +94,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           return (
             <div
               key={batchIds[currentIdx]}
+              data-role={isCurrentMessage ? "current-response-message" : "other-response-message"}
               className={cn(`m-1 w-full max-w-full cursor-pointer snap-center rounded-2xl transition-all`, {
                 'p-5': isSeveralModels,
                 [borderClass]: isSeveralModels,

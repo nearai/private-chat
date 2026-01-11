@@ -11,6 +11,7 @@ import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
 
 import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
+// import sleep from "@/lib/utils/sleep";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
@@ -29,7 +30,8 @@ const Home = ({
     content: ContentItem[],
     webSearchEnabled: boolean,
     conversationId?: string,
-    previous_response_id?: string
+    previous_response_id?: string,
+    currentModel?: string,
   ) => Promise<void>;
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,10 +80,19 @@ const Home = ({
           }
         }
       }
-      await startStream(contentItems, webSearchEnabled, chatId, prevRespId);
+
+      const validModels = selectedModels.filter((model) => model && model.length > 0);
+      // Start streams sequentially with a 2s delay between each to avoid overwhelming backend
+      for (const model of validModels) {
+        // Wait 2s before starting each model stream
+        // await sleep(2000);
+        console.log("Starting stream with model:", model);
+        // eslint-disable-next-line no-await-in-loop
+        await startStream(contentItems, webSearchEnabled, chatId, prevRespId, model);
+      }
       scrollToBottom();
     },
-    [chatId, scrollToBottom, startStream]
+    [chatId, selectedModels, scrollToBottom, startStream]
   );
 
   useEffect(() => {
@@ -154,7 +165,7 @@ const Home = ({
 
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
-
+  
     return batches.filter((batch) => {
       const batchMessage = history.messages[batch];
       return !!batchMessage;
@@ -186,7 +197,6 @@ const Home = ({
 
       // Analyze siblings to determine if they're input variants or response variants
       const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
-
       if (batchMessage.userPromptId) {
         messages.push(
           <UserMessage

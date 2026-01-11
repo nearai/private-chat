@@ -118,7 +118,7 @@ export default function ModelSelector() {
 
   const handleAddModel = () => {
     if (selectedModels.length < models.length) {
-      setSelectedModels([...selectedModels]);
+      setSelectedModels([...selectedModels, '']);
     }
   };
 
@@ -136,8 +136,7 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  // const disabledAdd = selectedModels.length >= models.length;
-  const disabledAdd = true; // temporarily disable adding more models
+  const disabledAdd = selectedModels.length >= models.length || selectedModels.length >= 3;
 
   return (
     <div className="flex w-full flex-col items-start">

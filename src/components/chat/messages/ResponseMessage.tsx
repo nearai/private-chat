@@ -222,6 +222,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       id={`message-${batch.responseId}`}
       dir={settings.chatDirection || "ltr"}
       data-response-id={batch.responseId || ""}
+      data-model-id={model || ""}
     >
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
         {modelIcon}

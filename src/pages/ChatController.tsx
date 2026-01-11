@@ -113,8 +113,9 @@ export default function ChatController({ children }: { children?: React.ReactNod
         console.error("Conversation ID is required to start stream");
         return;
       }
-
-      const model = currentModel || selectedModels[0] || remoteConfig.data?.default_model;
+    
+      const validModels = selectedModels.filter((model) => model && model.length > 0);
+      const model = currentModel || validModels[0] || remoteConfig.data?.default_model;
       if (!model) {
         console.error("Model is required to start stream but none was available");
         return;
