@@ -72,6 +72,11 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
     ev.stopPropagation();
     setShowDeleteConfirm(true);
   };
+  
+  const handleRenameClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+    ev.stopPropagation();
+    handleRename();
+  };
 
   return (
     <>
@@ -118,10 +123,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
 
           <DropdownMenuItem
             className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
-            onClick={(ev) => {
-              ev.stopPropagation();
-              handleRename();
-            }}
+            onClick={handleRenameClick}
           >
             <PencilIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Rename")}</span>

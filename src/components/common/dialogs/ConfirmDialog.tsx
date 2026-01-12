@@ -31,6 +31,16 @@ const ConfirmDialog = ({
 }: ConfirmDialogProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
 
+  const handleCancel = (ev: React.MouseEvent) => {
+    ev.stopPropagation();
+    onCancel();
+  };
+
+  const handleConfirm = (ev: React.MouseEvent) => {
+    ev.stopPropagation();
+    onConfirm();
+  };
+
   return (
     <AlertDialog open={open}>
       <AlertDialogContent>
@@ -39,18 +49,12 @@ const ConfirmDialog = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={(ev) => {
-            ev.stopPropagation();
-            onCancel();
-          }} disabled={isLoading}>
+          <AlertDialogCancel onClick={handleCancel} disabled={isLoading}>
             {t("Cancel")}
           </AlertDialogCancel>
 
           <AlertDialogAction
-            onClick={(ev) => {
-              ev.stopPropagation();
-              onConfirm();
-            }}
+            onClick={handleConfirm}
             disabled={isLoading}
           >
             {isLoading ? t("Processing") : (confirmText ?? t("Confirm"))}
