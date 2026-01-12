@@ -40,7 +40,7 @@ interface MessageInputProps {
     webSearchEnabled: boolean;
   }) => void;
   createMessagePair?: (prompt: string) => void;
-  stopResponse?: () => void;
+  stopStream?: () => void;
   autoScroll?: boolean;
   atSelectedModel?: Model;
   selectedModels?: string[];
@@ -71,7 +71,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   messages,
   allMessages,
   createMessagePair = () => {},
-  stopResponse = () => {},
+  stopStream = () => {},
   autoScroll = false,
   atSelectedModel,
   selectedModels,
@@ -388,8 +388,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
       (msg) =>
         msg.role === ConversationRoles.ASSISTANT &&
         msg.status === "pending" &&
-        msg.type !== ConversationTypes.REASONING
-        && msg.type !== ConversationTypes.WEB_SEARCH_CALL
+        msg.type !== ConversationTypes.REASONING &&
+        msg.type !== ConversationTypes.WEB_SEARCH_CALL
     );
 
     return !hasUnfinishedNonReasoning;
@@ -398,8 +398,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const handleStopResponse = () => {
     if (!isConversationStreamActive) return;
     if (disabledStopButton) return;
-    stopResponse();
-  }
+    stopStream();
+  };
 
   const renderSendButton = () => {
     if (isConversationStreamActive && !disabledStopButton) {
@@ -435,7 +435,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </Button>
         </div>
       );
-  }
+  };
 
   if (!loaded) return null;
 
@@ -501,7 +501,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
             <div className="relative w-full">
               {(atSelectedModel !== undefined || selectedToolIds.length > 0 || webSearchEnabled) && (
-                <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-linear-to-t from-background px-3 pt-1.5 pb-0.5 text-left">
+                <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-gradient-to-t from-background px-3 pt-1.5 pb-0.5 text-left">
                   {atSelectedModel !== undefined && (
                     <div className="flex w-full items-center justify-between">
                       <div className="flex items-center gap-2 pl-px text-sm">

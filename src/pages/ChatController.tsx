@@ -122,7 +122,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
       pushResponse(conversationLocalId, contentItems, previous_response_id);
 
-      let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
       const streamPromise = chatClient.startStream({
         model,
         role: "user",
@@ -134,14 +133,9 @@ export default function ChatController({ children }: { children?: React.ReactNod
         previous_response_id: previous_response_id,
         systemPrompt: userSettings.data?.settings.system_prompt,
         onReaderReady: (reader, abortController) => {
-          streamReader = reader;
           addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
         },
       });
-
-      if (!streamReader) {
-        addStream(conversationLocalId, streamPromise);
-      }
 
       streamPromise
         .then(() => {
@@ -174,7 +168,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   );
 
   // Stop function to cancel active streams
-  const stopResponse = useCallback(() => {
+  const handleStopStream = useCallback(() => {
     const chatId = params.chatId;
     if (chatId) {
       updateConversation((draft) => {
@@ -207,18 +201,18 @@ export default function ChatController({ children }: { children?: React.ReactNod
       // If no specific chat, stop all streams
       stopAllStreams();
     }
-  }, [params.chatId, queryClient, stopStream, stopAllStreams]);
+  }, [params.chatId, updateConversation, stopStream, stopAllStreams]);
 
   // Determine which component to render based on route
   const renderComponent = useMemo(() => {
     if (location.pathname === APP_ROUTES.HOME) {
-      return <NewChat startStream={startStream} stopResponse={stopResponse} />;
+      return <NewChat startStream={startStream} stopStream={handleStopStream} />;
     }
     if (location.pathname.startsWith("/c/")) {
-      return <Home startStream={startStream} stopResponse={stopResponse} />;
+      return <Home startStream={startStream} stopStream={handleStopStream} />;
     }
     return children;
-  }, [location.pathname, children, startStream, stopResponse]);
+  }, [location.pathname, children, startStream, handleStopStream]);
 
   return <>{renderComponent}</>;
 }

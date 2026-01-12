@@ -24,7 +24,7 @@ import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 const Home = ({
   startStream,
-  stopResponse,
+  stopStream,
 }: {
   startStream: (
     content: ContentItem[],
@@ -32,7 +32,7 @@ const Home = ({
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
-  stopResponse?: () => void;
+  stopStream?: () => void;
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
@@ -259,7 +259,7 @@ const Home = ({
         setPrompt={setInputValue}
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
-        stopResponse={stopResponse}
+        stopStream={stopStream}
         isConversationStreamActive={currentStreamIsActive}
         allMessages={allMessages}
         autoFocusKey={chatId ?? "home"}
