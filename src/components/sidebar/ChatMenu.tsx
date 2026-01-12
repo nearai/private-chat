@@ -54,7 +54,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
     },
   });
 
-  const handlePinToggle = (ev: React.MouseEvent<HTMLDivElement>) => {
+  const handlePinToggle = (ev: React.MouseEvent) => {
     ev.stopPropagation();
     isPinned ? unpinConversationById({ id: chat.id }) : pinConversationById({ id: chat.id });
   };
@@ -63,17 +63,17 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   //   cloneChatById({ id: chat.id });
   // };
 
-  const handleArchive = (ev: React.MouseEvent<HTMLDivElement>) => {
+  const handleArchive = (ev: React.MouseEvent) => {
     ev.stopPropagation();
     archiveChatById({ id: chat.id });
   };
 
-  const handleDelete = (ev: React.MouseEvent<HTMLDivElement>) => {
+  const handleDelete = (ev: React.MouseEvent) => {
     ev.stopPropagation();
     setShowDeleteConfirm(true);
   };
   
-  const handleRenameClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+  const handleRenameClick = (ev: React.MouseEvent) => {
     ev.stopPropagation();
     handleRename();
   };
