@@ -54,7 +54,8 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
     },
   });
 
-  const handlePinToggle = () => {
+  const handlePinToggle = (ev: React.MouseEvent<HTMLDivElement>) => {
+    ev.stopPropagation();
     isPinned ? unpinConversationById({ id: chat.id }) : pinConversationById({ id: chat.id });
   };
 
@@ -62,11 +63,13 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
   //   cloneChatById({ id: chat.id });
   // };
 
-  const handleArchive = () => {
+  const handleArchive = (ev: React.MouseEvent<HTMLDivElement>) => {
+    ev.stopPropagation();
     archiveChatById({ id: chat.id });
   };
 
-  const handleDelete = () => {
+  const handleDelete = (ev: React.MouseEvent<HTMLDivElement>) => {
+    ev.stopPropagation();
     setShowDeleteConfirm(true);
   };
 
@@ -87,7 +90,7 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
       <DropdownMenu>
         <DropdownMenuTrigger asChild className="shrink-0">
           <button className="rounded-md px-0.5 hover:bg-secondary/30 focus:outline-none">
-            <EllipsisHorizontalIcon className="hidden h-4 w-4 transition-opacity group-hover:block group-hover:opacity-100" />
+            <EllipsisHorizontalIcon className="block h-4 w-4 transition-opacity group-hover:block group-hover:opacity-100 sm:hidden" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -115,7 +118,10 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
 
           <DropdownMenuItem
             className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
-            onClick={handleRename}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              handleRename();
+            }}
           >
             <PencilIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Rename")}</span>

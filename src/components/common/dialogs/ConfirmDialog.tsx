@@ -39,12 +39,18 @@ const ConfirmDialog = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel} disabled={isLoading}>
+          <AlertDialogCancel onClick={(ev) => {
+            ev.stopPropagation();
+            onCancel();
+          }} disabled={isLoading}>
             {t("Cancel")}
           </AlertDialogCancel>
 
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onConfirm();
+            }}
             disabled={isLoading}
           >
             {isLoading ? t("Processing") : (confirmText ?? t("Confirm"))}
