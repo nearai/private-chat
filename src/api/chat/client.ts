@@ -403,7 +403,7 @@ class ChatClient extends ApiClient {
       const blob = await response.blob();
       return blob;
     } catch (error) {
-      console.error("error", error);
+      console.error("Failed to fetch file content", { fileId: id, error });
       throw error;
     }
   }

@@ -186,7 +186,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       } catch (errorObj: unknown) {
         if (isUploadError(errorObj)) {
           if (errorObj.error.type === "invalid_request_error") {
-            toast.error("This file type is not supported. Please upload PDF or plain text files.");
+            toast.error(t("This file type is not supported. Please upload PDF or plain text files."));
           }
         } else {
           toast.error(t("Error uploading file."));
