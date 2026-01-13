@@ -7,7 +7,15 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
 import { DEFAULT_SIGNING_ALGO, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { getTimeRange } from "@/lib/time";
-import type { Chat, ChatInfo, Conversation, ConversationItemsResponse, StartStreamProps, Tag } from "@/types";
+import type {
+  Chat,
+  ChatInfo,
+  Conversation,
+  ConversationInfo,
+  ConversationItemsResponse,
+  StartStreamProps,
+  Tag,
+} from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
 export interface UploadError {
@@ -125,8 +133,17 @@ class ChatClient extends ApiClient {
   }
   getConversationsIds() {
     const conversations = localStorage.getItem(LOCAL_STORAGE_KEYS.CONVERSATIONS);
-    if (conversations) {
-      return JSON.parse(conversations);
+    if (!conversations) return [];
+    try {
+      const parsed = JSON.parse(conversations) as ConversationInfo[] | string[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof parsed[0] === "string") {
+          return parsed;
+        }
+        return (parsed as ConversationInfo[]).map((conversation) => conversation.id);
+      }
+    } catch (error) {
+      console.warn("Failed to parse cached conversation ids:", error);
     }
     return [];
   }
@@ -339,7 +356,10 @@ class ChatClient extends ApiClient {
     tools,
     include,
     previous_response_id,
-  }: StartStreamProps) {
+    onReaderReady,
+  }: StartStreamProps & {
+    onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
+  }) {
     const input = Array.isArray(content)
       ? [{ role, content }]
       : [{ role, content: [{ type: "input_text", text: content }] }];
@@ -356,7 +376,7 @@ class ChatClient extends ApiClient {
         signing_algo: DEFAULT_SIGNING_ALGO,
         previous_response_id,
       },
-      { apiVersion: "v2", queryClient }
+      { apiVersion: "v2", queryClient, onReaderReady }
     );
   }
 

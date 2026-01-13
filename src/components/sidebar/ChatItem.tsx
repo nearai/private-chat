@@ -16,13 +16,14 @@ type ChatItemProps = {
   isCurrentChat: boolean;
   isPinned?: boolean;
   handleDeleteSuccess?: () => void;
+  onNavigate?: () => void;
 };
 
 function getChatTitle(chat: ConversationInfo) {
   return chat.metadata.title || DEFAULT_CONVERSATION_TITLE;
 }
 
-const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatItemProps) => {
+const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNavigate }: ChatItemProps) => {
   const { startEditingChatName, stopEditingChatName, editingChatId } = useChatStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
@@ -84,6 +85,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
         )}
         to={toChatRoute(chat.id)}
         draggable="false"
+        onClick={!showRename ? onNavigate : undefined}
       >
         {showRename ? (
           <>
@@ -92,18 +94,36 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess }: ChatIt
                 ref={renameRef}
                 className="h-5 w-full self-center border-none bg-transparent text-left outline-none"
                 value={renameInput}
-                onClick={() => startEditingChatName(chat.id)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startEditingChatName(chat.id);
+                }}
                 onChange={(e) => setRenameInput(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
               <CompactTooltip content="Confirm" align="center">
-                <button onClick={confirmRename}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    confirmRename();
+                  }}
+                >
                   <CheckIcon className="size-4" />
                 </button>
               </CompactTooltip>
               <CompactTooltip content="Cancel" align="center">
-                <button onClick={handleCancelRename}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCancelRename();
+                  }}
+                >
                   <XMarkIcon className="size-4" />
                 </button>
               </CompactTooltip>

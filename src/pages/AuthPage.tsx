@@ -2,7 +2,7 @@ import { NearConnector } from "@hot-labs/near-connect";
 import { useQueryClient } from "@tanstack/react-query";
 import { fromHotConnect, generateNonce, Near } from "near-kit";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { authClient } from "@/api/auth/client";
@@ -19,24 +19,40 @@ import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
+import { getDesktopOAuthCallbackUrl, isTauri, listenForDesktopOAuth } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
 
 const TERMS_VERSION = "V1";
+
+type OAuthCompleteEvent = {
+  token: string;
+  sessionId: string;
+  isNewUser: boolean;
+};
+
+const OAUTH_STORAGE_PREFIX = "desktop-oauth-channel:";
+const buildOAuthChannelStorageKey = (channelId: string) => `${OAUTH_STORAGE_PREFIX}${channelId}`;
 
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const connectorRef = useRef<NearConnector | null>(null);
+  const oauthChannelRef = useRef<BroadcastChannel | null>(null);
+  const storageListenerRef = useRef<((event: StorageEvent) => void) | null>(null);
+  const desktopOAuthUnlistenRef = useRef<(() => void) | null>(null);
+  const activeChannelIdRef = useRef<string | null>(null);
 
   const token = searchParams.get("token");
   const sessionId = searchParams.get("session_id");
   const isNewUser = searchParams.get("is_new_user") === "true";
+  const oauthChannelParam = searchParams.get("oauth_channel");
 
   const [agreedTerms, setAgreedTerms] = useState(
     localStorage.getItem(LOCAL_STORAGE_KEYS.AGREED_TERMS) === TERMS_VERSION
   );
+  const [showCloseTabMessage, setShowCloseTabMessage] = useState(false);
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
@@ -46,29 +62,186 @@ const AuthPage: React.FC = () => {
     return true;
   };
 
-  const completeLogin = async (token: string, sessionId: string, isNewUser: boolean) => {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, token);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, sessionId);
-    queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
+  const completeLogin = useCallback(
+    async (userToken: string, userSessionId: string, newUser: boolean) => {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, userToken);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, userSessionId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
 
-    try {
-      const u = await usersClient.getUserData();
-      if (u) {
-        const provider = u.linked_accounts?.[0]?.provider ?? "near";
-        if (isNewUser) {
-          posthogOauthSignup(u.user.id, provider);
-        } else {
-          posthogOauthLogin(u.user.id, provider);
+      try {
+        const u = await usersClient.getUserData();
+        if (u) {
+          const provider = u.linked_accounts?.[0]?.provider ?? "near";
+          if (newUser) {
+            posthogOauthSignup(u.user.id, provider);
+          } else {
+            posthogOauthLogin(u.user.id, provider);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data for tracking:", error);
+      }
+    },
+    [queryClient]
+  );
+
+  const cleanupOAuthChannel = useCallback(() => {
+    if (oauthChannelRef.current) {
+      oauthChannelRef.current.close();
+      oauthChannelRef.current = null;
+    }
+    if (storageListenerRef.current) {
+      window.removeEventListener("storage", storageListenerRef.current);
+      storageListenerRef.current = null;
+    }
+    if (desktopOAuthUnlistenRef.current) {
+      desktopOAuthUnlistenRef.current();
+      desktopOAuthUnlistenRef.current = null;
+    }
+    if (activeChannelIdRef.current) {
+      try {
+        localStorage.removeItem(buildOAuthChannelStorageKey(activeChannelIdRef.current));
+      } catch (error) {
+        console.warn("Failed to clear OAuth storage cache:", error);
+      }
+      activeChannelIdRef.current = null;
+    }
+  }, []);
+
+  const finalizeOAuth = useCallback(
+    (payload: OAuthCompleteEvent) => {
+      cleanupOAuthChannel();
+      completeLogin(payload.token, payload.sessionId, payload.isNewUser)
+        .then(() => navigate(APP_ROUTES.HOME, { replace: true }))
+        .catch((error) => {
+          console.error("Failed to finalize OAuth login:", error);
+          toast.error("Failed to complete login. Please try again.");
+        });
+    },
+    [cleanupOAuthChannel, completeLogin, navigate]
+  );
+
+  const startOAuthChannelListener = useCallback(
+    async (channelId: string) => {
+      cleanupOAuthChannel();
+      activeChannelIdRef.current = channelId;
+
+      const handlePayload = (payload: OAuthCompleteEvent) => finalizeOAuth(payload);
+
+      if (typeof window.BroadcastChannel === "function") {
+        try {
+          const channel = new BroadcastChannel(channelId);
+          oauthChannelRef.current = channel;
+          channel.onmessage = (event) => {
+            handlePayload(event.data as OAuthCompleteEvent);
+          };
+        } catch (error) {
+          console.error("Failed to create OAuth BroadcastChannel:", error);
         }
       }
-    } catch (error) {
-      console.error("Failed to fetch user data for tracking:", error);
+
+      const storageListener = (event: StorageEvent) => {
+        if (
+          event.key === buildOAuthChannelStorageKey(channelId) &&
+          typeof event.newValue === "string" &&
+          event.newValue.length > 0
+        ) {
+          try {
+            const parsed = JSON.parse(event.newValue) as OAuthCompleteEvent;
+            handlePayload(parsed);
+          } catch (error) {
+            console.error("Failed to parse OAuth payload from storage:", error);
+          }
+        }
+      };
+      window.addEventListener("storage", storageListener);
+      storageListenerRef.current = storageListener;
+
+      if (isTauri()) {
+        try {
+          const unlisten = await listenForDesktopOAuth((payload) => {
+            if (payload.oauthChannel && payload.oauthChannel !== channelId) {
+              return;
+            }
+            if (!payload.token || !payload.sessionId) {
+              console.warn("Received incomplete OAuth payload from desktop callback:", payload);
+              return;
+            }
+            handlePayload({
+              token: payload.token,
+              sessionId: payload.sessionId,
+              isNewUser: Boolean(payload.isNewUser),
+            });
+          });
+          desktopOAuthUnlistenRef.current = unlisten;
+        } catch (error) {
+          console.error("Failed to subscribe to desktop OAuth bridge:", error);
+        }
+      }
+    },
+    [cleanupOAuthChannel, finalizeOAuth]
+  );
+
+  useEffect(() => () => cleanupOAuthChannel(), [cleanupOAuthChannel]);
+
+  const openExternalOAuthUrl = async (url: string) => {
+    if (!isTauri()) return false;
+
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(url);
+      return true;
+    } catch (pluginError) {
+      console.error("Tauri shell plugin open failed:", pluginError);
+      const tauriGlobal = (window as typeof window & {
+        __TAURI__?: {
+          shell?: { open: (path: string) => Promise<void> };
+          core?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
+        };
+      }).__TAURI__;
+
+      try {
+        if (tauriGlobal?.shell?.open) {
+          await tauriGlobal.shell.open(url);
+          return true;
+        }
+
+        if (tauriGlobal?.core?.invoke) {
+          await tauriGlobal.core.invoke("plugin:shell|open", { path: url });
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error("Tauri core fallback open failed:", fallbackError);
+      }
     }
+
+    return false;
   };
 
-  const handleOAuthLogin = (provider: OAuth2Provider) => {
+  const handleOAuthLogin = async (provider: OAuth2Provider) => {
     if (!checkAgreeTerms()) return;
+
+    if (isTauri()) {
+      try {
+        const channelId = crypto.randomUUID();
+        await startOAuthChannelListener(channelId);
+        const callbackUrl = await getDesktopOAuthCallbackUrl();
+        const popupUrl = authClient.getOAuthUrl(provider, callbackUrl, { oauthChannel: channelId });
+        const openedExternally = await openExternalOAuthUrl(popupUrl);
+        if (!openedExternally) {
+          const openedWindow = window.open(popupUrl, "_blank", "noopener,noreferrer");
+          if (!openedWindow) throw new Error("Unable to open browser window");
+        }
+        toast.message("Continue the sign-in process in your browser.");
+      } catch (error) {
+        console.error("Failed to start OAuth in browser:", error);
+        cleanupOAuthChannel();
+        toast.error("Unable to open the browser for login. Please try again.");
+      }
+      return;
+    }
+
     authClient.oauth2SignIn(provider);
   };
 
@@ -105,20 +278,77 @@ const AuthPage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
 
-    completeLogin(token, sessionId ?? "", isNewUser)
+    if (oauthChannelParam && !isTauri()) {
+      try {
+        const channel = new BroadcastChannel(oauthChannelParam);
+        channel.postMessage({
+          token,
+          sessionId: sessionId ?? "",
+          isNewUser,
+        } satisfies OAuthCompleteEvent);
+        channel.close();
+        setShowCloseTabMessage(true);
+      } catch (error) {
+        console.error("Failed to notify desktop app about OAuth completion:", error);
+        toast.error("Unable to complete login. Please return to the app.");
+      }
+      return;
+    }
+
+    const payload: OAuthCompleteEvent = {
+      token,
+      sessionId: sessionId ?? "",
+      isNewUser,
+    };
+
+    if (oauthChannelParam) {
+      let delivered = false;
+
+      if (typeof window.BroadcastChannel === "function") {
+        try {
+          const channel = new BroadcastChannel(oauthChannelParam);
+          channel.postMessage(payload);
+          channel.close();
+          delivered = true;
+        } catch (error) {
+          console.error("Failed to notify desktop app via BroadcastChannel:", error);
+        }
+      }
+
+      try {
+        localStorage.setItem(buildOAuthChannelStorageKey(oauthChannelParam), JSON.stringify(payload));
+        // storage event will fire on the desktop window; remove our copy shortly after
+        setTimeout(() => {
+          try {
+            localStorage.removeItem(buildOAuthChannelStorageKey(oauthChannelParam));
+          } catch (removeError) {
+            console.warn("Failed to cleanup OAuth storage cache:", removeError);
+          }
+        }, 250);
+        delivered = true;
+      } catch (storageError) {
+        console.error("Failed to notify desktop app via storage:", storageError);
+      }
+
+      if (delivered) {
+        setShowCloseTabMessage(true);
+        return;
+      }
+
+      toast.error("Unable to notify the desktop app. Please return to the application and try again.");
+      return;
+    }
+
+    completeLogin(payload.token, payload.sessionId, payload.isNewUser)
       .catch(() => toast.error("Failed to complete login."))
       .finally(() => navigate(APP_ROUTES.HOME, { replace: true }));
-  }, [token, sessionId, isNewUser, navigate]);
+  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam]);
 
-  if (!config) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  return (
+  const authContent = !config ? (
+    <div className="flex h-full items-center justify-center">
+      <Spinner />
+    </div>
+  ) : (
     <div className="relative">
       <div className="fixed z-50 m-10">
         <NearAIIcon className="h-8" />
@@ -220,6 +450,18 @@ const AuthPage: React.FC = () => {
       </div>
     </div>
   );
+
+  if (showCloseTabMessage) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <NearAIIcon className="h-10 w-10" />
+        <p className="font-semibold text-lg">You can close this tab.</p>
+        <p className="text-muted-foreground text-sm">Return to the NEAR AI application to continue.</p>
+      </div>
+    );
+  }
+
+  return authContent;
 };
 
 export default AuthPage;

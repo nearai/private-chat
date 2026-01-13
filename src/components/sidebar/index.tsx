@@ -18,17 +18,35 @@ import { Button } from "../ui/button";
 import ChatItem from "./ChatItem";
 import UserMenu from "./UserMenu";
 
+type CrispCommand = [string, string];
+type CrispWindow = Window & {
+  $crisp?: {
+    push: (value: CrispCommand) => number;
+  };
+};
+
+const getCrispWindow = (): CrispWindow | undefined => {
+  if (typeof window === "undefined") return undefined;
+  return window as CrispWindow;
+};
+
 const LeftSidebar: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
-  const { isLeftSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
+  const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile } = useViewStore();
+
+  // Helper to close sidebar on mobile
+  const handleMobileNavigation = () => {
+    if (isMobile) {
+      setIsLeftSidebarOpen(false);
+    }
+  };
 
   const openCrisp = () => {
-    if ((window as any).$crisp) {
-      (window as any).$crisp.push(["do", "chat:show"]);
-      (window as any).$crisp.push(["do", "chat:open"]);
-    }
+    const crispWindow = getCrispWindow();
+    crispWindow?.$crisp?.push(["do", "chat:show"]);
+    crispWindow?.$crisp?.push(["do", "chat:open"]);
   };
 
   const { data: conversations, isLoading } = useGetConversations();
@@ -43,23 +61,28 @@ const LeftSidebar: React.FC = () => {
   }, [conversations]);
 
   const chatsGrouped = useMemo(() => {
-    const list = unpinned.sort((a, b) => {
-      const aTime = a.metadata?.initial_created_at ? Number(a.metadata.initial_created_at) : a.created_at;
-      const bTime = b.metadata?.initial_created_at ? Number(b.metadata.initial_created_at) : b.created_at;
-      return bTime - aTime;
-    });
-    return Object.entries(
-      list.reduce(
-        (acc, chat) => {
-          const timeRange = getTimeRange(
-            chat.metadata?.initial_created_at ? Number(chat.metadata.initial_created_at) : chat.created_at
-          );
-          acc[timeRange] = [...(acc[timeRange] || []), chat];
-          return acc;
-        },
-        {} as Record<string, ConversationInfo[]>
-      )
+    // Helper function to get timestamp
+    const getTimestamp = (chat: ConversationInfo): number => {
+      return chat.metadata?.initial_created_at ? Number(chat.metadata.initial_created_at) : chat.created_at;
+    };
+
+    // Sort chats by timestamp (newest first)
+    const list = [...unpinned].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+
+    // Group chats by time range
+    const grouped = list.reduce(
+      (acc, chat) => {
+        const timestamp = getTimestamp(chat);
+        const timeRange = getTimeRange(timestamp);
+        acc[timeRange] = [...(acc[timeRange] || []), chat];
+        return acc;
+      },
+      {} as Record<string, ConversationInfo[]>
     );
+
+    // Sort groups by the first conversation in each group (newest first)
+    return Object.entries(grouped)
+      .sort(([, chatsA], [, chatsB]) => getTimestamp(chatsB[0]) - getTimestamp(chatsA[0]));
   }, [unpinned]);
 
   return (
@@ -87,8 +110,13 @@ const LeftSidebar: React.FC = () => {
 
         {/* New Chat */}
         <div className="my-6 w-full space-y-1">
-          <Button variant="ghost" type="button" className="flex h-9 w-full justify-start rounded-xl" asChild>
-            <Link id="sidebar-new-chat-button" to="/">
+          <Button
+            variant="ghost"
+            type="button"
+            className="flex h-9 w-full justify-start rounded-xl"
+            asChild
+          >
+            <Link id="sidebar-new-chat-button" to="/" onClick={handleMobileNavigation}>
               <PencilIcon />
               <p className="text-sm">{t("New Chat")}</p>
             </Link>
@@ -139,6 +167,7 @@ const LeftSidebar: React.FC = () => {
                         handleDeleteSuccess={() => {
                           if (chat.id === chatId) navigate("/");
                         }}
+                        onNavigate={handleMobileNavigation}
                       />
                     ))}
                 </div>
@@ -169,6 +198,7 @@ const LeftSidebar: React.FC = () => {
                             if (chat.id === chatId) navigate("/");
                           }}
                           isPinned={false}
+                          onNavigate={handleMobileNavigation}
                         />
                       ))}
                     </div>

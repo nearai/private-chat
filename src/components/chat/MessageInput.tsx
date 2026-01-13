@@ -19,18 +19,20 @@ import {
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
 import { ACCEPTED_FILE_TYPES, SUPPORTED_TEXT_EXTENSIONS } from "@/lib/constants";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 // import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { History, Message, Model } from "@/types";
+import { ConversationRoles, ConversationTypes, type ConversationItem, type History, type Message, type Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
 import UserMenu from "../sidebar/UserMenu";
 import { Button } from "../ui/button";
 
 interface MessageInputProps {
   messages?: Message[];
+  allMessages?: Record<string, ConversationItem>
   onChange?: (data: {
     prompt: string;
     files: FileContentItem[];
@@ -39,7 +41,7 @@ interface MessageInputProps {
     webSearchEnabled: boolean;
   }) => void;
   createMessagePair?: (prompt: string) => void;
-  stopResponse?: () => void;
+  stopStream?: () => void;
   autoScroll?: boolean;
   atSelectedModel?: Model;
   selectedModels?: string[];
@@ -61,14 +63,16 @@ interface MessageInputProps {
   toolsDisabled?: boolean;
   isMessageCompleted?: boolean;
   isConversationStreamActive?: boolean;
+  autoFocusKey?: string | number | boolean;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
+  allMessages,
   createMessagePair = () => {},
-  stopResponse = () => {},
+  stopStream = () => {},
   autoScroll = false,
   atSelectedModel,
   selectedModels,
@@ -86,6 +90,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toolsDisabled = false,
   isMessageCompleted = true,
   isConversationStreamActive = false,
+  autoFocusKey = "default",
 }) => {
   const { settings } = useSettingsStore();
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -99,6 +104,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
+  const isOnline = useIsOnline();
 
   useEffect(() => {
     if (isLowBalance) {
@@ -109,6 +115,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const focusInput = useCallback(() => {
+    if (!chatInputRef.current) return;
+    setTimeout(() => chatInputRef.current?.focus(), 0);
+  }, []);
 
   const visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : (selectedModels ?? []))].filter(
     () => atSelectedModel?.info?.meta?.capabilities?.vision ?? true
@@ -213,9 +223,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setLoaded(true);
     if (isEditingChatName) return;
 
-    const chatInput = document.getElementById("chat-input");
-    setTimeout(() => chatInput?.focus(), 0);
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setDragged(false);
@@ -258,7 +265,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
       dropzoneElement?.removeEventListener("drop", onDrop);
       dropzoneElement?.removeEventListener("dragleave", onDragLeave);
     };
-  }, [inputFilesHandler]);
+  }, [inputFilesHandler, isEditingChatName]);
+
+  useEffect(() => {
+    if (!loaded || isEditingChatName || autoFocusKey === undefined) return;
+    focusInput();
+  }, [autoFocusKey, focusInput, isEditingChatName, loaded]);
 
   const scrollToBottom = () => {
     const element = document.getElementById("messages-container");
@@ -287,7 +299,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     const isCtrlPressed = e.ctrlKey || e.metaKey;
 
     if (e.key === "Escape") {
-      stopResponse();
+      handleStopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
       // setImageGenerationEnabled(false);
@@ -379,6 +391,62 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const setAtSelectedModel = () => {
     // This would be handled by parent component or store
+  };
+
+  const disabledStopButton = useMemo(() => {
+    if (!isConversationStreamActive) return false;
+    if (!allMessages) return false;
+    const hasUnfinishedNonReasoning = Object.values(allMessages).some(
+      (msg) =>
+        msg.role === ConversationRoles.ASSISTANT &&
+        msg.status === "pending" &&
+        msg.type !== ConversationTypes.REASONING &&
+        msg.type !== ConversationTypes.WEB_SEARCH_CALL
+    );
+
+    return !hasUnfinishedNonReasoning;
+  }, [isConversationStreamActive, allMessages]);
+
+  const handleStopResponse = () => {
+    if (!isConversationStreamActive) return;
+    if (disabledStopButton) return;
+    stopStream();
+  };
+
+  const renderSendButton = () => {
+    if (isConversationStreamActive && !disabledStopButton) {
+      return (
+        <div className="mr-1 flex shrink-0 space-x-1 self-end">
+          <Button
+            id="stop-message-button"
+            className="size-10 rounded-full"
+            type="button"
+            title="Stop"
+            size="icon"
+            onClick={handleStopResponse}
+          >
+            <StopMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+        <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+          'cursor-not-allowed!': disabledSendButton,
+        })}>
+          <Button
+            id="send-message-button"
+            className="size-10 rounded-full"
+            type="submit"
+            title="Send"
+            disabled={disabledSendButton || !isOnline}
+            size="icon"
+          >
+            <SendMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
   };
 
   if (!loaded) return null;
@@ -606,9 +674,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         ref={chatInputRef}
                         id="chat-input"
                         className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
-                        placeholder={placeholder || "How can I help you today?"}
+                        placeholder={
+                          !isOnline ? t("Not available offline (yet).", { defaultValue: "Not available offline (yet)." }) : placeholder || t("How can I help you today?")
+                        }
                         value={prompt}
-                        disabled={isLowBalance}
+                        disabled={isLowBalance || !isOnline}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
@@ -682,31 +752,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                     {(taskIds && taskIds.length > 0) ||
                     (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
                       <div className="mr-1 flex shrink-0 space-x-1 self-end">
-                        <Button size="icon" onClick={stopResponse} className="size-10">
+                        <Button size="icon" onClick={handleStopResponse} className="size-10">
                           <StopMessageIcon className="size-5" />
                         </Button>
                       </div>
-                    ) : (
-                      <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
-                        'cursor-not-allowed!': disabledSendButton,
-                      })}>
-                        <Button
-                          id="send-message-button"
-                          className={cn("size-10 rounded-full")}
-                          type="submit"
-                          title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={disabledSendButton}
-                          size="icon"
-                        >
-                          {isMessageCompleted ? (
-                            <SendMessageIcon className="size-5" />
-                          ) : (
-                            // TODO: stop message
-                            <StopMessageIcon className="size-5" />
-                          )}
-                        </Button>
-                      </div>
-                    )}
+                    ) : renderSendButton()}
                   </div>
                 </div>
               </form>

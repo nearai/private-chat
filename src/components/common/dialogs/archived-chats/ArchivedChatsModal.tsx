@@ -32,6 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { useDeleteChat, useUnarchiveChat } from "@/api/chat/queries";
 import { queryKeys } from "@/api/query-keys";
+import type { ConversationInfo } from "@/types";
 
 dayjs.extend(localizedFormat);
 const { saveAs } = fileSaver;
@@ -58,7 +59,12 @@ function ConversationSkeletonRow() {
 }
 
 
-export default function ArchivedChatsModal({ open, onOpenChange }: any) {
+interface ArchivedChatsModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChatsModalProps) {
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const queryClient = useQueryClient();
@@ -81,22 +87,24 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
     return archived.filter((c) => c.metadata.title.toLowerCase().includes(s));
   }, [archived, searchValue]);
 
-  const optimisticUpdate = (updater: (old: any[]) => any[]) => {
-    const prev = queryClient.getQueryData(queryKeys.conversation.all) as any[] | undefined;
+  const optimisticUpdate = useCallback(
+    (updater: (old: ConversationInfo[]) => ConversationInfo[]) => {
+      const prev = queryClient.getQueryData<ConversationInfo[]>(queryKeys.conversation.all);
 
-    queryClient.setQueryData(
-      queryKeys.conversation.all,
-      (old: any[] = []) => updater(old)
-    );
+      queryClient.setQueryData<ConversationInfo[] | undefined>(queryKeys.conversation.all, (old = []) =>
+        updater(old)
+      );
 
-    return () => queryClient.setQueryData(queryKeys.conversation.all, prev ?? []);
-  };
+      return () => queryClient.setQueryData(queryKeys.conversation.all, prev ?? []);
+    },
+    [queryClient]
+  );
 
   const handleUnarchive = useCallback(
     async (id: string) => {
       const rollback = optimisticUpdate((old) =>
         old.map((c) =>
-          c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: null } } : c
+          c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
         )
       );
 
@@ -108,7 +116,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
         toast.error(String(err));
       }
     },
-    [unarchiveChat, queryClient]
+    [unarchiveChat, t, optimisticUpdate]
   );
 
   const handleDelete = useCallback(
@@ -123,13 +131,13 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
         toast.error(String(err));
       }
     },
-    [deleteChat, queryClient]
+    [deleteChat, t, optimisticUpdate]
   );
 
   const handleUnarchiveAll = useCallback(async () => {
     const rollback = optimisticUpdate((old) =>
       old.map((c) =>
-        c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: null } } : c
+        c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
       )
     );
 
@@ -142,7 +150,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
       rollback();
       toast.error(String(err));
     }
-  }, [archived, unarchiveChat, queryClient]);
+  }, [archived, unarchiveChat, t, optimisticUpdate]);
 
   const handleExport = () => {
     try {
@@ -170,7 +178,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
       />
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="font-medium text-lg">
               {t("Archived Chats")}
@@ -275,17 +283,17 @@ export default function ArchivedChatsModal({ open, onOpenChange }: any) {
                 </Table>
               </div>
               {/* Buttons */}
-              <div className="mt-2 flex justify-end gap-2">
+              <div className="mt-2 flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
                 <Button
                   variant="secondary"
-                  className="h-9 rounded-3xl px-3.5"
+                  className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
                   onClick={() => setShowUnarchiveAllConfirmDialog(true)}
                 >
                   {t("Unarchive All Archived Chats")}
                 </Button>
                 <Button
                   variant="secondary"
-                  className="h-9 rounded-3xl px-3.5"
+                  className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
                   onClick={handleExport}
                 >
                   {t("Export All Archived Chats")}

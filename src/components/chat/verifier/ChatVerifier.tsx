@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import { useViewStore } from "@/stores/useViewStore";
+import { useIsOnline } from "@/hooks/useIsOnline";
 import type {
   ConversationModelOutput,
   ConversationReasoning,
@@ -38,6 +39,7 @@ const ChatVerifier: React.FC = () => {
   } = useViewStore();
   const [showModelVerifier, setShowModelVerifier] = useState(false);
   const [modelVerificationStatus, setModelVerificationStatus] = useState<VerificationStatus | null>(null);
+  const isOnline = useIsOnline();
 
   // Transform conversation data into history format for MessagesVerifier
   const history = useMemo(() => {
@@ -149,7 +151,11 @@ const ChatVerifier: React.FC = () => {
     return (
       <div className="flex flex-col gap-6 overflow-hidden">
         <div className="flex w-full flex-col gap-6 p-2">
-          {modelVerificationStatus?.loading ? (
+          {!isOnline ? (
+            <div className="flex items-center justify-center rounded-lg bg-muted/30 px-3 py-4 text-center text-muted-foreground text-sm">
+              {t("Offline. Using cached verification results.", { defaultValue: "Offline. Using cached verification results." })}
+            </div>
+          ) : modelVerificationStatus?.loading ? (
             <div className="flex items-center justify-center py-4">
               <Spinner className="size-5" />
               <span className="ml-3 text-sm">{t("Verifying confidentiality...")}</span>

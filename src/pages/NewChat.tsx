@@ -26,6 +26,7 @@ import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function NewChat({
   startStream,
+  stopStream,
 }: {
   startStream: (
     content: ContentItem[],
@@ -33,11 +34,13 @@ export default function NewChat({
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
+  stopStream?: () => void;
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
   const { selectedModels, models, setSelectedModels } = useChatStore();
   const modelInitializedRef = useRef(false);
+  const promptLoadedRef = useRef(false);
   const sortedPrompts = useMemo(() => [...(allPrompts ?? [])].sort(() => Math.random() - 0.5), []);
   const { createConversation, updateConversation } = useConversation();
   const { generateChatTitle } = useResponse();
@@ -46,12 +49,28 @@ export default function NewChat({
   const { resetConversation } = useConversationStore();
   const { data: remoteConfig } = useRemoteConfig();
 
+  // TODO: intermediate solution that Load prompt only after MessageInput is mounted
   useEffect(() => {
-    const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    if (welcomePagePrompt) {
-      setInputValue(welcomePagePrompt);
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
-    }
+    if (promptLoadedRef.current) return;
+
+    const checkMessageInputMounted = () => {
+      const chatInput = document.getElementById("chat-input");
+      if (chatInput) {
+        promptLoadedRef.current = true;
+        
+        const welcomePagePrompt = localStorage.getItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
+        if (welcomePagePrompt) {
+          setInputValue(welcomePagePrompt);
+          localStorage.removeItem(LOCAL_STORAGE_KEYS.WELCOME_PAGE_PROMPT);
+        }
+      }
+    };
+    
+    checkMessageInputMounted();
+    
+    const timeoutId = setTimeout(checkMessageInputMounted, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
@@ -192,6 +211,8 @@ export default function NewChat({
             fullWidth={false}
             prompt={inputValue}
             setPrompt={setInputValue}
+            stopStream={stopStream}
+            autoFocusKey="new-chat"
           />
           <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
             <div className="mx-5">

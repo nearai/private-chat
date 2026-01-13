@@ -465,9 +465,9 @@ export interface Config {
   onboarding?: boolean;
 }
 
-export interface RemoteConfig {
+export type RemoteConfig = {
   default_model: string;
-}
+} | null;
 
 // Banner types
 export interface Banner {
@@ -556,7 +556,7 @@ export interface StartStreamProps {
   systemPrompt?: string;
   model: string;
   role: "user" | "assistant";
-  content: string | any[];
+  content: string | ContentItem[];
   conversation?: string;
   queryClient: QueryClient;
   tools?: Tool[];
