@@ -210,10 +210,9 @@ export class ApiClient {
   ): Promise<Response> {
     try {
       const headers: Record<string, string> = options.withoutHeaders
-        ? { "ngrok-skip-browser-warning": "1000" }
+        ? {}
         : {
             ...this.defaultHeaders,
-            "ngrok-skip-browser-warning": "1000",
             ...((options.headers as Record<string, string>) || {}),
           };
 
