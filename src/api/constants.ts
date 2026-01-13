@@ -15,6 +15,11 @@ export const CHAT_API_BASE_URL = (
   runtimeOrigin ||
   "https://private.near.ai"
 ).replace(/\/+$/, "");
+
+export const NEAR_LOGIN_URL = (
+  import.meta.env.VITE_NEAR_LOGIN_URL ||
+  CHAT_API_BASE_URL
+).replace(/\/+$/, "");
 export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY || "";
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || "";
 

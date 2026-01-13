@@ -22,6 +22,7 @@ import type { OAuth2Provider } from "@/types";
 import { getDesktopOAuthCallbackUrl, isTauri, listenForDesktopOAuth } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
+import { CHAT_API_BASE_URL, NEAR_LOGIN_URL } from "@/api/constants";
 
 const TERMS_VERSION = "V1";
 
@@ -256,7 +257,9 @@ const AuthPage: React.FC = () => {
         const callbackUrl = await getDesktopOAuthCallbackUrl();
         
         // Construct the URL for the new NearLogin page
-        const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, window.location.origin);
+        // In development, use local dev server. In production, use the hosted app URL.
+        const baseUrl = import.meta.env.MODE === "development" ? "http://localhost:3000" : NEAR_LOGIN_URL;
+        const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, baseUrl);
         nearLoginUrl.searchParams.set("frontend_callback", callbackUrl);
         nearLoginUrl.searchParams.set("oauth_channel", channelId);
 
@@ -269,7 +272,7 @@ const AuthPage: React.FC = () => {
       } catch (error) {
         console.error("Failed to start NEAR login in browser:", error);
         cleanupOAuthChannel();
-        toast.error("Unable to open the browser for NEAR login. Please try again.");
+        toast.error(`Unable to open the browser for NEAR login. Please try again. ${new URL(APP_ROUTES.NEAR_LOGIN, CHAT_API_BASE_URL)} ${error}`);
       }
       return;
     }
