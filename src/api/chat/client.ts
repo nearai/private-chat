@@ -16,7 +16,7 @@ import type {
   StartStreamProps,
   Tag,
 } from "@/types";
-import type { FileContentResponse, FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
+import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
 export interface UploadError {
   error: {
@@ -391,14 +391,21 @@ class ChatClient extends ApiClient {
     return this.get(`/files/${id}`, { apiVersion: "v2" });
   }
 
-  async getFileContent(id: string | undefined): Promise<FileContentResponse> {
-    if (!id) {
-      throw new Error("File ID is required");
-    }
+  async getFileContent(id: string | undefined): Promise<Blob> {
+    try {
+      if (!id) {
+        throw new Error("File ID is required");
+      }
 
-    return this.get<FileContentResponse>(`/files/${id}/content`, {
-      apiVersion: "v2",
-    });
+      const response = await this.requestWithoutJson(`/files/${id}/content`, {
+        apiVersion: "v2",
+      });
+      const blob = await response.blob();
+      return blob;
+    } catch (error) {
+      console.error("Failed to fetch file content", { fileId: id, error });
+      throw error;
+    }
   }
 
   //https://platform.openai.com/docs/api-reference/files/create?lang=node.js

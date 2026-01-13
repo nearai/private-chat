@@ -201,6 +201,48 @@ export class ApiClient {
     }
   }
 
+  protected async requestWithoutJson(
+    endpoint: string,
+    options: RequestInit & {
+      apiVersion?: "v1" | "v2";
+      withoutHeaders?: boolean;
+    } = {}
+  ): Promise<Response> {
+    try {
+      const headers: Record<string, string> = options.withoutHeaders
+        ? {}
+        : {
+            ...this.defaultHeaders,
+            ...((options.headers as Record<string, string>) || {}),
+          };
+
+      if (this.includeAuth) {
+        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        } else {
+          throw new Error("No token found");
+        }
+      }
+      const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
+      const response = await fetch(`${baseURL}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw error;
+      }
+
+      return response;
+    } catch (err) {
+      console.error(err);
+      // biome-ignore lint/suspicious/noExplicitAny: explanation
+      throw (err as any)?.detail || err || "An unknown error occurred";
+    }
+  }
+
   protected async get<T>(endpoint: string, options: RequestInit & { apiVersion?: "v1" | "v2" } = {}): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
