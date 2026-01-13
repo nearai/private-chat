@@ -249,6 +249,31 @@ const AuthPage: React.FC = () => {
     if (!checkAgreeTerms()) return;
     if (!config) return;
 
+    if (isTauri()) {
+      try {
+        const channelId = crypto.randomUUID();
+        await startOAuthChannelListener(channelId);
+        const callbackUrl = await getDesktopOAuthCallbackUrl();
+        
+        // Construct the URL for the new NearLogin page
+        const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, window.location.origin);
+        nearLoginUrl.searchParams.set("frontend_callback", callbackUrl);
+        nearLoginUrl.searchParams.set("oauth_channel", channelId);
+
+        const openedExternally = await openExternalOAuthUrl(nearLoginUrl.toString());
+        if (!openedExternally) {
+          const openedWindow = window.open(nearLoginUrl.toString(), "_blank", "noopener,noreferrer");
+          if (!openedWindow) throw new Error("Unable to open browser window");
+        }
+        toast.message("Continue the sign-in process in your browser.");
+      } catch (error) {
+        console.error("Failed to start NEAR login in browser:", error);
+        cleanupOAuthChannel();
+        toast.error("Unable to open the browser for NEAR login. Please try again.");
+      }
+      return;
+    }
+
     try {
       const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
       connectorRef.current = connector;
