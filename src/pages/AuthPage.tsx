@@ -22,7 +22,7 @@ import type { OAuth2Provider } from "@/types";
 import { getDesktopOAuthCallbackUrl, isTauri, listenForDesktopOAuth } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
-import { CHAT_API_BASE_URL, NEAR_LOGIN_URL } from "@/api/constants";
+import { NEAR_LOGIN_URL } from "@/api/constants";
 
 const TERMS_VERSION = "V1";
 
@@ -272,7 +272,7 @@ const AuthPage: React.FC = () => {
       } catch (error) {
         console.error("Failed to start NEAR login in browser:", error);
         cleanupOAuthChannel();
-        toast.error(`Unable to open the browser for NEAR login. Please try again. ${new URL(APP_ROUTES.NEAR_LOGIN, CHAT_API_BASE_URL)} ${error}`);
+        toast.error("Unable to open the browser for NEAR login. Please try again.");
       }
       return;
     }

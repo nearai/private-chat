@@ -16,6 +16,7 @@ export const CHAT_API_BASE_URL = (
   "https://private.near.ai"
 ).replace(/\/+$/, "");
 
+// NEAR login URL can be different from CHAT_API_BASE_URL in some deployment scenarios
 export const NEAR_LOGIN_URL = (
   import.meta.env.VITE_NEAR_LOGIN_URL ||
   CHAT_API_BASE_URL

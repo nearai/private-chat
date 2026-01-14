@@ -44,11 +44,10 @@ const NearLogin = () => {
         setStatus("Requesting signature...");
         
         const nonce = generateNonce();
-        // const recipient = window.location.host;
         const recipient = new URL(CHAT_API_BASE_URL).host;
         const message = `Sign in to ${config.name}`;
 
-        console.log("NEAR Login: Requesting signature for message:", message, "to recipient:", recipient);
+        // console.log("NEAR Login: Requesting signature for message:", message, "to recipient:", recipient);
         const signedMessage = await near.signMessage({ message, recipient, nonce });
         
         setStatus("Verifying signature...");
@@ -77,7 +76,6 @@ const NearLogin = () => {
       } catch (err) {
         console.error("NEAR Login Error:", err);
         setError("Login failed. Please close this window and try again.");
-        hasAttemptedRef.current = false;
       }
     };
 
@@ -85,12 +83,14 @@ const NearLogin = () => {
   }, [config, callbackUrl, oauthChannel]);
 
   const handleRetry = () => {
-    hasAttemptedRef.current = false;
-    // Retrigger effect logic by clearing error or similar, 
-    // but simplest is to reload or just reset the ref and let user click a button if we had one.
-    // For auto-flow, we might just reload the page:
     window.location.reload();
   };
+
+  useEffect(() => {
+    return () => {
+       hasAttemptedRef.current = false;
+    };
+  }, [])
 
   if (error) {
     return (
