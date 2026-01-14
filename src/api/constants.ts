@@ -15,6 +15,13 @@ export const CHAT_API_BASE_URL = (
   runtimeOrigin ||
   "https://private.near.ai"
 ).replace(/\/+$/, "");
+
+// Cloud API URL for model list, organization management, etc.
+// Falls back to CHAT_API_BASE_URL if not set (production uses same URL)
+export const CLOUD_API_BASE_URL = (
+  import.meta.env.VITE_CLOUD_API_URL ||
+  CHAT_API_BASE_URL
+).replace(/\/+$/, "");
 export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY || "";
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || "";
 

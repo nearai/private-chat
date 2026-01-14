@@ -109,17 +109,26 @@ const AuthPage: React.FC = () => {
     }
   }, []);
 
+  const getRedirectPath = useCallback(() => {
+    const savedRedirect = localStorage.getItem(LOCAL_STORAGE_KEYS.REDIRECT_AFTER_LOGIN);
+    if (savedRedirect) {
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.REDIRECT_AFTER_LOGIN);
+      return savedRedirect;
+    }
+    return APP_ROUTES.HOME;
+  }, []);
+
   const finalizeOAuth = useCallback(
     (payload: OAuthCompleteEvent) => {
       cleanupOAuthChannel();
       completeLogin(payload.token, payload.sessionId, payload.isNewUser)
-        .then(() => navigate(APP_ROUTES.HOME, { replace: true }))
+        .then(() => navigate(getRedirectPath(), { replace: true }))
         .catch((error) => {
           console.error("Failed to finalize OAuth login:", error);
           toast.error("Failed to complete login. Please try again.");
         });
     },
-    [cleanupOAuthChannel, completeLogin, navigate]
+    [cleanupOAuthChannel, completeLogin, navigate, getRedirectPath]
   );
 
   const startOAuthChannelListener = useCallback(
@@ -268,7 +277,7 @@ const AuthPage: React.FC = () => {
       const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
 
       await completeLogin(response.token, response.session_id, response.is_new_user);
-      navigate(APP_ROUTES.HOME, { replace: true });
+      navigate(getRedirectPath(), { replace: true });
     } catch (error) {
       console.error("NEAR login failed:", error);
       toast.error("Failed to connect to NEAR wallet");
@@ -341,8 +350,8 @@ const AuthPage: React.FC = () => {
 
     completeLogin(payload.token, payload.sessionId, payload.isNewUser)
       .catch(() => toast.error("Failed to complete login."))
-      .finally(() => navigate(APP_ROUTES.HOME, { replace: true }));
-  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam]);
+      .finally(() => navigate(getRedirectPath(), { replace: true }));
+  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam, getRedirectPath]);
 
   const authContent = !config ? (
     <div className="flex h-full items-center justify-center">

@@ -13,8 +13,14 @@ import type {
   Conversation,
   ConversationInfo,
   ConversationItemsResponse,
+  ConversationShareInfo,
+  ConversationSharesListResponse,
+  CreateConversationShareRequest,
+  CreateShareGroupRequest,
+  ShareGroup,
   StartStreamProps,
   Tag,
+  UpdateShareGroupRequest,
 } from "@/types";
 import type { FileContentResponse, FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
@@ -414,6 +420,84 @@ class ChatClient extends ApiClient {
 
   async deleteFile(id: string) {
     return this.delete(`/files/${id}`, { apiVersion: "v2" });
+  }
+
+  async listConversationShares(conversationId: string) {
+    return this.get<ConversationSharesListResponse>(`/conversations/${conversationId}/shares`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async createConversationShare(conversationId: string, payload: CreateConversationShareRequest) {
+    return this.post<ConversationShareInfo[]>(`/conversations/${conversationId}/shares`, payload, {
+      apiVersion: "v2",
+    });
+  }
+
+  async deleteConversationShare(conversationId: string, shareId: string) {
+    return this.delete<void>(`/conversations/${conversationId}/shares/${shareId}`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async listShareGroups() {
+    return this.get<ShareGroup[]>(`/share-groups`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async createShareGroup(payload: CreateShareGroupRequest) {
+    return this.post<ShareGroup>(`/share-groups`, payload, {
+      apiVersion: "v2",
+    });
+  }
+
+  async updateShareGroup(groupId: string, payload: UpdateShareGroupRequest) {
+    return this.patch<ShareGroup>(`/share-groups/${groupId}`, payload, {
+      apiVersion: "v2",
+    });
+  }
+
+  async deleteShareGroup(groupId: string) {
+    return this.delete<void>(`/share-groups/${groupId}`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async listSharedWithMe() {
+    return this.get<{ conversation_id: string; permission: "read" | "write" }[]>(`/shared-with-me`, {
+      apiVersion: "v2",
+    });
+  }
+
+  // Legacy public shared conversation access by token (no auth required)
+  async getPublicSharedConversation(shareToken: string) {
+    return this.get<Conversation>(`/shared/conversations/${shareToken}`, {
+      apiVersion: "v2",
+      requiresAuth: false,
+    });
+  }
+
+  async getPublicSharedConversationItems(shareToken: string) {
+    return this.get<ConversationItemsResponse>(`/shared/conversations/${shareToken}/items`, {
+      apiVersion: "v2",
+      requiresAuth: false,
+    });
+  }
+
+  // Public conversation access by ID (no auth required, requires public share enabled)
+  async getPublicConversation(conversationId: string) {
+    return this.get<Conversation>(`/public/conversations/${conversationId}`, {
+      apiVersion: "v2",
+      requiresAuth: false,
+    });
+  }
+
+  async getPublicConversationItems(conversationId: string) {
+    return this.get<ConversationItemsResponse>(`/public/conversations/${conversationId}/items`, {
+      apiVersion: "v2",
+      requiresAuth: false,
+    });
   }
 }
 

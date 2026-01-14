@@ -1,17 +1,21 @@
-import { useNavigate } from "react-router";
+import { useState } from "react";
+import { ShareIcon } from "@heroicons/react/24/outline";
+import { useNavigate, useParams } from "react-router";
 import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { useViewStore } from "@/stores/useViewStore";
 import { Button } from "../ui/button";
-// import ChatOptions from "./ChatOptions";
+import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
+import ShareConversationDialog from "./ShareConversationDialog";
 
 export default function Navbar() {
   const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   const navigate = useNavigate();
-  // const { chatId } = useParams();
+  const { chatId } = useParams<{ chatId?: string }>();
 
   const handleNewChat = async () => {
     try {
@@ -63,7 +67,18 @@ export default function Navbar() {
           </div>
 
           <div className="flex h-fit items-center gap-2">
-            {/* {chatId && <ChatOptions chatId={chatId} />} */}
+            {chatId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsShareDialogOpen(true)}
+                className="size-8 text-muted-foreground"
+                title="Share"
+              >
+                <ShareIcon className="size-4.5" />
+              </Button>
+            )}
+            {chatId && <ChatOptions chatId={chatId} />}
             {!isRightSidebarOpen && (
               <Button
                 variant="ghost"
@@ -78,6 +93,13 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+      {chatId && (
+        <ShareConversationDialog
+          conversationId={chatId}
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+        />
+      )}
     </nav>
   );
 }

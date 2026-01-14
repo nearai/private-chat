@@ -12,6 +12,8 @@ export const ADMIN_ROUTES = {
 export const APP_ROUTES = {
   HOME: "/",
   CHAT: `/c/${CHAT_ID}`,
+  SHARED: "/shared",
+  SHARED_PUBLIC: "/shared/:token",
   WELCOME: "/welcome",
   AUTH: "/auth/*",
   PLAYGROUND: "/playground",

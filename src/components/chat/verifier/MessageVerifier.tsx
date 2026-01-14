@@ -104,8 +104,12 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
         setMessageSignature(message.chatCompletionId, { ...data, verified: isValid });
       }
     } catch (err) {
-      console.error("Error fetching message signature:", err);
       const errorMsg = err instanceof Error ? err.message : "Failed to fetch message signature";
+      // "Signature not found" is an expected case for recent messages, don't log as error
+      const isNotFoundError = errorMsg.toLowerCase().includes("not found");
+      if (!isNotFoundError) {
+        console.error("Error fetching message signature:", err);
+      }
       setMessageSignatureError(message.chatCompletionId, errorMsg);
     } finally {
       setIsLoading(false);
