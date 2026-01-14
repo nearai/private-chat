@@ -31,6 +31,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { selectedModels } = useChatStore();
   const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
   const updateConversation = useConversationStore((state) => state.updateConversation);
+  const setConversationStatus = useConversationStore((state) => state.setConversationStatus);
   const userSettings = useUserSettings();
   const remoteConfig = useRemoteConfig();
 
@@ -120,9 +121,15 @@ export default function ChatController({ children }: { children?: React.ReactNod
       const invalidateQueryKey = queryKeys.conversation.byId(conversationLocalId);
       const validModels = selectedModels.filter((model) => model && model.length > 0);
 
-      const runStreamForModel = async (model: string) => {
+      const runStreamForModel = async (model: string, {
+        previousResponseId,
+        onResponseCreated,
+      }: {
+        previousResponseId?: string
+        onResponseCreated?: () => void
+      }) => {
         console.log(`Starting stream for model: ${model}`);
-        pushResponse(conversationLocalId, contentItems, previous_response_id);
+        pushResponse(conversationLocalId, contentItems, previousResponseId);
         const streamPromise = chatClient.startStream({
           model,
           role: "user",
@@ -131,11 +138,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
           queryClient,
           include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
           tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
-          previous_response_id: previous_response_id,
+          previous_response_id: previousResponseId,
           systemPrompt: userSettings.data?.settings.system_prompt,
           onReaderReady: (reader, abortController) => {
             addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
           },
+          onResponseCreated,
         });
 
         try {
@@ -153,11 +161,61 @@ export default function ChatController({ children }: { children?: React.ReactNod
         }
       };
 
+      const isNewChat = initiator === "new_chat";
+      if (isNewChat && !previous_response_id && !currentModel && validModels.length > 1) {
+        // Run the first model to establish the message anchor
+        const firstModel = validModels[0];
+        try {
+          await runStreamForModel(firstModel, {
+            previousResponseId: previous_response_id,
+          });
+        } catch (error) {
+          console.error(`Stream failed for first model ${firstModel}:`, error);
+        }
+
+        let firstMessagePreviousId = previous_response_id;
+        try {
+          // Fetch conversation items to find the common parent ID
+          const items = await chatClient.getConversationItems(conversationLocalId);
+          // Find the user message we just created (should be one of the first items)
+          const userMsg = items.data.find((m) => m.role === ConversationRoles.USER);
+          if (userMsg) {
+            firstMessagePreviousId = userMsg.previous_response_id;
+          }
+        } catch (error) {
+          console.error("Failed to fetch conversation items to sync models:", error);
+        }
+
+        // Run the rest of the models attached to the same parent
+        console.log("Starting streams for remaining models in new_chat");
+        setConversationStatus(conversationLocalId, "ready");
+        const remainingModels = validModels.slice(1);
+        await Promise.all(
+          remainingModels.map(async (model) => {
+            try {
+              await runStreamForModel(model, {
+                previousResponseId: firstMessagePreviousId,
+              });
+            } catch (error: any) {
+              console.error(`Stream failed for model ${model}:`, error);
+            }
+          })
+        );
+        console.log("All new_chat model streams completed");
+        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+        return;
+      }
+
+      if (isNewChat) {
+        setConversationStatus(conversationLocalId, "ready");
+      }
       if (initiator === "new_message" && !currentModel && validModels.length > 1) {
         await Promise.all(
           validModels.map(async (model) => {
             try {
-              await runStreamForModel(model);
+              await runStreamForModel(model, {
+                previousResponseId: previous_response_id,
+              });
             } catch (error: any) {
               console.error(`Stream failed for model ${model}:`, error);
             }
@@ -173,7 +231,9 @@ export default function ChatController({ children }: { children?: React.ReactNod
         console.error("Model is required to start stream but none was available");
         return;
       }
-      runStreamForModel(model)
+      runStreamForModel(model, {
+        previousResponseId: previous_response_id,
+      })
         .catch((error) => {
           console.log("Stream error:", error);
         })

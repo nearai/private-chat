@@ -17,12 +17,16 @@ export type ConversationDerivedState = {
   batches: string[];
 };
 
+export type ConversationStatus = 'initializing' | 'ready';
+
 export interface ConversationStoreState {
   conversation: ConversationDerivedState | null;
+  conversationStatus: Map<string, ConversationStatus>;
   setConversationData: (conversation: Conversation, previous_response_id?: string | null) => void;
   updateConversation: (updater: (state: ConversationStoreState) => ConversationStoreState) => void;
   setLastResponseId: (nextId: string) => void;
   resetConversation: () => void;
+  setConversationStatus: (conversationId: string, status: ConversationStatus) => void;
 }
 
 export const createEmptyConversation = (conversationId: string): Conversation => ({
@@ -68,6 +72,7 @@ export const buildConversationEntry = (
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
   conversation: null,
+  conversationStatus: new Map(),
   setConversationData: (conversation: Conversation, previous_response_id?: string | null) =>
     set((state) => {
       if (!conversation) return state;
@@ -101,5 +106,13 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
     set((state) => {
       if (!state.conversation) return state;
       return { conversation: null };
+    }),
+  setConversationStatus: (conversationId: string, status: ConversationStatus) =>
+    set((state) => {
+      const newStatus = new Map(state.conversationStatus);
+      newStatus.set(conversationId, status);
+      return {
+        conversationStatus: newStatus,
+      };
     }),
 }));
