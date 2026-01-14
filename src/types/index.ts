@@ -563,3 +563,12 @@ export interface StartStreamProps {
   include?: string[];
   previous_response_id?: string;
 }
+
+export interface ChatStartStreamOptions {
+  contentItems: ContentItem[];
+  webSearchEnabled: boolean;
+  conversationId?: string;
+  previous_response_id?: string;
+  currentModel?: string;
+  initiator?: "regenerate" | "new_message" | "edit_message";
+}

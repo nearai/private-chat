@@ -17,7 +17,7 @@ import {
   useConversationStore,
 } from "@/stores/useConversationStore";
 import { useStreamStore } from "@/stores/useStreamStore";
-import type { ConversationUserInput } from "@/types";
+import type { ChatStartStreamOptions, ConversationUserInput } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
@@ -102,11 +102,13 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
   const startStream = useCallback(
     async (
-      contentItems: ContentItem[],
-      webSearchEnabled: boolean,
-      conversationId?: string,
-      previous_response_id?: string,
-      currentModel?: string,
+      {
+        contentItems,
+        webSearchEnabled,
+        conversationId,
+        previous_response_id,
+        currentModel,
+      }: ChatStartStreamOptions
     ) => {
       const conversationLocalId = conversationId || params.chatId;
       if (!conversationLocalId) {

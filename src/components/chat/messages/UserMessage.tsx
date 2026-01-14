@@ -12,8 +12,8 @@ import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import type { ConversationItem, ConversationUserInput } from "@/types";
-import { type ContentItem, extractFiles, extractMessageContent } from "@/types/openai";
+import type { ChatStartStreamOptions, ConversationItem, ConversationUserInput } from "@/types";
+import { type ContentItem, extractFiles, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
@@ -22,13 +22,7 @@ interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
   allMessages: Record<string, ConversationItem>;
   batchId: string;
-  regenerateResponse: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string
-  ) => Promise<void>;
+  regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   siblings?: string[];
 }
 
@@ -49,6 +43,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const { chatId } = useParams();
   const messageContent = extractMessageContent(message?.content ?? []);
   const messageFiles = extractFiles(message?.content ?? []);
+  const { model } = getModelAndCreatedTimestamp(batch, allMessages);
   const { data: conversationData } = useGetConversation(chatId);
   const conversationImportedAt = conversationData?.metadata?.imported_at;
 
@@ -99,10 +94,17 @@ const UserMessage: React.FC<UserMessageProps> = ({
     const filteredFiles = userPromptMessage.content.filter((item) => item.type === "input_file");
     const contentItems: ContentItem[] = [...filteredFiles, { type: "input_text", text: editedContent.trim() }];
 
-    await regenerateResponse(contentItems, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
+    await regenerateResponse({
+      contentItems,
+      webSearchEnabled,
+      conversationId: chatId,
+      previous_response_id: batch?.parentResponseId || undefined,
+      currentModel: model || undefined,
+      initiator: "edit_message",
+    });
     setEdit(false);
     setEditedContent("");
-  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, editedContent, disabledSendButton]);
+  }, [regenerateResponse, webSearchEnabled, batch, model, chatId, allMessages, editedContent, disabledSendButton]);
 
   useEffect(() => {
     if (edit && messageEditTextAreaRef.current) {
@@ -167,6 +169,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
       dir={settings.chatDirection || "ltr"}
       id={`message-${message.id}`}
       data-response-id={message.response_id || ""}
+      data-model-id={model || ""}
     >
       <div className="w-0 max-w-full flex-auto pl-1">
         <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>

@@ -20,13 +20,14 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
 import type {
+  ChatStartStreamOptions,
   ConversationItem,
   ConversationModelOutput,
   ConversationReasoning,
   ConversationUserInput,
   ConversationWebSearchCall,
 } from "@/types";
-import { type ContentItem, extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
+import { extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
@@ -39,13 +40,7 @@ interface ResponseMessageProps {
   siblings: string[];
   isLastMessage: boolean;
   readOnly: boolean;
-  regenerateResponse: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string
-  ) => Promise<void>;
+  regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -133,13 +128,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     if (prevResponseId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
       prevResponseId = unwrapMockResponseID(prevResponseId);
     }
-    await regenerateResponse(
-      userPrompt.content,
+    await regenerateResponse({
+      contentItems: userPrompt.content,
       webSearchEnabled,
-      chatId,
-      prevResponseId,
-      model || undefined,
-    );
+      conversationId: chatId,
+      previous_response_id: prevResponseId,
+      currentModel: model || undefined,
+      initiator: "regenerate",
+    });
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {

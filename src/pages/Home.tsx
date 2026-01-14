@@ -11,7 +11,6 @@ import LoadingScreen from "@/components/common/LoadingScreen";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
 
 import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
-// import sleep from "@/lib/utils/sleep";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
@@ -22,17 +21,12 @@ import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/l
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useStreamStore } from "@/stores/useStreamStore";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
+import type { ChatStartStreamOptions } from "@/types";
 
 const Home = ({
   startStream,
 }: {
-  startStream: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string,
-  ) => Promise<void>;
+  startStream: (options: ChatStartStreamOptions) => Promise<void>;
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
@@ -81,18 +75,16 @@ const Home = ({
         }
       }
 
-      const validModels = selectedModels.filter((model) => model && model.length > 0);
-      // Start streams sequentially with a 2s delay between each to avoid overwhelming backend
-      for (const model of validModels) {
-        // Wait 2s before starting each model stream
-        // await sleep(2000);
-        console.log("Starting stream with model:", model);
-        // eslint-disable-next-line no-await-in-loop
-        await startStream(contentItems, webSearchEnabled, chatId, prevRespId, model);
-      }
+      await startStream({
+        contentItems,
+        webSearchEnabled,
+        conversationId: chatId,
+        previous_response_id: prevRespId,
+        initiator: "new_message",
+      });
       scrollToBottom();
     },
-    [chatId, selectedModels, scrollToBottom, startStream]
+    [chatId, scrollToBottom, startStream]
   );
 
   useEffect(() => {

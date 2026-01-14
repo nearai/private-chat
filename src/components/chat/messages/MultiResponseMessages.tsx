@@ -2,8 +2,8 @@ import type React from "react";
 import { useMemo } from "react";
 import { cn, type CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
-import type { ConversationItem } from "@/types";
-import { type ContentItem, getModelAndCreatedTimestamp } from "@/types/openai";
+import type { ChatStartStreamOptions, ConversationItem } from "@/types";
+import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
 
 interface MultiResponseMessagesProps {
@@ -13,13 +13,7 @@ interface MultiResponseMessagesProps {
   allMessages: Record<string, ConversationItem>;
   isLastMessage: boolean;
   readOnly: boolean;
-  regenerateResponse: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string
-  ) => Promise<void>;
+  regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   responseSiblings?: string[];
 }
 
