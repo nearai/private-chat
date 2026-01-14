@@ -108,6 +108,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         conversationId,
         previous_response_id,
         currentModel,
+        initiator,
       }: ChatStartStreamOptions
     ) => {
       const conversationLocalId = conversationId || params.chatId;
@@ -115,46 +116,69 @@ export default function ChatController({ children }: { children?: React.ReactNod
         console.error("Conversation ID is required to start stream");
         return;
       }
-    
+      
+      const invalidateQueryKey = queryKeys.conversation.byId(conversationLocalId);
       const validModels = selectedModels.filter((model) => model && model.length > 0);
-      const model = currentModel || validModels[0] || remoteConfig.data?.default_model;
-      if (!model) {
-        console.error("Model is required to start stream but none was available");
-        return;
-      }
 
-      pushResponse(conversationLocalId, contentItems, previous_response_id);
+      const runStreamForModel = async (model: string) => {
+        console.log(`Starting stream for model: ${model}`);
+        pushResponse(conversationLocalId, contentItems, previous_response_id);
+        const streamPromise = chatClient.startStream({
+          model,
+          role: "user",
+          content: contentItems,
+          conversation: conversationId,
+          queryClient,
+          include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
+          tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
+          previous_response_id: previous_response_id,
+          systemPrompt: userSettings.data?.settings.system_prompt,
+          onReaderReady: (reader, abortController) => {
+            addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
+          },
+        });
 
-      const streamPromise = chatClient.startStream({
-        model,
-        role: "user",
-        content: contentItems,
-        conversation: conversationId,
-        queryClient,
-        include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
-        tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
-        previous_response_id: previous_response_id,
-        systemPrompt: userSettings.data?.settings.system_prompt,
-        onReaderReady: (reader, abortController) => {
-          addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
-        },
-      });
-
-      streamPromise
-        .then(() => {
+        try {
+          await streamPromise;
           markStreamComplete(conversationLocalId);
-        })
-        .catch((error) => {
-          // ignore AbortError, it's expected when stopping
+        } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
           }
           markStreamComplete(conversationLocalId);
           removeStream(conversationLocalId);
+          throw error;
+        } finally {
+          removeStream(conversationLocalId);
+        }
+      };
+
+      if (initiator === "new_message" && !currentModel && validModels.length > 1) {
+        await Promise.all(
+          validModels.map(async (model) => {
+            try {
+              await runStreamForModel(model);
+            } catch (error: any) {
+              console.error(`Stream failed for model ${model}:`, error);
+            }
+          })
+        );
+        console.log("All model streams completed");
+        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+        return;
+      }
+
+      const model = currentModel || validModels[0] || remoteConfig.data?.default_model;
+      if (!model) {
+        console.error("Model is required to start stream but none was available");
+        return;
+      }
+      runStreamForModel(model)
+        .catch((error) => {
+          console.log("Stream error:", error);
         })
         .finally(() => {
-          removeStream(conversationLocalId);
-          queryClient.invalidateQueries({ queryKey: queryKeys.conversation.byId(conversationLocalId) });
+          queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
         });
     },
     [

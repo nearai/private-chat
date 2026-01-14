@@ -570,5 +570,5 @@ export interface ChatStartStreamOptions {
   conversationId?: string;
   previous_response_id?: string;
   currentModel?: string;
-  initiator?: "regenerate" | "new_message" | "edit_message";
+  initiator: "regenerate" | "new_message" | "edit_message";
 }
