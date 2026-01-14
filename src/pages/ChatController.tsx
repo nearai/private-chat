@@ -29,7 +29,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const params = useParams<{ chatId?: string }>();
   const queryClient = useQueryClient();
   const { selectedModels } = useChatStore();
-  const { addStream, removeStream, markStreamComplete } = useStreamStore();
+  const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
   const updateConversation = useConversationStore((state) => state.updateConversation);
   const userSettings = useUserSettings();
   const remoteConfig = useRemoteConfig();
@@ -135,17 +135,22 @@ export default function ChatController({ children }: { children?: React.ReactNod
         tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
         previous_response_id: previous_response_id,
         systemPrompt: userSettings.data?.settings.system_prompt,
+        onReaderReady: (reader, abortController) => {
+          addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
+        },
       });
-
-      addStream(conversationLocalId, streamPromise);
 
       streamPromise
         .then(() => {
           markStreamComplete(conversationLocalId);
         })
         .catch((error) => {
-          console.error("Stream error:", error);
+          // ignore AbortError, it's expected when stopping
+          if (error?.name !== "AbortError") {
+            console.error("Stream error:", error);
+          }
           markStreamComplete(conversationLocalId);
+          removeStream(conversationLocalId);
         })
         .finally(() => {
           removeStream(conversationLocalId);
@@ -165,16 +170,52 @@ export default function ChatController({ children }: { children?: React.ReactNod
     ]
   );
 
+  // Stop function to cancel active streams
+  const handleStopStream = useCallback(() => {
+    const chatId = params.chatId;
+    if (chatId) {
+      updateConversation((draft) => {
+        if (!draft.conversation) return draft;
+
+        const messages = draft.conversation.conversation.data ?? [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const item = messages[i];
+          if (
+            item.type === ConversationTypes.MESSAGE &&
+            item.role === ConversationRoles.ASSISTANT &&
+            item.status === "pending"
+          ) {
+            item.status = "completed";
+
+            if (draft.conversation.allMessages?.[item.id]) {
+              draft.conversation.allMessages[item.id].status = "completed";
+            }
+            if (draft.conversation.history?.messages?.[item.id]) {
+              draft.conversation.history.messages[item.id].status = "completed";
+            }
+            break;
+          }
+        }
+        return draft;
+      });
+
+      stopStream(chatId);
+    } else {
+      // If no specific chat, stop all streams
+      stopAllStreams();
+    }
+  }, [params.chatId, updateConversation, stopStream, stopAllStreams]);
+
   // Determine which component to render based on route
   const renderComponent = useMemo(() => {
     if (location.pathname === APP_ROUTES.HOME) {
-      return <NewChat startStream={startStream} />;
+      return <NewChat startStream={startStream} stopStream={handleStopStream} />;
     }
     if (location.pathname.startsWith("/c/")) {
-      return <Home startStream={startStream} />;
+      return <Home startStream={startStream} stopStream={handleStopStream} />;
     }
     return children;
-  }, [location.pathname, children, startStream]);
+  }, [location.pathname, children, startStream, handleStopStream]);
 
   return <>{renderComponent}</>;
 }

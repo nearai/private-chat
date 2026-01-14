@@ -26,8 +26,10 @@ import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function NewChat({
   startStream,
+  stopStream,
 }: {
   startStream: (options: ChatStartStreamOptions) => Promise<void>;
+  stopStream?: () => void;
 }) {
   const [inputValue, setInputValue] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
@@ -209,6 +211,7 @@ export default function NewChat({
             fullWidth={false}
             prompt={inputValue}
             setPrompt={setInputValue}
+            stopStream={stopStream}
             autoFocusKey="new-chat"
           />
           <div className="mx-auto mt-2 w-full max-w-2xl font-primary">

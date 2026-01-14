@@ -25,8 +25,10 @@ import type { ChatStartStreamOptions } from "@/types";
 
 const Home = ({
   startStream,
+  stopStream,
 }: {
   startStream: (options: ChatStartStreamOptions) => Promise<void>;
+  stopStream?: () => void;
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
@@ -154,7 +156,6 @@ const Home = ({
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
-
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
   
@@ -260,7 +261,9 @@ const Home = ({
         setPrompt={setInputValue}
         selectedModels={selectedModels}
         isMessageCompleted={isMessageCompleted}
+        stopStream={stopStream}
         isConversationStreamActive={currentStreamIsActive}
+        allMessages={allMessages}
         autoFocusKey={chatId ?? "home"}
       />
     </div>

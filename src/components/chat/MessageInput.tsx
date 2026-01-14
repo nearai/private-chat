@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import { chatClient, isUploadError } from "@/api/chat/client";
 
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
@@ -18,19 +18,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
+import { ACCEPTED_FILE_TYPES, SUPPORTED_TEXT_EXTENSIONS } from "@/lib/constants";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
-import { compressImage } from "@/lib/image";
+// import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { History, Message, Model } from "@/types";
+import { ConversationRoles, ConversationTypes, type ConversationItem, type History, type Message, type Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
 import UserMenu from "../sidebar/UserMenu";
 import { Button } from "../ui/button";
 
 interface MessageInputProps {
   messages?: Message[];
+  allMessages?: Record<string, ConversationItem>
   onChange?: (data: {
     prompt: string;
     files: FileContentItem[];
@@ -39,7 +41,7 @@ interface MessageInputProps {
     webSearchEnabled: boolean;
   }) => void;
   createMessagePair?: (prompt: string) => void;
-  stopResponse?: () => void;
+  stopStream?: () => void;
   autoScroll?: boolean;
   atSelectedModel?: Model;
   selectedModels?: string[];
@@ -68,8 +70,9 @@ const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
+  allMessages,
   createMessagePair = () => {},
-  stopResponse = () => {},
+  stopStream = () => {},
   autoScroll = false,
   atSelectedModel,
   selectedModels,
@@ -124,18 +127,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const uploadFileHandler = useCallback(
     async (file: File): Promise<FileContentItem | undefined> => {
       try {
-        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         const maxFileSize = 10 * 1024 * 1024;
-        if (file.type === "application/pdf") {
-          toast.error("PDF files are not supported yet.");
-          return;
-        }
-
         if (file.size > maxFileSize) {
           toast.error(`File size should not exceed 10 MB.`);
           return;
         }
-
+        
+        if (file.type.startsWith("image/")) {
+          toast.info("Images are not supported yet.");
+          return;
+        }
+        
+        /*
+        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         if (imageTypes.includes(file.type)) {
           const imageUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -162,6 +166,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
           return newFile;
         }
+        */
+
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const isText = file.type === "text/plain" || SUPPORTED_TEXT_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (!isPdf && !isText) {
+          toast.error(t("The file type is not yet supported."));
+          return;
+        }
 
         const data = await chatClient.uploadFile(file);
 
@@ -173,7 +186,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       } catch (errorObj: unknown) {
         if (isUploadError(errorObj)) {
           if (errorObj.error.type === "invalid_request_error") {
-            toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+            toast.error(t("This file type is not supported. Please upload PDF or plain text files."));
           }
         } else {
           toast.error(t("Error uploading file."));
@@ -182,7 +195,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         return undefined;
       }
     },
-    [settings.imageCompression, settings.imageCompressionSize, t]
+    [t]
   );
 
   const disabledSendButton = useMemo(() => {
@@ -286,7 +299,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     const isCtrlPressed = e.ctrlKey || e.metaKey;
 
     if (e.key === "Escape") {
-      stopResponse();
+      handleStopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
       // setImageGenerationEnabled(false);
@@ -339,10 +352,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (clipboardData?.items) {
       for (const item of Array.from(clipboardData.items)) {
         if (item.type.indexOf("image") !== -1) {
-          const blob = item.getAsFile();
-          if (blob) {
-            await uploadFileHandler(blob);
-          }
+          // const blob = item.getAsFile();
+          // if (blob) {
+          //   await uploadFileHandler(blob);
+          // }
+           toast.info("Images are not supported yet.");
         } else if (item.type === "text/plain") {
           if (settings.largeTextAsFile ?? false) {
             const text = clipboardData.getData("text/plain");
@@ -377,6 +391,62 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const setAtSelectedModel = () => {
     // This would be handled by parent component or store
+  };
+
+  const disabledStopButton = useMemo(() => {
+    if (!isConversationStreamActive) return false;
+    if (!allMessages) return false;
+    const hasUnfinishedNonReasoning = Object.values(allMessages).some(
+      (msg) =>
+        msg.role === ConversationRoles.ASSISTANT &&
+        msg.status === "pending" &&
+        msg.type !== ConversationTypes.REASONING &&
+        msg.type !== ConversationTypes.WEB_SEARCH_CALL
+    );
+
+    return !hasUnfinishedNonReasoning;
+  }, [isConversationStreamActive, allMessages]);
+
+  const handleStopResponse = () => {
+    if (!isConversationStreamActive) return;
+    if (disabledStopButton) return;
+    stopStream();
+  };
+
+  const renderSendButton = () => {
+    if (isConversationStreamActive && !disabledStopButton) {
+      return (
+        <div className="mr-1 flex shrink-0 space-x-1 self-end">
+          <Button
+            id="stop-message-button"
+            className="size-10 rounded-full"
+            type="button"
+            title="Stop"
+            size="icon"
+            onClick={handleStopResponse}
+          >
+            <StopMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+        <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+          'cursor-not-allowed!': disabledSendButton,
+        })}>
+          <Button
+            id="send-message-button"
+            className="size-10 rounded-full"
+            type="submit"
+            title="Send"
+            disabled={disabledSendButton || !isOnline}
+            size="icon"
+          >
+            <SendMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
   };
 
   if (!loaded) return null;
@@ -492,6 +562,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 type="file"
                 hidden
                 multiple
+                accept={ACCEPTED_FILE_TYPES}
                 disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
@@ -681,31 +752,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                     {(taskIds && taskIds.length > 0) ||
                     (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
                       <div className="mr-1 flex shrink-0 space-x-1 self-end">
-                        <Button size="icon" onClick={stopResponse} className="size-10">
+                        <Button size="icon" onClick={handleStopResponse} className="size-10">
                           <StopMessageIcon className="size-5" />
                         </Button>
                       </div>
-                    ) : (
-                      <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
-                        'cursor-not-allowed!': disabledSendButton,
-                      })}>
-                        <Button
-                          id="send-message-button"
-                          className={cn("size-10 rounded-full")}
-                          type="submit"
-                          title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={disabledSendButton || !isOnline}
-                          size="icon"
-                        >
-                          {isMessageCompleted ? (
-                            <SendMessageIcon className="size-5" />
-                          ) : (
-                            // TODO: stop message
-                            <StopMessageIcon className="size-5" />
-                          )}
-                        </Button>
-                      </div>
-                    )}
+                    ) : renderSendButton()}
                   </div>
                 </div>
               </form>
