@@ -3,8 +3,8 @@ import { useParams, useSearchParams, useNavigate, Link } from "react-router";
 import { DocumentDuplicateIcon, ExclamationTriangleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
+import { useCloneChat } from "@/api/chat/queries/useCloneChat";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
-import { chatClient } from "@/api/chat/client";
 
 import MessageInput from "@/components/chat/MessageInput";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,6 @@ const Home = ({
   const navigate = useNavigate();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
-  const [isCloning, setIsCloning] = useState(false);
   const modelInitializedRef = useRef<boolean>(false);
   const dataInitializedRef = useRef<boolean>(false);
   const remoteConfig = useRemoteConfig();
@@ -51,6 +50,9 @@ const Home = ({
   // Get permission info for shared conversations
   const { data: sharesData } = useConversationShares(chatId);
   const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
+
+  // Use the clone hook which invalidates conversation list queries
+  const cloneChat = useCloneChat();
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const { isStreamActive } = useStreamStore();
@@ -141,9 +143,8 @@ const Home = ({
   const handleCopyAndContinue = useCallback(async () => {
     if (!chatId) return;
 
-    setIsCloning(true);
     try {
-      const clonedChat = await chatClient.cloneChatById(chatId);
+      const clonedChat = await cloneChat.mutateAsync({ id: chatId });
       toast.success("Conversation copied to your account");
       // Navigate to the cloned conversation
       if (clonedChat && typeof clonedChat === "object" && "id" in clonedChat) {
@@ -152,10 +153,8 @@ const Home = ({
     } catch (err) {
       console.error("Failed to clone conversation:", err);
       toast.error("Failed to copy conversation");
-    } finally {
-      setIsCloning(false);
     }
-  }, [chatId, navigate]);
+  }, [chatId, cloneChat, navigate]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -378,10 +377,10 @@ const Home = ({
               </div>
               <Button
                 onClick={handleCopyAndContinue}
-                disabled={isCloning}
+                disabled={cloneChat.isPending}
                 className="rounded-xl px-6"
               >
-                {isCloning ? (
+                {cloneChat.isPending ? (
                   <Spinner className="size-4" />
                 ) : (
                   <>
