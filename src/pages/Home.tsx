@@ -59,7 +59,7 @@ const Home = ({
     return conversationStatus.get(chatId) === "ready";
   }, [chatId, conversationStatus]);
 
-  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(chatId);
+  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(conversationIsReady ? chatId : undefined);
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const { clearAllSignatures } = useMessagesSignaturesStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -253,7 +253,7 @@ const Home = ({
     });
   }, [batches, history, allMessages, currentMessages.length, startStream]);
 
-  const isLoading = isConversationsLoading || !conversationIsReady;
+  const isLoading = isConversationsLoading|| !conversationIsReady;
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />
@@ -266,7 +266,7 @@ const Home = ({
         onScroll={handleScroll}
         className={cn("flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500", {
           "pl-12.5": !isLeftSidebarOpen,
-          "hidden opacity-0": isLoading,
+          "hidden opacity-0": !conversationIsReady,
         })}
       >
         {renderedMessages}

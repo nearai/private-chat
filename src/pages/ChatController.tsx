@@ -37,9 +37,10 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
-    (conversationId: string, contentItems: ContentItem[], previous_response_id?: string) => {
+    (conversationId: string, model: string, contentItems: ContentItem[], previous_response_id?: string) => {
       // Generate unique temp ID to prevent collisions in regenerate/branch scenarios
       const tempId = `temp-message-${crypto.randomUUID()}`;
+      const tempRespId = TEMP_RESPONSE_ID;
 
       const updatedConversation = (draft: ConversationStoreState) => {
         if (!draft.conversation) {
@@ -55,14 +56,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
         }
         const userMessage: ConversationUserInput = {
           id: tempId,
-          response_id: TEMP_RESPONSE_ID,
+          response_id: tempRespId,
           next_response_ids: [],
           created_at: Date.now(),
           status: "pending" as const,
           role: ConversationRoles.USER,
           type: ConversationTypes.MESSAGE,
           content: contentItems,
-          model: selectedModels[0] || "",
+          model: model,
           previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
         };
 
@@ -72,7 +73,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         // update conversation entry for rendering
         const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
           draft.conversation.conversation,
-          TEMP_RESPONSE_ID
+          tempRespId
         );
         draft.conversation.history = history;
         draft.conversation.allMessages = allMessages;
@@ -84,8 +85,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
           const lastResponseParent = draft.conversation.history.messages[lastResponseParentId];
           if (lastResponseParent) {
             // Add tempId because we don't have responseId yet
-            if (!lastResponseParent.nextResponseIds.includes(TEMP_RESPONSE_ID)) {
-              lastResponseParent.nextResponseIds = [...lastResponseParent.nextResponseIds, TEMP_RESPONSE_ID];
+            if (!lastResponseParent.nextResponseIds.includes(tempRespId)) {
+              lastResponseParent.nextResponseIds = [...lastResponseParent.nextResponseIds, tempRespId];
             }
           }
         }
@@ -129,7 +130,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         onResponseCreated?: () => void
       }) => {
         console.log(`Starting stream for model: ${model}`);
-        pushResponse(conversationLocalId, contentItems, previousResponseId);
+        pushResponse(conversationLocalId, model, contentItems, previousResponseId);
         const streamPromise = chatClient.startStream({
           model,
           role: "user",
@@ -188,7 +189,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
         // Run the rest of the models attached to the same parent
         console.log("Starting streams for remaining models in new_chat");
-        setConversationStatus(conversationLocalId, "ready");
         const remainingModels = validModels.slice(1);
         await Promise.all(
           remainingModels.map(async (model) => {
@@ -202,6 +202,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
           })
         );
         console.log("All new_chat model streams completed");
+        setConversationStatus(conversationLocalId, "ready");
         queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
         return;
       }
