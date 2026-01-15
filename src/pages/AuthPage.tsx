@@ -48,6 +48,14 @@ const AuthPage: React.FC = () => {
   const sessionId = searchParams.get("session_id");
   const isNewUser = searchParams.get("is_new_user") === "true";
   const oauthChannelParam = searchParams.get("oauth_channel");
+  const redirectParam = searchParams.get("redirect");
+
+  // Save redirect parameter to localStorage for use after auth completes
+  useEffect(() => {
+    if (redirectParam) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.REDIRECT_AFTER_LOGIN, redirectParam);
+    }
+  }, [redirectParam]);
 
   const [agreedTerms, setAgreedTerms] = useState(
     localStorage.getItem(LOCAL_STORAGE_KEYS.AGREED_TERMS) === TERMS_VERSION

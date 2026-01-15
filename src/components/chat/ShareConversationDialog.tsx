@@ -469,8 +469,8 @@ export const ShareConversationDialog = ({
               </div>
             )}
 
-            {/* People with access - only show for owners who have shares */}
-            {isOwner && (
+            {/* People with access - show for owners and users with share permission */}
+            {(isOwner || canShare) && (
               <div className="space-y-3">
                 <h3 className="font-medium text-muted-foreground text-sm">
                   People with access
@@ -482,8 +482,8 @@ export const ShareConversationDialog = ({
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    {/* Owner (current user) - always shown first */}
-                    {currentUserEmail && (
+                    {/* Owner (current user) - shown first only if current user is owner */}
+                    {isOwner && currentUserEmail && (
                       <div className="flex items-center gap-3 rounded-xl p-2">
                         {/* Avatar */}
                         <div
@@ -515,6 +515,9 @@ export const ShareConversationDialog = ({
                     {peopleShares.map((share) => {
                       const info = getShareDisplayInfo(share);
                       const isDeleting = pendingDeleteId === share.id;
+                      // Check if this share is the current user (for non-owners)
+                      const isCurrentUser = share.share_type === "direct" &&
+                        share.recipient?.value?.toLowerCase() === currentUserEmail;
 
                       return (
                         <div
@@ -536,7 +539,12 @@ export const ShareConversationDialog = ({
 
                           {/* Info */}
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-sm">{info.name}</p>
+                            <p className="truncate font-medium text-sm">
+                              {info.name}
+                              {isCurrentUser && (
+                                <span className="ml-1.5 text-muted-foreground">(you)</span>
+                              )}
+                            </p>
                             <p className="text-muted-foreground text-xs">{info.subtitle}</p>
                           </div>
 
@@ -545,23 +553,25 @@ export const ShareConversationDialog = ({
                             {share.permission === "write" ? "Can edit" : "Can view"}
                           </span>
 
-                          {/* Remove button */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveAccess(share)}
-                            disabled={isDeleting}
-                            className={cn(
-                              "size-8 rounded-lg opacity-0 transition-opacity group-hover:opacity-100",
-                              "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            )}
-                          >
-                            {isDeleting ? (
-                              <Spinner className="size-4" />
-                            ) : (
-                              <XMarkIcon className="size-4" />
-                            )}
-                          </Button>
+                          {/* Remove button - only for owners */}
+                          {isOwner && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveAccess(share)}
+                              disabled={isDeleting}
+                              className={cn(
+                                "size-8 rounded-lg opacity-0 transition-opacity group-hover:opacity-100",
+                                "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              )}
+                            >
+                              {isDeleting ? (
+                                <Spinner className="size-4" />
+                              ) : (
+                                <XMarkIcon className="size-4" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       );
                     })}

@@ -128,7 +128,7 @@ export default function PublicConversationPage() {
           </p>
         </div>
         <Link
-          to="/auth"
+          to={chatId ? `/auth?redirect=/c/${chatId}` : "/auth"}
           className="rounded-xl bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Sign in to NEAR AI Chat
@@ -156,7 +156,7 @@ export default function PublicConversationPage() {
             </Link>
           ) : (
             <Link
-              to="/auth"
+              to={`/auth?redirect=/c/${chatId}`}
               className="rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
             >
               Sign in
@@ -179,31 +179,33 @@ export default function PublicConversationPage() {
               <p>This conversation is empty</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={cn(
-                    "rounded-2xl p-4",
-                    message.role === "user"
-                      ? "ml-auto max-w-[85%] bg-primary text-primary-foreground"
-                      : "bg-muted"
+                    "w-full",
+                    message.role === "user" ? "flex flex-col items-end" : ""
                   )}
                 >
-                  {message.role !== "user" && (
-                    <div className="mb-2 font-medium text-muted-foreground text-xs">
-                      Assistant
-                    </div>
-                  )}
-                  <div className="whitespace-pre-wrap text-sm">
-                    {Array.isArray(message.content)
-                      ? message.content
-                          .filter((c) => c.type === "input_text" || c.type === "output_text")
-                          .map((c) => ("text" in c ? c.text : ""))
-                          .join("\n")
-                      : typeof message.content === "string"
+                  <div
+                    className={cn(
+                      "rounded-xl px-4 py-2",
+                      message.role === "user"
+                        ? "max-w-[90%] bg-card"
+                        : "w-full"
+                    )}
+                  >
+                    <div className="whitespace-pre-wrap text-sm">
+                      {Array.isArray(message.content)
                         ? message.content
-                        : ""}
+                            .filter((c) => c.type === "input_text" || c.type === "output_text")
+                            .map((c) => ("text" in c ? c.text : ""))
+                            .join("\n")
+                        : typeof message.content === "string"
+                          ? message.content
+                          : ""}
+                    </div>
                   </div>
                 </div>
               ))}

@@ -50,6 +50,7 @@ const Home = ({
   // Get permission info for shared conversations
   const { data: sharesData } = useConversationShares(chatId);
   const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
+  const ownerName = sharesData?.owner?.name;
 
   // Use the clone hook which invalidates conversation list queries
   const cloneChat = useCloneChat();
@@ -247,6 +248,7 @@ const Home = ({
             batchId={batch}
             regenerateResponse={startStream}
             siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+            ownerName={ownerName}
           />
         );
       }
@@ -271,6 +273,7 @@ const Home = ({
             batchId={batch}
             regenerateResponse={startStream}
             siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+            ownerName={ownerName}
           />
         );
       }
@@ -307,7 +310,7 @@ const Home = ({
       }
       return messages;
     });
-  }, [batches, history, allMessages, currentMessages.length, startStream]);
+  }, [batches, history, allMessages, currentMessages.length, startStream, ownerName]);
 
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {

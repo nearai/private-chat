@@ -173,12 +173,19 @@ export interface ConversationShareInfo {
   updated_at: string;
 }
 
+export interface OwnerInfo {
+  user_id: string;
+  name?: string;
+}
+
 export interface ConversationSharesListResponse {
   is_owner: boolean;
   can_share: boolean;
   /** Whether the user can send messages (has write access) */
   can_write: boolean;
   shares: ConversationShareInfo[];
+  /** Owner information for displaying author names on messages */
+  owner?: OwnerInfo;
 }
 
 export interface ShareGroup {

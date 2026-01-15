@@ -30,6 +30,8 @@ interface UserMessageProps {
     currentModel?: string
   ) => Promise<void>;
   siblings?: string[];
+  /** Owner name to display for messages without author metadata */
+  ownerName?: string;
 }
 
 const UserMessage: React.FC<UserMessageProps> = ({
@@ -38,6 +40,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   batchId,
   regenerateResponse,
   siblings,
+  ownerName,
 }) => {
   const { settings } = useSettingsStore();
   const { setLastResponseId } = useConversationStore();
@@ -227,9 +230,10 @@ const UserMessage: React.FC<UserMessageProps> = ({
               ) : (
                 <div className="w-full">
                   <div className="flex w-full flex-col items-end pb-1">
-                    {message.metadata?.author_name && (
+                    {/* Show author name from metadata, or owner name for messages without metadata */}
+                    {(message.metadata?.author_name || ownerName) && (
                       <div className="mr-2 mb-1 text-muted-foreground text-xs">
-                        {message.metadata.author_name}
+                        {message.metadata?.author_name || ownerName}
                       </div>
                     )}
                     <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">

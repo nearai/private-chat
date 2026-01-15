@@ -8,7 +8,7 @@ export const useConversationShares = (conversationId?: string) => {
     queryKey: queryKeys.share.byConversationId(conversationId),
     queryFn: () => {
       if (!conversationId) {
-        return Promise.resolve({ is_owner: false, shares: [] });
+        return Promise.resolve({ is_owner: false, can_share: false, can_write: false, shares: [] });
       }
       return chatClient.listConversationShares(conversationId);
     },
