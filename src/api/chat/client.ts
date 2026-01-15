@@ -22,7 +22,7 @@ import type {
   Tag,
   UpdateShareGroupRequest,
 } from "@/types";
-import type { FileContentResponse, FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
+import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 
 export interface UploadError {
   error: {
@@ -374,7 +374,10 @@ class ChatClient extends ApiClient {
     tools,
     include,
     previous_response_id,
-  }: StartStreamProps) {
+    onReaderReady,
+  }: StartStreamProps & {
+    onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
+  }) {
     const input = Array.isArray(content)
       ? [{ role, content }]
       : [{ role, content: [{ type: "input_text", text: content }] }];
@@ -391,7 +394,7 @@ class ChatClient extends ApiClient {
         signing_algo: DEFAULT_SIGNING_ALGO,
         previous_response_id,
       },
-      { apiVersion: "v2", queryClient }
+      { apiVersion: "v2", queryClient, onReaderReady }
     );
   }
 
@@ -406,14 +409,21 @@ class ChatClient extends ApiClient {
     return this.get(`/files/${id}`, { apiVersion: "v2" });
   }
 
-  async getFileContent(id: string | undefined): Promise<FileContentResponse> {
-    if (!id) {
-      throw new Error("File ID is required");
-    }
+  async getFileContent(id: string | undefined): Promise<Blob> {
+    try {
+      if (!id) {
+        throw new Error("File ID is required");
+      }
 
-    return this.get<FileContentResponse>(`/files/${id}/content`, {
-      apiVersion: "v2",
-    });
+      const response = await this.requestWithoutJson(`/files/${id}/content`, {
+        apiVersion: "v2",
+      });
+      const blob = await response.blob();
+      return blob;
+    } catch (error) {
+      console.error("Failed to fetch file content", { fileId: id, error });
+      throw error;
+    }
   }
 
   //https://platform.openai.com/docs/api-reference/files/create?lang=node.js

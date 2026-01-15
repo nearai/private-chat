@@ -92,10 +92,7 @@ export default function Navbar() {
                   <ShareIcon className="size-4.5" />
                 </Button>
                 {hasShares && (
-                  <span className="-top-0.5 -right-0.5 absolute flex size-3">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex size-3 rounded-full bg-green-500" />
-                  </span>
+                  <span className="-top-0.5 -right-0.5 absolute size-3 rounded-full bg-green-500" />
                 )}
               </div>
             )}

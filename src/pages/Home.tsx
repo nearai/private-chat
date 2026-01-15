@@ -27,9 +27,11 @@ import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/l
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useStreamStore } from "@/stores/useStreamStore";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
+import { useTranslation } from "react-i18next";
 
 const Home = ({
   startStream,
+  stopStream,
 }: {
   startStream: (
     content: ContentItem[],
@@ -37,7 +39,9 @@ const Home = ({
     conversationId?: string,
     previous_response_id?: string
   ) => Promise<void>;
+  stopStream?: () => void;
 }) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
@@ -56,7 +60,6 @@ const Home = ({
   const cloneChat = useCloneChat();
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
-  const { isStreamActive } = useStreamStore();
   const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
@@ -168,14 +171,12 @@ const Home = ({
       clearAllSignatures();
       dataInitializedRef.current = false;
     }
-    // Update conversation data when:
-    // 1. Initial load (!dataInitializedRef.current)
-    // 2. Polling updates (when not streaming) - always sync new data
-    if (!isStreamActive(chatId)) {
-      setConversationData(conversationData);
-      dataInitializedRef.current = true;
-    }
-  }, [chatId, isStreamActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
+    if (dataInitializedRef.current) return;
+    if (isConversationsLoading || currentStreamIsActive) return;
+    if (!conversationData.data?.length) return;
+    setConversationData(conversationData);
+    dataInitializedRef.current = true;
+  }, [chatId, isConversationsLoading, currentStreamIsActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
   const lastConversationMessage = conversationData?.data?.at(-1);
@@ -227,7 +228,6 @@ const Home = ({
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
-
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
 
@@ -359,15 +359,22 @@ const Home = ({
 
       {/* Show MessageInput for users with write access, or Copy & Continue for read-only */}
       {canWrite ? (
-        <MessageInput
-          onSubmit={handleSendMessage}
-          prompt={inputValue}
-          setPrompt={setInputValue}
-          selectedModels={selectedModels}
-          isMessageCompleted={isMessageCompleted}
-          isConversationStreamActive={currentStreamIsActive}
-          autoFocusKey={chatId ?? "home"}
-        />
+        <div className="flex flex-col items-center">
+          <MessageInput
+            onSubmit={handleSendMessage}
+            prompt={inputValue}
+            setPrompt={setInputValue}
+            selectedModels={selectedModels}
+            isMessageCompleted={isMessageCompleted}
+            stopStream={stopStream}
+            isConversationStreamActive={currentStreamIsActive}
+            allMessages={allMessages}
+            autoFocusKey={chatId ?? "home"}
+          />
+          <p className="px-4 pb-4 text-muted-foreground text-xs">
+            {t('AI can make mistakes. Verify information before relying on it.')}
+          </p>
+        </div>
       ) : (
         <div className="border-border border-t bg-muted/30 px-4 py-4">
           <div className="mx-auto max-w-3xl">

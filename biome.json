@@ -3,7 +3,11 @@
   "vcs": {
     "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": true
+    "useIgnoreFile": false
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": ["**", "!public"]
   },
   "formatter": {
     "enabled": true,
@@ -18,6 +22,7 @@
   },
   "linter": {
     "enabled": true,
+    "includes": ["**", "!/public/**"],
     "rules": {
       "recommended": true,
       "correctness": {
