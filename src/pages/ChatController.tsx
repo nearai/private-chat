@@ -23,6 +23,7 @@ import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
+import { toast } from "sonner";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -30,6 +31,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const queryClient = useQueryClient();
   const { selectedModels } = useChatStore();
   const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
+  const resetConversation = useConversationStore((state) => state.resetConversation);
   const updateConversation = useConversationStore((state) => state.updateConversation);
   const setConversationStatus = useConversationStore((state) => state.setConversationStatus);
   const userSettings = useUserSettings();
@@ -153,6 +155,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
+            toast.error(`Model ${model} failed to respond`);
           }
           markStreamComplete(conversationLocalId);
           removeStream(conversationLocalId);
@@ -197,13 +200,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
                 previousResponseId: firstMessagePreviousId,
               });
             } catch (error: any) {
-              console.error(`Stream failed for model ${model}:`, error);
+              toast.error(`Model ${model} failed to respond: ${error.message || error}`);
             }
           })
         );
         console.log("All new_chat model streams completed");
-        setConversationStatus(conversationLocalId, "ready");
+        resetConversation();
         queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+        setConversationStatus(conversationLocalId, "ready");
         return;
       }
 

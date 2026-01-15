@@ -17,7 +17,7 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useViewStore } from "@/stores/useViewStore";
 
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
-import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useStreamStore } from "@/stores/useStreamStore";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
@@ -73,7 +73,7 @@ const Home = ({
 
       let prevRespId = previous_response_id;
       if (!prevRespId) {
-        const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
+        const msgs = scrollContainerRef.current?.getElementsByClassName(USER_MESSAGE_CLASSNAME);
         const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
         if (lastMsg) {
           prevRespId = lastMsg.getAttribute("data-response-id") || undefined;
@@ -102,19 +102,24 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId || !conversationData) return;
-    if (!conversationData.data?.length) return;
     if (conversationState?.conversationId !== chatId) {
       clearAllSignatures();
       dataInitializedRef.current = false;
     }
-    if (!dataInitializedRef.current && !currentStreamIsActive && conversationIsReady) {
-      console.log("Setting conversation data in store for chatId:", conversationData);
-      setConversationData(conversationData);
+    
+    if (dataInitializedRef.current) return;
+    if (isConversationsLoading || currentStreamIsActive) return;
+    if (!conversationIsReady) return;
+    if (!conversationData.data?.length) return;
+    console.log("Setting conversation data in store for chatId:", conversationData);
+    setConversationData(conversationData);
+    if (conversationData.data.length > 2) {
       dataInitializedRef.current = true;
     }
   }, [
     chatId,
     conversationState?.conversationId,
+    isConversationsLoading,
     currentStreamIsActive,
     conversationIsReady,
     conversationData,

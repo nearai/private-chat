@@ -16,7 +16,7 @@ import type { ChatStartStreamOptions, ConversationItem, ConversationUserInput } 
 import { type ContentItem, extractFiles, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
-import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -165,7 +165,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
 
   return (
     <div
-      className="user-message group flex w-full"
+      className={cn("user-message group flex w-full", USER_MESSAGE_CLASSNAME)}
       dir={settings.chatDirection || "ltr"}
       id={`message-${message.id}`}
       data-response-id={message.response_id || ""}
