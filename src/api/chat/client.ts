@@ -487,11 +487,18 @@ class ChatClient extends ApiClient {
   }
 
   async listSharedWithMe() {
-    return this.get<{ conversation_id: string; permission: "read" | "write" }[]>(`/shared-with-me`, {
+    return this.get<
+      {
+        conversation_id: string;
+        permission: "read" | "write";
+        title: string | null;
+        created_at: number | null;
+        error: string | null;
+      }[]
+    >(`/shared-with-me`, {
       apiVersion: "v2",
     });
   }
-
 }
 
 export const chatClient = new ChatClient();

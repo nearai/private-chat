@@ -5,8 +5,8 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { isOfflineError, isOnline } from "@/lib/network";
 import { eventEmitter } from "@/lib/event";
+import { isOfflineError, isOnline } from "@/lib/network";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
   ConversationInfo,
@@ -17,9 +17,9 @@ import type {
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
+import { isTauri } from "@/utils/desktop";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
-import { isTauri } from "@/utils/desktop";
 
 type FetchImplementation = typeof fetch;
 
@@ -246,7 +246,10 @@ export class ApiClient {
     }
   }
 
-  protected async get<T>(endpoint: string, options: RequestInit & { apiVersion?: "v1" | "v2"; requiresAuth?: boolean } = {}): Promise<T> {
+  protected async get<T>(
+    endpoint: string,
+    options: RequestInit & { apiVersion?: "v1" | "v2"; requiresAuth?: boolean } = {}
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: "GET",
@@ -362,7 +365,7 @@ export class ApiClient {
       }
 
       const reader = response.body.getReader();
-      
+
       // Notify reader is ready for cancellation
       if (options.onReaderReady) {
         options.onReaderReady(reader, abortController);
@@ -731,5 +734,4 @@ export class ApiClient {
       apiVersion: options.apiVersion || "v1",
     });
   }
-
 }

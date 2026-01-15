@@ -1,18 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ManageShareGroupsDialog } from "./ManageShareGroupsDialog";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
 import { useCreateConversationShare } from "@/api/sharing/useCreateConversationShare";
 import { useDeleteConversationShare } from "@/api/sharing/useDeleteConversationShare";
 import { useShareGroups } from "@/api/sharing/useShareGroups";
 import { useUserData } from "@/api/users/queries/useUserData";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type {
   ConversationShareInfo,
   CreateConversationShareRequest,
@@ -20,13 +14,14 @@ import type {
   SharePermission,
   ShareRecipient,
 } from "@/types";
+import { ManageShareGroupsDialog } from "./ManageShareGroupsDialog";
 
 import {
-  InviteSection,
-  CopyLinkSection,
-  PublicAccessSection,
-  PeopleWithAccessSection,
   AdvancedSharingSection,
+  CopyLinkSection,
+  InviteSection,
+  PeopleWithAccessSection,
+  PublicAccessSection,
 } from "./share";
 
 interface ShareConversationDialogProps {
@@ -35,11 +30,7 @@ interface ShareConversationDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const ShareConversationDialog = ({
-  conversationId,
-  open,
-  onOpenChange,
-}: ShareConversationDialogProps) => {
+export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: ShareConversationDialogProps) => {
   const { data: userData } = useUserData();
   const { data: sharesData, isLoading: isSharesLoading } = useConversationShares(conversationId);
   const { data: shareGroups = [] } = useShareGroups();
@@ -94,15 +85,9 @@ export const ShareConversationDialog = ({
     return map;
   }, [shareGroups]);
 
-  const publicShare = useMemo(
-    () => shares.find((s) => s.share_type === "public"),
-    [shares]
-  );
+  const publicShare = useMemo(() => shares.find((s) => s.share_type === "public"), [shares]);
 
-  const peopleShares = useMemo(
-    () => shares.filter((s) => s.share_type !== "public"),
-    [shares]
-  );
+  const peopleShares = useMemo(() => shares.filter((s) => s.share_type !== "public"), [shares]);
 
   // Handlers
   const handleInvite = async (recipients: ShareRecipient[], perm: SharePermission) => {
@@ -119,11 +104,7 @@ export const ShareConversationDialog = ({
           },
         },
       });
-      toast.success(
-        recipients.length === 1
-          ? `Invited ${recipients[0].value}`
-          : `Invited ${recipients.length} people`
-      );
+      toast.success(recipients.length === 1 ? `Invited ${recipients[0].value}` : `Invited ${recipients.length} people`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send invite");
     }
@@ -224,9 +205,7 @@ export const ShareConversationDialog = ({
             )}
 
             {/* Copy link section - available to everyone */}
-            {conversationId && (
-              <CopyLinkSection conversationId={conversationId} />
-            )}
+            {conversationId && <CopyLinkSection conversationId={conversationId} />}
 
             {/* Non-sharer info message */}
             {!canShare && !isSharesLoading && (

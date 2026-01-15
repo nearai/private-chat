@@ -1,6 +1,11 @@
+import { TrashIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { useCreateShareGroup } from "@/api/sharing/useCreateShareGroup";
+import { useDeleteShareGroup } from "@/api/sharing/useDeleteShareGroup";
+import { useShareGroups } from "@/api/sharing/useShareGroups";
+import { useUpdateShareGroup } from "@/api/sharing/useUpdateShareGroup";
+import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,14 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import Spinner from "@/components/common/Spinner";
-import { cn } from "@/lib";
-import { useShareGroups } from "@/api/sharing/useShareGroups";
-import { useCreateShareGroup } from "@/api/sharing/useCreateShareGroup";
-import { useUpdateShareGroup } from "@/api/sharing/useUpdateShareGroup";
-import { useDeleteShareGroup } from "@/api/sharing/useDeleteShareGroup";
+import { cn, generateId } from "@/lib";
 import type { ShareGroup, ShareRecipient } from "@/types";
-import { ShareRecipientInputs, createRecipientInput, type RecipientInputValue } from "./ShareRecipientInputs";
+import { createRecipientInput, type RecipientInputValue, ShareRecipientInputs } from "./ShareRecipientInputs";
 
 interface ManageShareGroupsDialogProps {
   open: boolean;
@@ -30,7 +30,7 @@ const toRecipientInputs = (members: ShareRecipient[]): RecipientInputValue[] => 
     return [createRecipientInput()];
   }
   return members.map((member) => ({
-    id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}`,
+    id: generateId(),
     kind: member.kind,
     value: member.value,
   }));
@@ -174,7 +174,12 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
             </div>
             <DialogFooter className="mt-4">
               {editingGroup && (
-                <Button variant="ghost" type="button" onClick={() => setEditingGroup(null)} className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => setEditingGroup(null)}
+                  className="text-muted-foreground"
+                >
                   Cancel edit
                 </Button>
               )}

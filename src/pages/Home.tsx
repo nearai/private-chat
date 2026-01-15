@@ -1,33 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams, useNavigate, Link } from "react-router";
 import { DocumentDuplicateIcon, ExclamationTriangleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { useCloneChat } from "@/api/chat/queries/useCloneChat";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
-
 import MessageInput from "@/components/chat/MessageInput";
-import { Button } from "@/components/ui/button";
-import Spinner from "@/components/common/Spinner";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import Spinner from "@/components/common/Spinner";
+import { Button } from "@/components/ui/button";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-
 import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
-import { useViewStore } from "@/stores/useViewStore";
-
-import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
-import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
-import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useStreamStore } from "@/stores/useStreamStore";
-import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
-import { useTranslation } from "react-i18next";
+import { useViewStore } from "@/stores/useViewStore";
+import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
   startStream,
@@ -65,14 +62,18 @@ const Home = ({
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
-  
+
   const currentStreamIsActive = useMemo(() => {
     if (!chatId) return false;
     return activeStreams.has(chatId);
   }, [chatId, activeStreams]);
 
   // Enable polling for real-time sync, but disable while streaming to avoid conflicts
-  const { isLoading: isConversationsLoading, data: conversationData, error: conversationError } = useGetConversation(chatId, {
+  const {
+    isLoading: isConversationsLoading,
+    data: conversationData,
+    error: conversationError,
+  } = useGetConversation(chatId, {
     polling: !currentStreamIsActive,
   });
 
@@ -80,16 +81,14 @@ const Home = ({
   const errorInfo = useMemo(() => {
     if (!conversationError) return null;
 
-    const errorMessage = conversationError instanceof Error
-      ? conversationError.message
-      : String(conversationError);
+    const errorMessage = conversationError instanceof Error ? conversationError.message : String(conversationError);
 
     // Check for specific error types
-    const isAccessDenied = errorMessage.toLowerCase().includes("access denied") ||
-                           errorMessage.toLowerCase().includes("forbidden") ||
-                           errorMessage.includes("403");
-    const isNotFound = errorMessage.toLowerCase().includes("not found") ||
-                       errorMessage.includes("404");
+    const isAccessDenied =
+      errorMessage.toLowerCase().includes("access denied") ||
+      errorMessage.toLowerCase().includes("forbidden") ||
+      errorMessage.includes("403");
+    const isNotFound = errorMessage.toLowerCase().includes("not found") || errorMessage.includes("404");
 
     if (isAccessDenied) {
       return {
@@ -176,7 +175,15 @@ const Home = ({
     if (!conversationData.data?.length) return;
     setConversationData(conversationData);
     dataInitializedRef.current = true;
-  }, [chatId, isConversationsLoading, currentStreamIsActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
+  }, [
+    chatId,
+    isConversationsLoading,
+    currentStreamIsActive,
+    clearAllSignatures,
+    conversationData,
+    setConversationData,
+    conversationState?.conversationId,
+  ]);
 
   // Sync selected model with latest conversation
   const lastConversationMessage = conversationData?.data?.at(-1);
@@ -231,85 +238,87 @@ const Home = ({
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
 
-    return batches.filter((batch) => {
-      const batchMessage = history.messages[batch];
-      return !!batchMessage;
-    }).map((batch, idx) => {
-      const isLast = idx === currentMessages.length - 1;
-      const batchMessage = history.messages[batch];
-      if (!batchMessage) return null;
-      if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
-        const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
-        return (
-          <UserMessage
-            key={batchMessage.userPromptId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            regenerateResponse={startStream}
-            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
-            ownerName={ownerName}
-          />
-        );
-      }
-      if (
-        !batchMessage.outputMessagesIds.length &&
-        !batchMessage.reasoningMessagesIds.length &&
-        !batchMessage.webSearchMessagesIds.length
-      ) {
-        return null;
-      }
-      const messages = [];
+    return batches
+      .filter((batch) => {
+        const batchMessage = history.messages[batch];
+        return !!batchMessage;
+      })
+      .map((batch, idx) => {
+        const isLast = idx === currentMessages.length - 1;
+        const batchMessage = history.messages[batch];
+        if (!batchMessage) return null;
+        if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
+          const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
+          return (
+            <UserMessage
+              key={batchMessage.userPromptId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              regenerateResponse={startStream}
+              siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+              ownerName={ownerName}
+            />
+          );
+        }
+        if (
+          !batchMessage.outputMessagesIds.length &&
+          !batchMessage.reasoningMessagesIds.length &&
+          !batchMessage.webSearchMessagesIds.length
+        ) {
+          return null;
+        }
+        const messages = [];
 
-      // Analyze siblings to determine if they're input variants or response variants
-      const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
+        // Analyze siblings to determine if they're input variants or response variants
+        const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
 
-      if (batchMessage.userPromptId) {
-        messages.push(
-          <UserMessage
-            key={batchMessage.userPromptId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            regenerateResponse={startStream}
-            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
-            ownerName={ownerName}
-          />
-        );
-      }
+        if (batchMessage.userPromptId) {
+          messages.push(
+            <UserMessage
+              key={batchMessage.userPromptId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              regenerateResponse={startStream}
+              siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+              ownerName={ownerName}
+            />
+          );
+        }
 
-      // Show MultiResponseMessages if there are multiple responses for the same input
-      // This can happen even when there are input siblings
-      if (responseSiblings.length > 1) {
-        messages.push(
-          <MultiResponseMessages
-            key={batchMessage.parentResponseId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            currentBatchBundle={batches}
-            isLastMessage={isLast}
-            readOnly={false}
-            regenerateResponse={startStream}
-            responseSiblings={responseSiblings}
-          />
-        );
-      } else {
-        messages.push(
-          <ResponseMessage
-            key={batchMessage.responseId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            isLastMessage={isLast}
-            readOnly={false}
-            regenerateResponse={startStream}
-            siblings={[]}
-          />
-        );
-      }
-      return messages;
-    });
+        // Show MultiResponseMessages if there are multiple responses for the same input
+        // This can happen even when there are input siblings
+        if (responseSiblings.length > 1) {
+          messages.push(
+            <MultiResponseMessages
+              key={batchMessage.parentResponseId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              currentBatchBundle={batches}
+              isLastMessage={isLast}
+              readOnly={false}
+              regenerateResponse={startStream}
+              responseSiblings={responseSiblings}
+            />
+          );
+        } else {
+          messages.push(
+            <ResponseMessage
+              key={batchMessage.responseId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              isLastMessage={isLast}
+              readOnly={false}
+              regenerateResponse={startStream}
+              siblings={[]}
+            />
+          );
+        }
+        return messages;
+      });
   }, [batches, history, allMessages, currentMessages.length, startStream, ownerName]);
 
   // Show error UI if there's an error loading the conversation
@@ -372,7 +381,7 @@ const Home = ({
             autoFocusKey={chatId ?? "home"}
           />
           <p className="px-4 pb-4 text-muted-foreground text-xs">
-            {t('AI can make mistakes. Verify information before relying on it.')}
+            {t("AI can make mistakes. Verify information before relying on it.")}
           </p>
         </div>
       ) : (
@@ -385,11 +394,7 @@ const Home = ({
                   Copy this conversation to your account and continue where it left off
                 </p>
               </div>
-              <Button
-                onClick={handleCopyAndContinue}
-                disabled={cloneChat.isPending}
-                className="rounded-xl px-6"
-              >
+              <Button onClick={handleCopyAndContinue} disabled={cloneChat.isPending} className="rounded-xl px-6">
                 {cloneChat.isPending ? (
                   <Spinner className="size-4" />
                 ) : (
