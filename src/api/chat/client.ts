@@ -120,9 +120,15 @@ class ChatClient extends ApiClient {
     );
   }
 
-  getConversation(id: string) {
+  /**
+   * Get a conversation by ID
+   * @param id - Conversation ID
+   * @param options.requiresAuth - Set to false for public conversations (default: true)
+   */
+  getConversation(id: string, options?: { requiresAuth?: boolean }) {
     return this.get<Conversation>(`/conversations/${id}`, {
       apiVersion: "v2",
+      requiresAuth: options?.requiresAuth,
     });
   }
 
@@ -154,9 +160,15 @@ class ChatClient extends ApiClient {
     return [];
   }
 
-  getConversationItems(id: string) {
+  /**
+   * Get conversation items by conversation ID
+   * @param id - Conversation ID
+   * @param options.requiresAuth - Set to false for public conversations (default: true)
+   */
+  getConversationItems(id: string, options?: { requiresAuth?: boolean }) {
     return this.get<ConversationItemsResponse>(`/conversations/${id}/items`, {
       apiVersion: "v2",
+      requiresAuth: options?.requiresAuth,
     });
   }
 
@@ -470,35 +482,6 @@ class ChatClient extends ApiClient {
     });
   }
 
-  // Legacy public shared conversation access by token (no auth required)
-  async getPublicSharedConversation(shareToken: string) {
-    return this.get<Conversation>(`/shared/conversations/${shareToken}`, {
-      apiVersion: "v2",
-      requiresAuth: false,
-    });
-  }
-
-  async getPublicSharedConversationItems(shareToken: string) {
-    return this.get<ConversationItemsResponse>(`/shared/conversations/${shareToken}/items`, {
-      apiVersion: "v2",
-      requiresAuth: false,
-    });
-  }
-
-  // Public conversation access by ID (no auth required, requires public share enabled)
-  async getPublicConversation(conversationId: string) {
-    return this.get<Conversation>(`/public/conversations/${conversationId}`, {
-      apiVersion: "v2",
-      requiresAuth: false,
-    });
-  }
-
-  async getPublicConversationItems(conversationId: string) {
-    return this.get<ConversationItemsResponse>(`/public/conversations/${conversationId}/items`, {
-      apiVersion: "v2",
-      requiresAuth: false,
-    });
-  }
 }
 
 export const chatClient = new ChatClient();

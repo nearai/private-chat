@@ -19,7 +19,6 @@ import { posthogPageView, posthogReset } from "./lib/posthog";
 import ChatController from "./pages/ChatController";
 import ConversationWrapper from "./pages/ConversationWrapper";
 import SharedPage from "./pages/SharedPage";
-import PublicSharedPage from "./pages/PublicSharedPage";
 import { useUserStore } from "./stores/useUserStore";
 import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
@@ -115,8 +114,6 @@ function App() {
 
           <Route path={APP_ROUTES.WELCOME} element={<WelcomePage />} />
           <Route path={APP_ROUTES.AUTH} element={<AuthPage />} />
-          {/* Legacy public share route with token */}
-          <Route path={APP_ROUTES.SHARED_PUBLIC} element={<PublicSharedPage />} />
         </Routes>
       </div>
     </Suspense>

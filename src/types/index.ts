@@ -57,6 +57,13 @@ export enum ConversationRoles {
   SYSTEM = "system",
 }
 
+/** Metadata attached to messages, includes author info for shared conversations */
+export interface MessageMetadata {
+  author_id?: string;
+  author_name?: string;
+  [key: string]: unknown;
+}
+
 export interface ConversationUserInput {
   type: ConversationTypes.MESSAGE;
   id: string;
@@ -68,6 +75,7 @@ export interface ConversationUserInput {
   content: ContentItem[];
   model: string;
   previous_response_id?: string;
+  metadata?: MessageMetadata;
 }
 
 export interface ConversationModelOutput {

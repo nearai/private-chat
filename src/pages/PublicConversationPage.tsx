@@ -45,8 +45,8 @@ export default function PublicConversationPage() {
     const fetchPublicConversation = async () => {
       try {
         const [conv, convItems] = await Promise.all([
-          chatClient.getPublicConversation(chatId),
-          chatClient.getPublicConversationItems(chatId),
+          chatClient.getConversation(chatId, { requiresAuth: false }),
+          chatClient.getConversationItems(chatId, { requiresAuth: false }),
         ]);
         setConversation(conv);
         setItems(convItems);
