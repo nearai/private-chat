@@ -17,6 +17,7 @@ import { type ContentItem, extractFiles, extractMessageContent, getModelAndCreat
 import MarkdownTokens from "./MarkdownTokens";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { TEMP_RESPONSE_ID } from "@/api/constants";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -162,13 +163,15 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [messageContent, message]);
 
   if (!message) return null;
+  const isTempMsg = message.response_id === TEMP_RESPONSE_ID;
 
   return (
     <div
-      className={cn("user-message group flex w-full", USER_MESSAGE_CLASSNAME)}
+      className={cn("user-message group flex w-full", isTempMsg ? "" : USER_MESSAGE_CLASSNAME)}
       dir={settings.chatDirection || "ltr"}
       id={`message-${message.id}`}
       data-response-id={message.response_id || ""}
+      data-parent-response-id={batch.parentResponseId || ""}
       data-model-id={model || ""}
     >
       <div className="w-0 max-w-full flex-auto pl-1">

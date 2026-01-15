@@ -100,6 +100,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return draft;
       };
       updateConversation(updatedConversation);
+      return tempId;
     },
     [selectedModels, updateConversation]
   );
@@ -132,7 +133,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         onResponseCreated?: () => void
       }) => {
         console.log(`Starting stream for model: ${model}`);
-        pushResponse(conversationLocalId, model, contentItems, previousResponseId);
+        const tempMsgId = pushResponse(conversationLocalId, model, contentItems, previousResponseId);
         const streamPromise = chatClient.startStream({
           model,
           role: "user",
@@ -156,6 +157,25 @@ export default function ChatController({ children }: { children?: React.ReactNod
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
             toast.error(`Model ${model} failed to respond`);
+
+            updateConversation((draft) => {
+              if (!draft.conversation) return draft;
+              const messageIndex = draft.conversation.conversation.data.findIndex(
+                (m) => m.id === tempMsgId
+              );
+
+              if (messageIndex > -1) {
+                draft.conversation.conversation.data.splice(messageIndex, 1);
+                const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
+                  draft.conversation.conversation
+                );
+                draft.conversation.history = history;
+                draft.conversation.allMessages = allMessages;
+                draft.conversation.lastResponseId = lastResponseId;
+                draft.conversation.batches = batches;
+              }
+              return draft;
+            });
           }
           markStreamComplete(conversationLocalId);
           removeStream(conversationLocalId);

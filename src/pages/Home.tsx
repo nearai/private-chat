@@ -177,6 +177,7 @@ const Home = ({
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
+  console.log("Rendered batches:", batches, allMessages, history);
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
   
