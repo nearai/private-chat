@@ -45,7 +45,6 @@ const Home = ({
   const remoteConfig = useRemoteConfig();
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
-  const { isStreamActive } = useStreamStore();
   const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
@@ -99,11 +98,12 @@ const Home = ({
       clearAllSignatures();
       dataInitializedRef.current = false;
     }
-    if (!dataInitializedRef.current && !isStreamActive(chatId)) {
-      setConversationData(conversationData);
-      dataInitializedRef.current = true;
-    }
-  }, [chatId, isStreamActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
+    if (dataInitializedRef.current) return;
+    if (isConversationsLoading || currentStreamIsActive) return;
+    if (!conversationData.data?.length) return;
+    setConversationData(conversationData);
+    dataInitializedRef.current = true;
+  }, [chatId, isConversationsLoading, currentStreamIsActive, clearAllSignatures, conversationData, setConversationData, conversationState?.conversationId]);
 
   // Sync selected model with latest conversation
   const lastConversationMessage = conversationData?.data?.at(-1);
