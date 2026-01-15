@@ -253,17 +253,20 @@ const Home = ({
         {renderedMessages}
       </div>
 
-      <MessageInput
-        onSubmit={handleSendMessage}
-        prompt={inputValue}
-        setPrompt={setInputValue}
-        selectedModels={selectedModels}
-        isMessageCompleted={isMessageCompleted}
-        stopStream={stopStream}
-        isConversationStreamActive={currentStreamIsActive}
-        allMessages={allMessages}
-        autoFocusKey={chatId ?? "home"}
-      />
+      <div className="flex flex-col items-center">
+        <MessageInput
+          onSubmit={handleSendMessage}
+          prompt={inputValue}
+          setPrompt={setInputValue}
+          selectedModels={selectedModels}
+          isMessageCompleted={isMessageCompleted}
+          stopStream={stopStream}
+          isConversationStreamActive={currentStreamIsActive}
+          allMessages={allMessages}
+          autoFocusKey={chatId ?? "home"}
+        />
+        <p className="px-4 pb-4 text-gray-500 text-xs sm:text-base">AI can make mistakes. Verify information before relying on it.</p>
+      </div>
     </div>
   );
 };
