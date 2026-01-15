@@ -21,6 +21,7 @@ import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/l
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useStreamStore } from "@/stores/useStreamStore";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
+import { useTranslation } from "react-i18next";
 
 const Home = ({
   startStream,
@@ -34,6 +35,7 @@ const Home = ({
   ) => Promise<void>;
   stopStream?: () => void;
 }) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
@@ -253,17 +255,22 @@ const Home = ({
         {renderedMessages}
       </div>
 
-      <MessageInput
-        onSubmit={handleSendMessage}
-        prompt={inputValue}
-        setPrompt={setInputValue}
-        selectedModels={selectedModels}
-        isMessageCompleted={isMessageCompleted}
-        stopStream={stopStream}
-        isConversationStreamActive={currentStreamIsActive}
-        allMessages={allMessages}
-        autoFocusKey={chatId ?? "home"}
-      />
+      <div className="flex flex-col items-center">
+        <MessageInput
+          onSubmit={handleSendMessage}
+          prompt={inputValue}
+          setPrompt={setInputValue}
+          selectedModels={selectedModels}
+          isMessageCompleted={isMessageCompleted}
+          stopStream={stopStream}
+          isConversationStreamActive={currentStreamIsActive}
+          allMessages={allMessages}
+          autoFocusKey={chatId ?? "home"}
+        />
+        <p className="px-4 pb-4 text-muted-foreground text-xs">
+          {t('AI can make mistakes. Verify information before relying on it.')}
+        </p>
+      </div>
     </div>
   );
 };
