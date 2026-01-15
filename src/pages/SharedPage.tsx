@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ShareIcon } from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { useSharedWithMe } from "@/api/sharing/useSharedWithMe";
 import { chatClient } from "@/api/chat/client";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ interface SharedConversationWithDetails {
   permission: "read" | "write";
   title: string;
   created_at: number;
+  error?: string;
 }
 
 export default function SharedPage() {
@@ -22,29 +23,45 @@ export default function SharedPage() {
     queryFn: async (): Promise<SharedConversationWithDetails[]> => {
       if (!sharedWithMe || sharedWithMe.length === 0) return [];
 
-      const details = await Promise.all(
-        sharedWithMe.map(async (shared): Promise<SharedConversationWithDetails> => {
-          try {
-            const conversation = await chatClient.getConversation(shared.conversation_id);
-            return {
-              conversation_id: shared.conversation_id,
-              permission: shared.permission,
-              title: conversation?.metadata?.title || shared.conversation_id,
-              created_at: conversation?.created_at ?? 0,
-            };
-          } catch {
-            return {
-              conversation_id: shared.conversation_id,
-              permission: shared.permission,
-              title: shared.conversation_id,
-              created_at: 0,
-            };
-          }
+      const results = await Promise.allSettled(
+        sharedWithMe.map(async (shared) => {
+          const conversation = await chatClient.getConversation(shared.conversation_id);
+          return {
+            conversation_id: shared.conversation_id,
+            permission: shared.permission,
+            title: conversation?.metadata?.title || "Untitled",
+            created_at: conversation?.created_at ?? 0,
+          };
         })
       );
 
-      // Sort by created_at descending (newest first)
-      return details.sort((a, b) => b.created_at - a.created_at);
+      const details: SharedConversationWithDetails[] = results.map((result, index) => {
+        const shared = sharedWithMe[index];
+        if (result.status === "fulfilled") {
+          return result.value;
+        }
+        // Handle rejected promises - conversation may be deleted or inaccessible
+        const errorMessage = result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason);
+        const isNotFound = errorMessage.toLowerCase().includes("not found") || errorMessage.includes("404");
+        const isAccessDenied = errorMessage.toLowerCase().includes("access denied") || errorMessage.includes("403");
+
+        return {
+          conversation_id: shared.conversation_id,
+          permission: shared.permission,
+          title: isNotFound ? "Conversation deleted" : isAccessDenied ? "Access revoked" : "Unable to load",
+          created_at: 0,
+          error: isNotFound ? "deleted" : isAccessDenied ? "access_denied" : "error",
+        };
+      });
+
+      // Sort by created_at descending (newest first), errors go to bottom
+      return details.sort((a, b) => {
+        if (a.error && !b.error) return 1;
+        if (!a.error && b.error) return -1;
+        return b.created_at - a.created_at;
+      });
     },
     enabled: !!sharedWithMe && sharedWithMe.length > 0,
     staleTime: 60000, // Cache for 1 minute
@@ -90,16 +107,34 @@ export default function SharedPage() {
         {conversationsWithDetails.map((conversation) => (
           <button
             key={conversation.conversation_id}
-            onClick={() => handleOpenConversation(conversation.conversation_id)}
+            onClick={() => !conversation.error && handleOpenConversation(conversation.conversation_id)}
+            disabled={!!conversation.error}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
+              "flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors",
+              conversation.error
+                ? "cursor-not-allowed opacity-60"
+                : "hover:bg-accent"
             )}
           >
-            <ShareIcon className="size-5 shrink-0 text-muted-foreground" />
+            {conversation.error ? (
+              <ExclamationTriangleIcon className="size-5 shrink-0 text-destructive" />
+            ) : (
+              <ShareIcon className="size-5 shrink-0 text-muted-foreground" />
+            )}
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">{conversation.title}</div>
+              <div className={cn("truncate font-medium", conversation.error && "text-muted-foreground")}>
+                {conversation.title}
+              </div>
               <div className="text-muted-foreground text-xs">
-                {conversation.permission === "write" ? "Can edit" : "View only"}
+                {conversation.error
+                  ? conversation.error === "deleted"
+                    ? "This conversation no longer exists"
+                    : conversation.error === "access_denied"
+                      ? "Your access has been revoked"
+                      : "Failed to load conversation"
+                  : conversation.permission === "write"
+                    ? "Can edit"
+                    : "View only"}
               </div>
             </div>
           </button>

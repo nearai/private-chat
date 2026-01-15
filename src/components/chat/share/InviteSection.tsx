@@ -1,0 +1,129 @@
+import { ChevronDownIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import Spinner from "@/components/common/Spinner";
+import type { SharePermission, ShareRecipient } from "@/types";
+
+interface InviteSectionProps {
+  emailInput: string;
+  setEmailInput: (value: string) => void;
+  permission: SharePermission;
+  setPermission: (value: SharePermission) => void;
+  currentUserEmail: string;
+  conversationId: string;
+  isPending: boolean;
+  onInvite: (recipients: ShareRecipient[], permission: SharePermission) => Promise<void>;
+}
+
+export const InviteSection = ({
+  emailInput,
+  setEmailInput,
+  permission,
+  setPermission,
+  currentUserEmail,
+  isPending,
+  onInvite,
+}: InviteSectionProps) => {
+  const handleInvite = async () => {
+    const emails = emailInput
+      .split(/[,;\s]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 0);
+
+    if (emails.length === 0) {
+      toast.error("Please enter an email address");
+      return;
+    }
+
+    // Validate emails
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const nearRegex = /^[a-z0-9_-]+\.near$/i;
+
+    // Check if trying to share with self (the owner)
+    const selfEmails = emails.filter((e) => e === currentUserEmail);
+    if (selfEmails.length > 0) {
+      toast.error("You can't share a conversation with yourself");
+      return;
+    }
+
+    const recipients: ShareRecipient[] = emails.map((value) => ({
+      kind: nearRegex.test(value) ? "near_account" : "email",
+      value,
+    }));
+
+    const invalidEmails = recipients.filter(
+      (r) => r.kind === "email" && !emailRegex.test(r.value)
+    );
+
+    if (invalidEmails.length > 0) {
+      toast.error(`Invalid email: ${invalidEmails[0].value}`);
+      return;
+    }
+
+    await onInvite(recipients, permission);
+    setEmailInput("");
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+            placeholder="Add people by email or NEAR account"
+            className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm transition-all placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="secondary"
+              className="h-11 gap-1.5 rounded-xl border border-border px-3 font-normal"
+            >
+              {permission === "write" ? "Can edit" : "Can view"}
+              <ChevronDownIcon className="size-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="rounded-xl">
+            <DropdownMenuItem onClick={() => setPermission("read")} className="rounded-lg">
+              <div className="flex flex-col">
+                <span>Can view</span>
+                <span className="text-muted-foreground text-xs">Read-only access</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setPermission("write")} className="rounded-lg">
+              <div className="flex flex-col">
+                <span>Can edit</span>
+                <span className="text-muted-foreground text-xs">Can add messages</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <Button
+        onClick={handleInvite}
+        disabled={!emailInput.trim() || isPending}
+        className="h-11 w-full rounded-xl font-medium"
+      >
+        {isPending ? (
+          <Spinner className="size-4" />
+        ) : (
+          <>
+            <UserPlusIcon className="mr-2 size-4" />
+            Send invite
+          </>
+        )}
+      </Button>
+    </div>
+  );
+};
