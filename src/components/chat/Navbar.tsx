@@ -18,9 +18,10 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { chatId } = useParams<{ chatId?: string }>();
 
-  // Check if conversation is public
+  // Check sharing status
   const { data: sharesData } = useConversationShares(chatId);
   const isPublic = sharesData?.shares?.some((share) => share.share_type === "public") ?? false;
+  const hasShares = (sharesData?.shares?.length ?? 0) > 0;
 
   const handleNewChat = async () => {
     try {
@@ -80,15 +81,23 @@ export default function Navbar() {
 
           <div className="flex h-fit items-center gap-2">
             {chatId && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsShareDialogOpen(true)}
-                className="size-8 text-muted-foreground"
-                title="Share"
-              >
-                <ShareIcon className="size-4.5" />
-              </Button>
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsShareDialogOpen(true)}
+                  className="size-8 text-muted-foreground"
+                  title="Share"
+                >
+                  <ShareIcon className="size-4.5" />
+                </Button>
+                {hasShares && (
+                  <span className="-top-0.5 -right-0.5 absolute flex size-3">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex size-3 rounded-full bg-green-500" />
+                  </span>
+                )}
+              </div>
             )}
             {chatId && <ChatOptions chatId={chatId} />}
             {!isRightSidebarOpen && (
