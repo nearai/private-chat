@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ShareIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { useNavigate, useParams } from "react-router";
 import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { useViewStore } from "@/stores/useViewStore";
+import { useConversationShares } from "@/api/sharing/useConversationShares";
 import { Button } from "../ui/button";
 import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
@@ -16,6 +17,10 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const { chatId } = useParams<{ chatId?: string }>();
+
+  // Check if conversation is public
+  const { data: sharesData } = useConversationShares(chatId);
+  const isPublic = sharesData?.shares?.some((share) => share.share_type === "public") ?? false;
 
   const handleNewChat = async () => {
     try {
@@ -30,8 +35,15 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="-mb-6 drag-region sticky top-0 z-30 flex w-full flex-col py-1.5">
-      <div className="flex w-full px-1.5">
+    <>
+      {isPublic && (
+        <div className="sticky top-0 z-40 flex items-center justify-center gap-2 border-amber-200 border-b bg-amber-50 px-4 py-2 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+          <GlobeAltIcon className="size-4" />
+          <span className="text-sm">This conversation is public — Anyone with the link can view</span>
+        </div>
+      )}
+      <nav className="-mb-6 drag-region sticky top-0 z-30 flex w-full flex-col py-1.5">
+        <div className="flex w-full px-1.5">
         <div className="-bottom-7 pointer-events-none absolute inset-0 z-[-1] bg-linear-to-b from-background via-50% via-background to-transparent" />
 
         <div className="mx-auto flex w-full max-w-full bg-transparent px-1 pt-1">
@@ -93,13 +105,14 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-      {chatId && (
-        <ShareConversationDialog
-          conversationId={chatId}
-          open={isShareDialogOpen}
-          onOpenChange={setIsShareDialogOpen}
-        />
-      )}
-    </nav>
+        {chatId && (
+          <ShareConversationDialog
+            conversationId={chatId}
+            open={isShareDialogOpen}
+            onOpenChange={setIsShareDialogOpen}
+          />
+        )}
+      </nav>
+    </>
   );
 }
