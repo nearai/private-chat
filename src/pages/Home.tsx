@@ -267,7 +267,7 @@ const Home = ({
           allMessages={allMessages}
           autoFocusKey={chatId ?? "home"}
         />
-        <p className="px-4 pb-4 text-muted-foreground text-xs sm:text-base">
+        <p className="px-4 pb-4 text-muted-foreground text-xs">
           {t('AI can make mistakes. Verify information before relying on it.')}
         </p>
       </div>
