@@ -34,7 +34,7 @@ const Home = ({
   const { chatId } = useParams<{ chatId: string }>();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
-  const modelInitializedRef = useRef<boolean>(false);
+  const [modelsInitialized, setModelsInitialized] = useState(false);
   const dataInitializedRef = useRef<boolean>(false);
   const remoteConfig = useRemoteConfig();
 
@@ -96,11 +96,6 @@ const Home = ({
   );
 
   useEffect(() => {
-    if (!chatId) return;
-    modelInitializedRef.current = false;
-  }, [chatId]);
-
-  useEffect(() => {
     if (!chatId || !conversationData) return;
     if (conversationState?.conversationId !== chatId) {
       clearAllSignatures();
@@ -116,6 +111,7 @@ const Home = ({
     if (conversationData.data.length > 2) {
       dataInitializedRef.current = true;
     }
+    setModelsInitialized(false);
   }, [
     chatId,
     conversationState?.conversationId,
@@ -125,46 +121,6 @@ const Home = ({
     conversationData,
     setConversationData,
     clearAllSignatures,
-  ]);
-
-  // Sync selected model with latest conversation
-  const lastConversationMessage = conversationData?.data?.at(-1);
-
-  useEffect(() => {
-    if (!conversationData?.id) return;
-    if (modelInitializedRef.current) return;
-    const NEW_CHAT_KEY = "new";
-    const isNewChat = searchParams.has(NEW_CHAT_KEY);
-    if (isNewChat) {
-      modelInitializedRef.current = true;
-      setSearchParams((prev) => {
-        prev.delete(NEW_CHAT_KEY);
-        return prev;
-      });
-      return;
-    }
-
-    const lastMsg = lastConversationMessage;
-    const newModels = [...selectedModelsRef.current];
-    const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
-    let msgModel = lastMsg?.model;
-    if (msgModel) {
-      const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
-      msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
-    } else {
-      msgModel = defaultModel?.modelId;
-    }
-
-    newModels[0] = msgModel ?? newModels[0] ?? "";
-    setSelectedModels(newModels);
-    modelInitializedRef.current = true;
-  }, [
-    conversationData?.id,
-    lastConversationMessage,
-    searchParams,
-    remoteConfig.data?.default_model,
-    setSelectedModels,
-    setSearchParams,
   ]);
 
   const isMessageCompleted = useMemo(() => {
@@ -177,7 +133,6 @@ const Home = ({
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
-  console.log("Rendered batches:", batches, allMessages, history);
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
   
@@ -258,6 +213,76 @@ const Home = ({
       return messages;
     });
   }, [batches, history, allMessages, currentMessages.length, startStream]);
+
+  const lastBatchMessages = useMemo(() => {
+    if (!batches.length) return [];
+    const lastBatchId = batches[batches.length - 1];
+    const lastBatchMessage = history.messages[lastBatchId];
+    if (!lastBatchMessage) return [];
+    const parentResponseId = lastBatchMessage.parentResponseId;
+    if (!parentResponseId) return [];
+    const parent = history.messages[parentResponseId];
+    if (!parent) return [];
+    if (!parent.nextResponseIds?.length) return [];
+    return parent.nextResponseIds.map((respId) => {
+      const batch = Object.values(history.messages).find((msg) => msg.responseId === respId);
+      return batch?.userPromptId ? allMessages[batch.userPromptId] : null;
+    }).filter((resp) => resp !== null).sort((a, b) => {
+      if (!a || !b) return 0;
+      return a.created_at - b.created_at;
+    }) as typeof allMessages[string][];
+  }, [history, batches, allMessages]);
+
+  const lastConversationMessage = conversationData?.data?.at(-1);
+  useEffect(() => {
+    if (!chatId) return;
+    
+    const NEW_CHAT_KEY = "new";
+    const isNewChat = searchParams.has(NEW_CHAT_KEY);
+    if (isNewChat) {
+      setModelsInitialized(true);
+      setSearchParams((prev) => {
+        prev.delete(NEW_CHAT_KEY);
+        return prev;
+      });
+      return;
+    }
+    
+    if (modelsInitialized) return;
+    const newModels: string[] = [];
+    const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
+    lastBatchMessages.forEach((msg) => {
+      const msgModel = msg?.model;
+      if (!msgModel) return;
+      if (modelsRef.current.find((m) => m.modelId.includes(msgModel))) {
+        newModels.push(msgModel);
+      }
+    });
+
+    if (newModels.length === 0) {
+      if (lastConversationMessage?.model) {
+        if (modelsRef.current.find((m) => m.modelId.includes(lastConversationMessage.model))) {
+          newModels.push(lastConversationMessage.model);
+        }
+      }
+    }
+    if (newModels.length === 0 && defaultModel) {
+      newModels.push(defaultModel.modelId);
+    }
+    if (newModels.length > 0) {
+      setSelectedModels(newModels);
+    }
+    setModelsInitialized(true);
+  }, [
+    chatId,
+    modelsInitialized,
+    lastConversationMessage,
+    lastBatchMessages,
+    searchParams,
+    remoteConfig.data?.default_model,
+    setSelectedModels,
+    setSearchParams,
+  ]);
 
   const isLoading = isConversationsLoading || !conversationIsReady;
   return (
