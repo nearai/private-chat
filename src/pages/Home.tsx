@@ -7,6 +7,7 @@ import { useCloneChat } from "@/api/chat/queries/useCloneChat";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
+import { useUserData } from "@/api/users/queries/useUserData";
 import MessageInput from "@/components/chat/MessageInput";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
@@ -52,6 +53,11 @@ const Home = ({
   const { data: sharesData } = useConversationShares(chatId);
   const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
   const ownerName = sharesData?.owner?.name;
+
+  // Get current user info for author attribution
+  const { data: userData } = useUserData();
+  const currentUserId = userData?.user?.id;
+  const currentUserName = userData?.user?.name;
 
   // Use the clone hook which invalidates conversation list queries
   const cloneChat = useCloneChat();
@@ -258,6 +264,8 @@ const Home = ({
               regenerateResponse={startStream}
               siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
               ownerName={ownerName}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
             />
           );
         }
@@ -283,6 +291,8 @@ const Home = ({
               regenerateResponse={startStream}
               siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
               ownerName={ownerName}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
             />
           );
         }
@@ -319,7 +329,7 @@ const Home = ({
         }
         return messages;
       });
-  }, [batches, history, allMessages, currentMessages.length, startStream, ownerName]);
+  }, [batches, history, allMessages, currentMessages.length, startStream, ownerName, currentUserId, currentUserName]);
 
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
