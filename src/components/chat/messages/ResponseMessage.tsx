@@ -133,7 +133,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       webSearchEnabled,
       conversationId: chatId,
       previous_response_id: prevResponseId,
-      currentModel: model || undefined,
+      currentModels: model ? [model] : undefined,
       initiator: "regenerate",
     });
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
@@ -214,7 +214,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   return (
     <div
-      className={cn("group flex w-full", RESPONSE_MESSAGE_CLASSNAME)}
+      className={cn("group flex w-full overflow-hidden", RESPONSE_MESSAGE_CLASSNAME)}
       id={`message-${batch.responseId}`}
       dir={settings.chatDirection || "ltr"}
       data-response-id={batch.responseId || ""}
@@ -227,7 +227,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
       <div className="w-0 flex-auto pl-1">
         <div className="flex items-center space-x-2">
-          <span className="line-clamp-1 font-normal text-muted-foreground">{model || "Assistant"}</span>
+          <span
+            className="line-clamp-1 font-normal text-muted-foreground"
+            title={model || "Assistant"}
+          >
+            {model || "Assistant"}
+          </span>
 
           {/* Verification Badge */}
           <div className="message-verification-badge ml-3 flex items-center">
@@ -263,7 +268,10 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           </div>
 
           {createdTimestamp && (
-            <div className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
+            <div
+              className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible"
+              title={formatDate(createdTimestamp * 1000)}
+            >
               <span className="line-clamp-1">{formatDate(createdTimestamp * 1000)}</span>
             </div>
           )}

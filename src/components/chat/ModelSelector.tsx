@@ -141,7 +141,7 @@ export default function ModelSelector() {
   return (
     <div className="flex w-full flex-col items-start">
       {selectedModels.map((selectedModel, selectedModelIdx) => (
-        <div key={selectedModel} className="flex w-full items-center">
+        <div key={`${selectedModel}-${selectedModelIdx}`} className="flex w-full items-center">
           <ModelSelectorItem
             value={selectedModel}
             index={selectedModelIdx}

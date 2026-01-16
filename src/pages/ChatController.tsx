@@ -112,7 +112,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         webSearchEnabled,
         conversationId,
         previous_response_id,
-        currentModel,
+        currentModels,
         initiator,
       }: ChatStartStreamOptions
     ) => {
@@ -186,7 +186,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       };
 
       const isNewChat = initiator === "new_chat";
-      if (isNewChat && !previous_response_id && !currentModel && validModels.length > 1) {
+      if (isNewChat && !previous_response_id && !currentModels && validModels.length > 1) {
         // Run the first model to establish the message anchor
         const firstModel = validModels[0];
         try {
@@ -234,33 +234,36 @@ export default function ChatController({ children }: { children?: React.ReactNod
       if (isNewChat) {
         setConversationStatus(conversationLocalId, "ready");
       }
-      if (initiator === "new_message" && !currentModel && validModels.length > 1) {
-        await Promise.all(
-          validModels.map(async (model) => {
-            try {
-              await runStreamForModel(model, {
-                previousResponseId: previous_response_id,
-              });
-            } catch (error: any) {
-              console.error(`Stream failed for model ${model}:`, error);
-            }
-          })
-        );
-        console.log("All model streams completed");
-        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
-        return;
+
+      const chatModels: string[] = [];
+      if (currentModels && currentModels.length > 0) {
+        chatModels.push(...currentModels);
+      } else if (initiator === "new_message" && validModels.length > 0) {
+        chatModels.push(...validModels);
+      } else if (validModels.length > 0) {
+        chatModels.push(validModels[0]);
+      } else {
+        chatModels.push(remoteConfig.data?.default_model || "");
       }
 
-      const model = currentModel || validModels[0] || remoteConfig.data?.default_model;
-      if (!model) {
+      if (chatModels.length === 0) {
         console.error("Model is required to start stream but none was available");
         return;
       }
-      runStreamForModel(model, {
-        previousResponseId: previous_response_id,
-      })
+
+      await Promise.all(
+        chatModels.map(async (model) => {
+          try {
+            await runStreamForModel(model, {
+              previousResponseId: previous_response_id,
+            });
+          } catch (error: any) {
+            console.error(`Stream failed for model ${model}:`, error);
+          }
+        })
+      )
         .catch((error) => {
-          console.log("Stream error:", error);
+          console.error("Error in model streams:", error);
         })
         .finally(() => {
           queryClient.invalidateQueries({ queryKey: invalidateQueryKey });

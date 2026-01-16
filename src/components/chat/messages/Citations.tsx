@@ -48,7 +48,7 @@ export default function Citations({
                   {idx + 1}
                 </div>
 
-                <div className="mx-1 flex-1 gap-1 truncate text-black/60 transition hover:text-black dark:text-gray-200">
+                <div className="mx-1 min-w-0 flex-1 gap-1 truncate text-black/60 transition hover:text-black dark:text-gray-200">
                   {decodeString(citation.url)}
                 </div>
               </a>
@@ -74,7 +74,9 @@ export default function Citations({
                     {idx + 1}
                   </div>
 
-                  <div className="mx-1 flex-1 gap-1 truncate text-black/60 transition hover:text-black dark:text-gray-200">
+                  <div
+                    className="mx-1 min-w-0 flex-1 gap-1 truncate text-black/60 transition hover:text-black dark:text-gray-200"
+                  >
                     {decodeString(citation.url)}
                   </div>
                 </a>

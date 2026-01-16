@@ -82,14 +82,14 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           const isCurrentMessage = currentBatchBundleObj[batchIds[currentIdx]] !== undefined;
           const isSeveralModels = Object.keys(groupedBatchIds).length > 1;
           const borderClass = isCurrentMessage
-            ? `border border-gray-300 dark:border-gray-700 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-80"}`
-            : `border border-gray-300 dark:border-gray-700 border-dashed ${isMobile ? "min-w-full" : "min-w-80"}`;
+            ? `border border-gray-300 dark:border-gray-700 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-[10vw]"}`
+            : `border border-gray-300 dark:border-gray-700 border-dashed ${isMobile ? "min-w-full" : "min-w-[10vw]"}`;
 
           return (
             <div
               key={batchIds[currentIdx]}
               data-role={isCurrentMessage ? "current-response-message" : "other-response-message"}
-              className={cn(`m-1 w-full max-w-full cursor-pointer snap-center rounded-2xl transition-all`, {
+              className={cn(`m-1 w-full max-w-full snap-center rounded-2xl transition-all`, {
                 'p-5': isSeveralModels,
                 [borderClass]: isSeveralModels,
               })}

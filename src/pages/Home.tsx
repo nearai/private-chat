@@ -235,7 +235,6 @@ const Home = ({
     }) as typeof allMessages[string][];
   }, [history, batches, allMessages]);
 
-  const lastConversationMessage = conversationData?.data?.at(-1);
   useEffect(() => {
     if (!chatId) return;
     
@@ -257,28 +256,24 @@ const Home = ({
       const msgModel = msg?.model;
       if (!msgModel) return;
       if (modelsRef.current.find((m) => m.modelId.includes(msgModel))) {
+        if (newModels.includes(msgModel)) return;
         newModels.push(msgModel);
       }
     });
 
-    if (newModels.length === 0) {
-      if (lastConversationMessage?.model) {
-        if (modelsRef.current.find((m) => m.modelId.includes(lastConversationMessage.model))) {
-          newModels.push(lastConversationMessage.model);
-        }
-      }
+    if (lastBatchMessages.length > 0) {
+      setModelsInitialized(true);
     }
+
     if (newModels.length === 0 && defaultModel) {
       newModels.push(defaultModel.modelId);
     }
     if (newModels.length > 0) {
       setSelectedModels(newModels);
     }
-    setModelsInitialized(true);
   }, [
     chatId,
     modelsInitialized,
-    lastConversationMessage,
     lastBatchMessages,
     searchParams,
     remoteConfig.data?.default_model,
