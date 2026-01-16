@@ -41,7 +41,7 @@ export default function NewChat({
   const { generateChatTitle } = useResponse();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { resetConversation, setConversationStatus } = useConversationStore();
+  const { resetConversation } = useConversationStore();
   const { data: remoteConfig } = useRemoteConfig();
 
   // TODO: intermediate solution that Load prompt only after MessageInput is mounted
@@ -112,7 +112,6 @@ export default function NewChat({
       }
     );
 
-    setConversationStatus(newConversation.id, 'initializing');
     queryClient.setQueryData<ConversationInfo[]>(queryKeys.conversation.all, (oldConversations = []) => {
       const newConversationInfo: ConversationInfo = {
         id: newConversation.id,

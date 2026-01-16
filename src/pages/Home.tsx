@@ -19,7 +19,6 @@ import { useViewStore } from "@/stores/useViewStore";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
-import { useStreamStore } from "@/stores/useStreamStore";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import type { ChatStartStreamOptions } from "@/types";
 import { useTranslation } from "react-i18next";
@@ -41,25 +40,26 @@ const Home = ({
   const remoteConfig = useRemoteConfig();
 
   const { models, selectedModels, setSelectedModels } = useChatStore();
-  const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
   
   const conversationState = useConversationStore((state) => state.conversation);
-  const conversationStatus = useConversationStore((state) => state.conversationStatus);
+  const conversationInitStatus = useConversationStore((state) => state.conversationInitStatus);
+  const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
 
   const currentStreamIsActive = useMemo(() => {
     if (!chatId) return false;
-    return activeStreams.has(chatId);
-  }, [chatId, activeStreams]);
+    if (!conversationStreamStatus.has(chatId)) return false;
+    return conversationStreamStatus.get(chatId) === "streaming";
+  }, [chatId, conversationStreamStatus]);
 
   const conversationIsReady = useMemo(() => {
     if (!chatId) return true;
-    if (!conversationStatus.has(chatId)) return true;
-    return conversationStatus.get(chatId) === "ready";
-  }, [chatId, conversationStatus]);
+    if (!conversationInitStatus.has(chatId)) return true;
+    return conversationInitStatus.get(chatId) === "ready";
+  }, [chatId, conversationInitStatus]);
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(conversationIsReady ? chatId : undefined);
   const setConversationData = useConversationStore((state) => state.setConversationData);

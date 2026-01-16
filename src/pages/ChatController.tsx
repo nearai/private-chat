@@ -33,7 +33,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
   const resetConversation = useConversationStore((state) => state.resetConversation);
   const updateConversation = useConversationStore((state) => state.updateConversation);
-  const setConversationStatus = useConversationStore((state) => state.setConversationStatus);
+  const setConversationInitStatus = useConversationStore((state) => state.setConversationInitStatus);
+  const setConversationStreamStatus = useConversationStore((state) => state.setConversationStreamStatus);
   const userSettings = useUserSettings();
   const remoteConfig = useRemoteConfig();
 
@@ -122,8 +123,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
       
+      const isNewChat = initiator === "new_chat";
       const invalidateQueryKey = queryKeys.conversation.byId(conversationLocalId);
       const validModels = selectedModels.filter((model) => model && model.length > 0);
+
+      if (isNewChat) {
+        setConversationInitStatus(conversationLocalId, "initializing");
+      }
+      setConversationStreamStatus(conversationLocalId, "streaming");
 
       const runStreamForModel = async (model: string, {
         previousResponseId,
@@ -145,14 +152,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
           previous_response_id: previousResponseId,
           systemPrompt: userSettings.data?.settings.system_prompt,
           onReaderReady: (reader, abortController) => {
-            addStream(conversationLocalId, streamPromise, undefined, reader, abortController);
+            addStream(conversationLocalId, tempMsgId, streamPromise, undefined, reader, abortController);
           },
           onResponseCreated,
         });
 
         try {
           await streamPromise;
-          markStreamComplete(conversationLocalId);
+          markStreamComplete(conversationLocalId, tempMsgId);
         } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
@@ -177,15 +184,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
               return draft;
             });
           }
-          markStreamComplete(conversationLocalId);
-          removeStream(conversationLocalId);
+          markStreamComplete(conversationLocalId, tempMsgId);
+          removeStream(conversationLocalId, tempMsgId);
           throw error;
         } finally {
-          removeStream(conversationLocalId);
+          removeStream(conversationLocalId, tempMsgId);
         }
       };
 
-      const isNewChat = initiator === "new_chat";
       if (isNewChat && !previous_response_id && !currentModels && validModels.length > 1) {
         // Run the first model to establish the message anchor
         const firstModel = validModels[0];
@@ -227,12 +233,13 @@ export default function ChatController({ children }: { children?: React.ReactNod
         console.log("All new_chat model streams completed");
         resetConversation();
         queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
-        setConversationStatus(conversationLocalId, "ready");
+        setConversationInitStatus(conversationLocalId, "ready");
+        setConversationStreamStatus(conversationLocalId, "idle");
         return;
       }
 
       if (isNewChat) {
-        setConversationStatus(conversationLocalId, "ready");
+        setConversationInitStatus(conversationLocalId, "ready");
       }
 
       const chatModels: string[] = [];
@@ -267,6 +274,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         })
         .finally(() => {
           queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+          setConversationStreamStatus(conversationLocalId, "idle");
         });
     },
     [

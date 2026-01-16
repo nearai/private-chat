@@ -17,16 +17,19 @@ export type ConversationDerivedState = {
   batches: string[];
 };
 
-export type ConversationStatus = 'initializing' | 'ready';
+export type ConversationInitStatus = 'initializing' | 'ready';
+export type ConversationStreamStatus = 'streaming' | 'idle';
 
 export interface ConversationStoreState {
   conversation: ConversationDerivedState | null;
-  conversationStatus: Map<string, ConversationStatus>;
+  conversationInitStatus: Map<string, ConversationInitStatus>;
+  conversationStreamStatus: Map<string, ConversationStreamStatus>;
   setConversationData: (conversation: Conversation, previous_response_id?: string | null) => void;
   updateConversation: (updater: (state: ConversationStoreState) => ConversationStoreState) => void;
   setLastResponseId: (nextId: string) => void;
   resetConversation: () => void;
-  setConversationStatus: (conversationId: string, status: ConversationStatus) => void;
+  setConversationInitStatus: (conversationId: string, status: ConversationInitStatus) => void;
+  setConversationStreamStatus: (conversationId: string, status: ConversationStreamStatus) => void;
 }
 
 export const createEmptyConversation = (conversationId: string): Conversation => ({
@@ -72,7 +75,8 @@ export const buildConversationEntry = (
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
   conversation: null,
-  conversationStatus: new Map(),
+  conversationInitStatus: new Map(),
+  conversationStreamStatus: new Map(),
   setConversationData: (conversation: Conversation, previous_response_id?: string | null) =>
     set((state) => {
       if (!conversation) return state;
@@ -107,12 +111,20 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
       if (!state.conversation) return state;
       return { conversation: null };
     }),
-  setConversationStatus: (conversationId: string, status: ConversationStatus) =>
+  setConversationInitStatus: (conversationId: string, status: ConversationInitStatus) =>
     set((state) => {
-      const newStatus = new Map(state.conversationStatus);
+      const newStatus = new Map(state.conversationInitStatus);
       newStatus.set(conversationId, status);
       return {
-        conversationStatus: newStatus,
+        conversationInitStatus: newStatus,
+      };
+    }),
+  setConversationStreamStatus: (conversationId: string, status: ConversationStreamStatus) =>
+    set((state) => {
+      const newStatus = new Map(state.conversationStreamStatus);
+      newStatus.set(conversationId, status);
+      return {
+        conversationStreamStatus: newStatus,
       };
     }),
 }));
