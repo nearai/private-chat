@@ -55,6 +55,17 @@ export const buildConversationEntry = (
   const { history, allMessages, currentId } = combineMessagesById(messages);
   const lastResponseId = preserveLastResponseId ?? currentId;
   const batches = extractBatchFromHistory(history, lastResponseId);
+
+  console.debug("buildConversationEntry:", {
+    messageCount: messages.length,
+    historyKeys: Object.keys(history.messages),
+    currentId,
+    lastResponseId,
+    batchCount: batches.length,
+    batches,
+    messageResponseIds: messages.map(m => ({ id: m.id, response_id: m.response_id, previous_response_id: m.previous_response_id, type: m.type, role: (m as any).role })),
+  });
+
   return {
     conversationId: conversation.id,
     conversation,

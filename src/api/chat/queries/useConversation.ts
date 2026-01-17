@@ -25,8 +25,22 @@ export const useConversation = () => {
   });
 
   const addItemsToConversation = useMutation({
-    mutationFn: ({ conversationId, items }: { conversationId: string; items: Responses.ResponseInputItem[] }) =>
-      chatClient.addItemsToConversation(conversationId, items),
+    mutationFn: ({
+      conversationId,
+      items,
+      previousResponseId,
+    }: {
+      conversationId: string;
+      items: Responses.ResponseInputItem[];
+      previousResponseId?: string;
+    }) => chatClient.addItemsToConversation(conversationId, items, previousResponseId),
+    onSuccess: (_data, variables) => {
+      console.debug("addItemsToConversation: success, invalidating query for", variables.conversationId);
+      // Invalidate the conversation query to refresh the UI
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.conversation.byId(variables.conversationId),
+      });
+    },
   });
 
   const reloadConversations = async ({

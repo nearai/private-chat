@@ -110,10 +110,14 @@ class ChatClient extends ApiClient {
     });
   }
 
-  addItemsToConversation(conversationId: string, items: Responses.ResponseInputItem[]) {
+  addItemsToConversation(
+    conversationId: string,
+    items: Responses.ResponseInputItem[],
+    previousResponseId?: string
+  ) {
     return this.post<Responses.ResponseInputItem[]>(
       `/conversations/${conversationId}/items`,
-      { items },
+      { items, previous_response_id: previousResponseId },
       {
         apiVersion: "v2",
       }
@@ -496,6 +500,16 @@ class ChatClient extends ApiClient {
         error: string | null;
       }[]
     >(`/shared-with-me`, {
+      apiVersion: "v2",
+    });
+  }
+
+  /**
+   * Send a typing indicator to other users in a shared conversation
+   * @param conversationId - Conversation ID
+   */
+  async sendTypingIndicator(conversationId: string) {
+    return this.post<void>(`/conversations/${conversationId}/typing`, {}, {
       apiVersion: "v2",
     });
   }

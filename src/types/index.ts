@@ -616,6 +616,10 @@ export interface ChatStore {
 
   setModels: (models: ModelV1[]) => void;
   setSelectedModels: (models: string[]) => void;
+
+  /** Chat-only mode - when enabled, messages are sent without triggering AI responses */
+  chatOnlyMode: boolean;
+  setChatOnlyMode: (enabled: boolean) => void;
 }
 
 export interface SettingsStore {

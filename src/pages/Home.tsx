@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { useCloneChat } from "@/api/chat/queries/useCloneChat";
+import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
@@ -13,18 +14,23 @@ import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessa
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
+import { useConversationWebSocket } from "@/hooks/useConversationWebSocket";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
+import { analyzeSiblings, cn, MessageStatus } from "@/lib";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, RESPONSE_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useChatStore } from "@/stores/useChatStore";
-import { useConversationStore } from "@/stores/useConversationStore";
+import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
+import { TEMP_RESPONSE_ID } from "@/api/constants";
+import { ConversationRoles, ConversationTypes } from "@/types";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useStreamStore } from "@/stores/useStreamStore";
 import { useViewStore } from "@/stores/useViewStore";
+import type { ResponseInputItem } from "openai/resources/responses/responses.mjs";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 
 const Home = ({
@@ -49,20 +55,30 @@ const Home = ({
   const dataInitializedRef = useRef<boolean>(false);
   const remoteConfig = useRemoteConfig();
 
-  // Get permission info for shared conversations
-  const { data: sharesData } = useConversationShares(chatId);
-  const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
-  const ownerName = sharesData?.owner?.name;
-
   // Get current user info for author attribution
   const { data: userData } = useUserData();
   const currentUserId = userData?.user?.id;
   const currentUserName = userData?.user?.name;
 
+  // Get permission info for shared conversations
+  const { data: sharesData } = useConversationShares(chatId);
+  const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
+  const ownerName = sharesData?.owner?.name;
+  const ownerId = sharesData?.owner?.user_id;
+  // Conversation is shared if:
+  // 1. Owner has created shares (shares.length > 0), OR
+  // 2. Current user is NOT the owner (they're a recipient of a share)
+  const isSharedConversation =
+    (sharesData?.shares?.length ?? 0) > 0 ||
+    (ownerId !== undefined && currentUserId !== undefined && ownerId !== currentUserId);
+
   // Use the clone hook which invalidates conversation list queries
   const cloneChat = useCloneChat();
 
-  const { models, selectedModels, setSelectedModels } = useChatStore();
+  // Hook for adding items without AI response
+  const { addItemsToConversation } = useConversation();
+
+  const { models, selectedModels, setSelectedModels, chatOnlyMode } = useChatStore();
   const activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
@@ -81,6 +97,14 @@ const Home = ({
     error: conversationError,
   } = useGetConversation(chatId, {
     polling: !currentStreamIsActive,
+  });
+
+  // WebSocket connection for real-time updates in shared conversations
+  // Only connects when the conversation is shared
+  const { typingUsers } = useConversationWebSocket({
+    conversationId: chatId ?? null,
+    isSharedConversation,
+    currentUserId,
   });
 
   // Parse error type for proper display
@@ -120,33 +144,125 @@ const Home = ({
     };
   }, [conversationError]);
   const setConversationData = useConversationStore((state) => state.setConversationData);
+  const updateConversation = useConversationStore((state) => state.updateConversation);
   const conversationState = useConversationStore((state) => state.conversation);
   const { clearAllSignatures } = useMessagesSignaturesStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
 
   const handleSendMessage = useCallback(
-    async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
+    async (content: string, files: FileContentItem[], webSearchEnabled = false, options?: { forceAIMode?: boolean; forceChatMode?: boolean }) => {
+      const { forceAIMode = false, forceChatMode = false } = options ?? {};
       const contentItems: ContentItem[] = [
         { type: "input_text", text: content },
         ...files.map(generateContentFileDataForOpenAI),
       ];
 
-      let prevRespId = previous_response_id;
-      if (!prevRespId) {
-        const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
-        const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
-        if (lastMsg) {
-          prevRespId = lastMsg.getAttribute("data-response-id") || undefined;
-          if (prevRespId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
-            prevRespId = unwrapMockResponseID(prevRespId);
-          }
+      // Compute previous_response_id from DOM or store
+      let prevRespId: string | undefined;
+      // First try to get from DOM (handles navigating to previous branches)
+      const msgs = scrollContainerRef.current?.getElementsByClassName(RESPONSE_MESSAGE_CLASSNAME);
+      const lastMsg = msgs?.item(msgs.length - 1) as HTMLElement | null;
+      if (lastMsg) {
+        prevRespId = lastMsg.getAttribute("data-response-id") || undefined;
+        if (prevRespId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
+          prevRespId = unwrapMockResponseID(prevRespId);
         }
       }
+      // Fall back to store's lastResponseId (more reliable, especially for chat-only mode)
+      if (!prevRespId || prevRespId === "temp-response-id") {
+        prevRespId = conversationState?.lastResponseId ?? undefined;
+      }
+
+      // Determine if we should use chat-only mode
+      // Use chat mode if: forceChatMode OR (chatOnlyMode AND NOT forceAIMode)
+      const useChatMode = forceChatMode || (chatOnlyMode && !forceAIMode);
+
+      // In chat-only mode, add items without triggering AI response
+      if (useChatMode && isSharedConversation && chatId) {
+        try {
+          // Build a message item compatible with ResponseInputItem
+          const messageItem = {
+            type: "message",
+            role: "user",
+            content: contentItems.map((item) => {
+              if (item.type === "input_text") {
+                return { type: "input_text", text: item.text ?? "" };
+              }
+              if (item.type === "input_image") {
+                return { type: "input_image", image_url: item.image_url ?? "", detail: "auto" };
+              }
+              if (item.type === "input_file") {
+                return { type: "input_file", file_id: item.file_id ?? "" };
+              }
+              if (item.type === "input_audio") {
+                return { type: "input_audio", data: item.audio_file_id ?? "", format: "wav" };
+              }
+              // Fallback for any other types
+              return { type: "input_text", text: "" };
+            }),
+          } as ResponseInputItem;
+
+          // Add optimistic message to store BEFORE API call for instant feedback
+          const tempId = `temp-message-${crypto.randomUUID()}`;
+          updateConversation((draft) => {
+            if (!draft.conversation) return draft;
+
+            const optimisticMessage = {
+              id: tempId,
+              response_id: TEMP_RESPONSE_ID,
+              next_response_ids: [],
+              created_at: Date.now(),
+              status: "pending" as const,
+              role: ConversationRoles.USER,
+              type: ConversationTypes.MESSAGE,
+              content: contentItems,
+              previous_response_id: prevRespId,
+            };
+
+            draft.conversation.conversation.data.push(optimisticMessage);
+
+            // Rebuild history and batches to include the new message
+            const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
+              draft.conversation.conversation,
+              TEMP_RESPONSE_ID
+            );
+            draft.conversation.history = history;
+            draft.conversation.allMessages = allMessages;
+            draft.conversation.lastResponseId = lastResponseId;
+            draft.conversation.batches = batches;
+
+            // Link to parent
+            if (prevRespId) {
+              const parent = draft.conversation.history.messages[prevRespId];
+              if (parent && !parent.nextResponseIds.includes(TEMP_RESPONSE_ID)) {
+                parent.nextResponseIds = [...parent.nextResponseIds, TEMP_RESPONSE_ID];
+              }
+            }
+
+            return draft;
+          });
+
+          scrollToBottom();
+
+          console.debug("Chat-only mode: sending message", messageItem, "prevRespId:", prevRespId);
+          const result = await addItemsToConversation.mutateAsync({
+            conversationId: chatId,
+            items: [messageItem],
+            previousResponseId: prevRespId,
+          });
+          console.debug("Chat-only mode: message sent successfully", result);
+        } catch (error) {
+          console.error("Failed to add chat message:", error);
+          toast.error("Failed to send message");
+        }
+        return;
+      }
+
       await startStream(contentItems, webSearchEnabled, chatId, prevRespId);
       scrollToBottom();
     },
-    [chatId, scrollToBottom, startStream]
+    [chatId, scrollToBottom, startStream, chatOnlyMode, isSharedConversation, addItemsToConversation, conversationState?.lastResponseId, updateConversation]
   );
 
   const handleCopyAndContinue = useCallback(async () => {
@@ -189,6 +305,36 @@ const Home = ({
     conversationData,
     setConversationData,
     conversationState?.conversationId,
+  ]);
+
+  // Sync store with query data when it changes (for real-time updates)
+  // This runs AFTER initial load, when query refetches due to invalidation
+  useEffect(() => {
+    // Only run if already initialized and not streaming
+    if (!dataInitializedRef.current) return;
+    if (!chatId || !conversationData) return;
+    if (currentStreamIsActive) return;
+    if (conversationState?.conversationId !== chatId) return;
+
+    // Check if query data has more items than store data
+    const queryDataLength = conversationData.data?.length ?? 0;
+    const storeDataLength = conversationState?.conversation?.data?.length ?? 0;
+
+    // Check if store has temp messages that need to be replaced with real ones
+    const hasTempMessages = conversationState?.lastResponseId === TEMP_RESPONSE_ID;
+
+    if (queryDataLength > storeDataLength || (hasTempMessages && queryDataLength >= storeDataLength)) {
+      console.log("Syncing store with new query data:", queryDataLength, "vs", storeDataLength, "hasTempMessages:", hasTempMessages);
+      setConversationData(conversationData);
+    }
+  }, [
+    chatId,
+    conversationData,
+    currentStreamIsActive,
+    setConversationData,
+    conversationState?.conversationId,
+    conversationState?.conversation?.data?.length,
+    conversationState?.lastResponseId,
   ]);
 
   // Sync selected model with latest conversation
@@ -236,11 +382,33 @@ const Home = ({
     return !last || last.role !== "assistant" || last.status === "completed";
   }, [conversationData?.data]);
 
-  const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
-
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
-  const batches = conversationState?.batches ?? [];
+  const treeBatches = conversationState?.batches ?? [];
+
+  // For shared conversations, show ALL messages chronologically instead of tree-based batches
+  // This ensures human-to-human chat messages don't get hidden in branches
+  // Use store data (includes optimistic messages) rather than query data
+  const storeMessages = conversationState?.conversation?.data;
+  const batches = useMemo(() => {
+    if (!isSharedConversation || !storeMessages?.length) {
+      return treeBatches;
+    }
+
+    // Get all unique response_ids in chronological order (by first message appearance)
+    const seenResponseIds = new Set<string>();
+    const chronologicalBatches: string[] = [];
+
+    for (const msg of storeMessages) {
+      if (msg.response_id && !seenResponseIds.has(msg.response_id)) {
+        seenResponseIds.add(msg.response_id);
+        chronologicalBatches.push(msg.response_id);
+      }
+    }
+
+    return chronologicalBatches;
+  }, [isSharedConversation, storeMessages, treeBatches]);
+
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
 
@@ -250,11 +418,17 @@ const Home = ({
         return !!batchMessage;
       })
       .map((batch, idx) => {
-        const isLast = idx === currentMessages.length - 1;
+        const isLast = idx === batches.length - 1;
         const batchMessage = history.messages[batch];
         if (!batchMessage) return null;
+
+        // For shared conversations, skip sibling detection - show all messages chronologically
+        // This prevents optimistic messages from briefly showing as alternatives
+        const { inputSiblings, responseSiblings } = isSharedConversation
+          ? { inputSiblings: [], responseSiblings: [] }
+          : analyzeSiblings(batch, history, allMessages);
+
         if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
-          const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
           return (
             <UserMessage
               key={batchMessage.userPromptId}
@@ -277,9 +451,6 @@ const Home = ({
           return null;
         }
         const messages = [];
-
-        // Analyze siblings to determine if they're input variants or response variants
-        const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
 
         if (batchMessage.userPromptId) {
           messages.push(
@@ -329,7 +500,7 @@ const Home = ({
         }
         return messages;
       });
-  }, [batches, history, allMessages, currentMessages.length, startStream, ownerName, currentUserId, currentUserName]);
+  }, [batches, history, allMessages, isSharedConversation, startStream, ownerName, currentUserId, currentUserName]);
 
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
@@ -379,6 +550,10 @@ const Home = ({
       {/* Show MessageInput for users with write access, or Copy & Continue for read-only */}
       {canWrite ? (
         <div className="flex flex-col items-center">
+          {/* Typing indicator for shared conversations */}
+          {isSharedConversation && typingUsers.length > 0 && (
+            <TypingIndicator typingUsers={typingUsers} className="w-full max-w-3xl" />
+          )}
           <MessageInput
             onSubmit={handleSendMessage}
             prompt={inputValue}
@@ -389,6 +564,8 @@ const Home = ({
             isConversationStreamActive={currentStreamIsActive}
             allMessages={allMessages}
             autoFocusKey={chatId ?? "home"}
+            isSharedConversation={isSharedConversation}
+            conversationId={chatId}
           />
           <p className="px-4 pb-4 text-muted-foreground text-xs">
             {t("AI can make mistakes. Verify information before relying on it.")}

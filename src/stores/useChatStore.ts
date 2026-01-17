@@ -21,4 +21,8 @@ export const useChatStore = create<ChatStore>((set) => ({
       isEditingChatName: false,
       editingChatId: null,
     }),
+
+  // Chat-only mode - when enabled, messages are sent without AI responses
+  chatOnlyMode: false,
+  setChatOnlyMode: (enabled: boolean) => set({ chatOnlyMode: enabled }),
 }));

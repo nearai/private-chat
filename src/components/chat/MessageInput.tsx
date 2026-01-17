@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 // import { v4 as uuidv4 } from "uuid";
 import { chatClient, isUploadError } from "@/api/chat/client";
+import { parseCommand } from "@/lib/commands";
 
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
 import StopMessageIcon from "@/assets/icons/stop-message.svg?react";
@@ -56,7 +57,7 @@ interface MessageInputProps {
   webSearchEnabled?: boolean;
   codeInterpreterEnabled?: boolean;
   placeholder?: string;
-  onSubmit: (prompt: string, files: FileContentItem[], webSearchEnabled: boolean) => Promise<void>;
+  onSubmit: (prompt: string, files: FileContentItem[], webSearchEnabled: boolean, options?: { forceAIMode?: boolean; forceChatMode?: boolean }) => Promise<void>;
   onUpload?: (detail: Record<string, unknown>) => void;
   showUserProfile?: boolean;
   fullWidth?: boolean;
@@ -64,6 +65,10 @@ interface MessageInputProps {
   isMessageCompleted?: boolean;
   isConversationStreamActive?: boolean;
   autoFocusKey?: string | number | boolean;
+  /** Whether the conversation is shared with at least one other user */
+  isSharedConversation?: boolean;
+  /** Conversation ID for sending typing indicators */
+  conversationId?: string;
 }
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
@@ -91,6 +96,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isMessageCompleted = true,
   isConversationStreamActive = false,
   autoFocusKey = "default",
+  isSharedConversation = false,
+  conversationId,
 }) => {
   const { settings } = useSettingsStore();
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -98,13 +105,57 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const [dragged, setDragged] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const { isEditingChatName, webSearchEnabled } = useChatStore();
+  const { isEditingChatName, webSearchEnabled, chatOnlyMode, setChatOnlyMode } = useChatStore();
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [isUploading, setIsUploading] = useState(false);
   const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
   const isOnline = useIsOnline();
+
+  // Typing indicator debounce ref
+  const typingIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTypingIndicatorSentRef = useRef<number>(0);
+  const TYPING_INDICATOR_DEBOUNCE_MS = 2000; // Send at most once every 2 seconds
+
+  // Send typing indicator when user types (debounced)
+  useEffect(() => {
+    // Only send typing indicators for shared conversations with a valid conversationId
+    if (!isSharedConversation || !conversationId || !prompt) {
+      return;
+    }
+
+    const now = Date.now();
+    const timeSinceLastSent = now - lastTypingIndicatorSentRef.current;
+
+    // If we recently sent a typing indicator, don't send another one
+    if (timeSinceLastSent < TYPING_INDICATOR_DEBOUNCE_MS) {
+      // Schedule sending after the debounce period
+      if (!typingIndicatorTimeoutRef.current) {
+        typingIndicatorTimeoutRef.current = setTimeout(() => {
+          chatClient.sendTypingIndicator(conversationId).catch(() => {
+            // Silently ignore errors for typing indicators
+          });
+          lastTypingIndicatorSentRef.current = Date.now();
+          typingIndicatorTimeoutRef.current = null;
+        }, TYPING_INDICATOR_DEBOUNCE_MS - timeSinceLastSent);
+      }
+      return;
+    }
+
+    // Send typing indicator immediately
+    chatClient.sendTypingIndicator(conversationId).catch(() => {
+      // Silently ignore errors for typing indicators
+    });
+    lastTypingIndicatorSentRef.current = now;
+
+    return () => {
+      if (typingIndicatorTimeoutRef.current) {
+        clearTimeout(typingIndicatorTimeoutRef.current);
+        typingIndicatorTimeoutRef.current = null;
+      }
+    };
+  }, [prompt, isSharedConversation, conversationId]);
 
   useEffect(() => {
     if (isLowBalance) {
@@ -335,6 +386,55 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
       if (enterPressed) {
         e.preventDefault();
+
+        // Handle slash commands
+        const command = parseCommand(prompt);
+        if (command) {
+          // Check if command requires shared conversation
+          if (command.requiresShared && !isSharedConversation) {
+            toast.error(`The /${command.name} command is only available in shared conversations`);
+            setPrompt("");
+            return;
+          }
+
+          // Extract text after the command (e.g., "/ai hello" -> "hello")
+          const commandMatch = prompt.match(/^\/\w+\s*(.*)/);
+          const textAfterCommand = commandMatch?.[1]?.trim() ?? "";
+
+          // Execute command based on name
+          if (command.name === "chat") {
+            setChatOnlyMode(true);
+            // If there's text after /chat, send it as a chat message
+            if (textAfterCommand) {
+              if (!isMessageCompleted) return;
+              if (disabledSendButton) return;
+              // Pass forceChatMode=true since setChatOnlyMode is async
+              onSubmit(textAfterCommand, files, webSearchEnabled, { forceChatMode: true });
+              setFiles([]);
+              setPrompt("");
+              return;
+            }
+            toast.success("Chat-only mode enabled");
+            setPrompt("");
+            return;
+          } else if (command.name === "ai") {
+            setChatOnlyMode(false);
+            // If there's text after /ai, send it as a message to AI
+            if (textAfterCommand) {
+              if (!isMessageCompleted) return;
+              if (disabledSendButton) return;
+              // Pass forceAIMode=true since setChatOnlyMode is async
+              onSubmit(textAfterCommand, files, webSearchEnabled, { forceAIMode: true });
+              setFiles([]);
+              setPrompt("");
+              return;
+            }
+            toast.success("AI responses enabled");
+            setPrompt("");
+            return;
+          }
+        }
+
         if (prompt !== "" || files.length > 0) {
           if (!isMessageCompleted) return;
           if (disabledSendButton) return;
@@ -741,6 +841,42 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                 </svg>
                                 <span className="font-medium text-muted-foreground text-sm">
                                   {toolServers.length + selectedToolIds.length}
+                                </span>
+                              </button>
+                            )}
+
+                            {/* Chat-only mode toggle - only shown for shared conversations */}
+                            {isSharedConversation && (
+                              <button
+                                className={cn(
+                                  "flex translate-y-[0.5px] items-center gap-1.5 self-center rounded-lg px-2 py-1 text-sm transition",
+                                  chatOnlyMode
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:text-muted-foreground/80"
+                                )}
+                                aria-label={chatOnlyMode ? "Chat-only mode (no AI)" : "AI mode"}
+                                title={chatOnlyMode ? "Chat-only mode enabled - messages won't trigger AI responses" : "Click to enable chat-only mode"}
+                                type="button"
+                                onClick={() => {
+                                  const newMode = !chatOnlyMode;
+                                  setChatOnlyMode(newMode);
+                                  toast.success(`Chat-only mode ${newMode ? 'enabled' : 'disabled'}`);
+                                }}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="size-4"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 2c-2.236 0-4.43.18-6.57.524C1.993 2.755 1 4.014 1 5.426v5.148c0 1.413.993 2.67 2.43 2.902 1.168.188 2.352.327 3.55.414.28.02.521.18.642.413l1.713 3.293a.75.75 0 0 0 1.33 0l1.713-3.293c.121-.233.362-.393.642-.413a41.102 41.102 0 0 0 3.55-.414c1.437-.232 2.43-1.49 2.43-2.902V5.426c0-1.413-.993-2.67-2.43-2.902A41.289 41.289 0 0 0 10 2ZM6.75 6a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Zm0 2.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5h-3.5Z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                <span className="font-medium">
+                                  {chatOnlyMode ? "Chat" : "AI"}
                                 </span>
                               </button>
                             )}
