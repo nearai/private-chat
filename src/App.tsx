@@ -10,7 +10,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAppInitialization } from "@/hooks/useAppInitialization";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
+import AdminAuditLogsPage from "@/pages/admin/AuditLogs";
+import AdminOrganizationPage from "@/pages/admin/Organization";
+import AdminRolesPage from "@/pages/admin/Roles";
 import AdminSettingsPage from "@/pages/admin/Settings";
+import AdminWorkspacesPage from "@/pages/admin/Workspaces";
 import { APP_ROUTES } from "@/pages/routes";
 import WelcomePage from "@/pages/WelcomePage";
 import { useModels } from "./api/models/queries";
@@ -101,6 +105,10 @@ function App() {
                 element={<AdminUsersPage />}
               /> */}
               <Route path={APP_ROUTES.ADMIN_SETTINGS} element={<AdminSettingsPage />} />
+              <Route path={APP_ROUTES.ADMIN_ORGANIZATION} element={<AdminOrganizationPage />} />
+              <Route path={APP_ROUTES.ADMIN_WORKSPACES} element={<AdminWorkspacesPage />} />
+              <Route path={APP_ROUTES.ADMIN_ROLES} element={<AdminRolesPage />} />
+              <Route path={APP_ROUTES.ADMIN_AUDIT_LOGS} element={<AdminAuditLogsPage />} />
               {/* <Route path={APP_ROUTES.PLAYGROUND} element={<Playground />} /> */}
             </Route>
           </Route>

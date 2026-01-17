@@ -16,6 +16,22 @@ const AdminNavBar = () => {
       label: t("Users"),
       to: ADMIN_ROUTES.ADMIN_USERS,
     },
+    {
+      label: "Organization",
+      to: ADMIN_ROUTES.ADMIN_ORGANIZATION,
+    },
+    {
+      label: "Workspaces",
+      to: ADMIN_ROUTES.ADMIN_WORKSPACES,
+    },
+    {
+      label: "Roles",
+      to: ADMIN_ROUTES.ADMIN_ROLES,
+    },
+    {
+      label: "Audit Logs",
+      to: ADMIN_ROUTES.ADMIN_AUDIT_LOGS,
+    },
     // {
     //   label: t("Evaluations"),
     //   to: ADMIN_ROUTES.ADMIN_EVALUATIONS,
