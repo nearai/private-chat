@@ -174,9 +174,11 @@ const Home = ({
       clearAllSignatures();
       dataInitializedRef.current = false;
     }
-    if (dataInitializedRef.current) return;
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationData.data?.length) return;
+
+    // Always update conversation data when it changes (including polling updates)
+    // Only skip if we're currently streaming to avoid conflicts
     setConversationData(conversationData);
     dataInitializedRef.current = true;
   }, [
