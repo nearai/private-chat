@@ -7,7 +7,6 @@ import { useCloneChat } from "@/api/chat/queries/useCloneChat";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
-import { useUserData } from "@/api/users/queries/useUserData";
 import MessageInput from "@/components/chat/MessageInput";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
@@ -52,12 +51,10 @@ const Home = ({
   // Get permission info for shared conversations
   const { data: sharesData } = useConversationShares(chatId);
   const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
-  const ownerName = sharesData?.owner?.name;
 
-  // Get current user info for author attribution
-  const { data: userData } = useUserData();
-  const currentUserId = userData?.user?.id;
-  const currentUserName = userData?.user?.name;
+  // Conversation is shared if it has any shares (regardless of owner status)
+  // Only show author names in shared conversations
+  const isSharedConversation = (sharesData?.shares?.length ?? 0) > 0;
 
   // Use the clone hook which invalidates conversation list queries
   const cloneChat = useCloneChat();
@@ -263,9 +260,7 @@ const Home = ({
               batchId={batch}
               regenerateResponse={startStream}
               siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
-              ownerName={ownerName}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
+              isSharedConversation={isSharedConversation}
             />
           );
         }
@@ -290,9 +285,7 @@ const Home = ({
               batchId={batch}
               regenerateResponse={startStream}
               siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
-              ownerName={ownerName}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
+              isSharedConversation={isSharedConversation}
             />
           );
         }

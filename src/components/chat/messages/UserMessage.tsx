@@ -30,12 +30,8 @@ interface UserMessageProps {
     currentModel?: string
   ) => Promise<void>;
   siblings?: string[];
-  /** Owner name to display for messages without author metadata */
-  ownerName?: string;
-  /** Current user's ID to determine if they authored a message */
-  currentUserId?: string;
-  /** Current user's name (NEAR account ID for NEAR users) to display for their messages */
-  currentUserName?: string;
+  /** Only show author name if conversation is shared */
+  isSharedConversation?: boolean;
 }
 
 const UserMessage: React.FC<UserMessageProps> = ({
@@ -44,9 +40,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   batchId,
   regenerateResponse,
   siblings,
-  ownerName,
-  currentUserId,
-  currentUserName,
+  isSharedConversation,
 }) => {
   const { settings } = useSettingsStore();
   const { setLastResponseId } = useConversationStore();
@@ -236,19 +230,12 @@ const UserMessage: React.FC<UserMessageProps> = ({
               ) : (
                 <div className="w-full">
                   <div className="flex w-full flex-col items-end pb-1">
-                    {/* Show author name from metadata, or appropriate fallback */}
-                    {(() => {
-                      const authorId = message.metadata?.author_id as string | undefined;
+                    {/* Show author name only for shared conversations */}
+                    {isSharedConversation && (() => {
                       const authorName = message.metadata?.author_name as string | undefined;
-                      // Determine if this is the current user's message
-                      const isCurrentUserMessage = currentUserId && authorId === currentUserId;
-                      // Use author_name if available, otherwise:
-                      // - For current user's messages: use currentUserName
-                      // - For other messages (legacy/owner): use ownerName
-                      const displayName = authorName || (isCurrentUserMessage ? currentUserName : ownerName);
-                      return displayName ? (
+                      return authorName ? (
                         <div className="mr-2 mb-1 text-muted-foreground text-xs">
-                          {displayName}
+                          {authorName}
                         </div>
                       ) : null;
                     })()}
