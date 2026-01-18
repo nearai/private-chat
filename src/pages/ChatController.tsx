@@ -7,6 +7,7 @@ import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
 
 import { useUserSettings } from "@/api/users/queries/useUserSettings";
+import { useUserData } from "@/api/users/queries/useUserData";
 
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
@@ -32,6 +33,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const { addStream, removeStream, markStreamComplete, stopStream, stopAllStreams } = useStreamStore();
   const updateConversation = useConversationStore((state) => state.updateConversation);
   const userSettings = useUserSettings();
+  const { data: userData } = useUserData();
   const remoteConfig = useRemoteConfig();
 
   // Push response used for adding new response to the end of the conversation
@@ -63,6 +65,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
           content: contentItems,
           model: selectedModels[0] || "",
           previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
+          metadata: userData?.user
+            ? {
+                author_id: userData.user.id,
+                author_name: userData.user.name,
+              }
+            : undefined,
         };
 
         draft.conversation.conversation.data.push(userMessage);
@@ -97,7 +105,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       };
       updateConversation(updatedConversation);
     },
-    [selectedModels, updateConversation]
+    [selectedModels, updateConversation, userData]
   );
 
   const startStream = useCallback(

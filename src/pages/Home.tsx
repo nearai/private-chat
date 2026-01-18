@@ -52,9 +52,10 @@ const Home = ({
   const { data: sharesData } = useConversationShares(chatId);
   const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
 
-  // Conversation is shared if it has any shares (regardless of owner status)
-  // Only show author names in shared conversations
-  const isSharedConversation = (sharesData?.shares?.length ?? 0) > 0;
+  // Show author names when conversation has multiple users:
+  // - You're not the owner (it's been shared with you), OR
+  // - You're the owner but have shared it with others
+  const isSharedConversation = !sharesData?.is_owner || (sharesData?.shares?.length ?? 0) > 0;
 
   // Use the clone hook which invalidates conversation list queries
   const cloneChat = useCloneChat();
@@ -322,7 +323,7 @@ const Home = ({
         }
         return messages;
       });
-  }, [batches, history, allMessages, currentMessages.length, startStream, ownerName, currentUserId, currentUserName]);
+  }, [batches, history, allMessages, currentMessages.length, startStream]);
 
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
