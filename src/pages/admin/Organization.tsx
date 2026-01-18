@@ -5,36 +5,10 @@ import {
 } from "@heroicons/react/24/solid";
 import { useMemo } from "react";
 import OrgSettingsForm from "@/components/admin/organization/OrgSettingsForm";
+import DomainVerificationWizard from "@/components/admin/domains/DomainVerificationWizard";
+import SamlConfigForm from "@/components/admin/saml/SamlConfigForm";
 import TabbedContent from "@/components/common/TabbedContent";
 import { PermissionGate } from "@/components/common/PermissionGate";
-
-const DomainSettings = () => {
-  return (
-    <div className="space-y-4">
-      <h3 className="font-medium text-lg">Domain Verification</h3>
-      <p className="text-muted-foreground">
-        Verify your organization's domain to enable SAML SSO and automatic user provisioning.
-      </p>
-      <div className="py-8 text-center text-muted-foreground">
-        Domain verification coming soon
-      </div>
-    </div>
-  );
-};
-
-const SamlSettings = () => {
-  return (
-    <div className="space-y-4">
-      <h3 className="font-medium text-lg">SAML Single Sign-On</h3>
-      <p className="text-muted-foreground">
-        Configure SAML SSO to allow your team to sign in with your identity provider.
-      </p>
-      <div className="py-8 text-center text-muted-foreground">
-        SAML configuration coming soon
-      </div>
-    </div>
-  );
-};
 
 const AdminOrganizationPage = () => {
   const tabs = useMemo(
@@ -56,7 +30,7 @@ const AdminOrganizationPage = () => {
                 You don't have permission to manage domains.
               </div>
             }>
-              <DomainSettings />
+              <DomainVerificationWizard />
             </PermissionGate>
           ),
         },
@@ -70,7 +44,7 @@ const AdminOrganizationPage = () => {
                 You don't have permission to manage SAML settings.
               </div>
             }>
-              <SamlSettings />
+              <SamlConfigForm />
             </PermissionGate>
           ),
         },
