@@ -100,7 +100,6 @@ const Home = ({
   useEffect(() => {
     if (!chatId || !conversationData) return;
     if (conversationState?.conversationId !== chatId) {
-      clearAllSignatures();
       dataInitializedRef.current = false;
     }
     
@@ -269,7 +268,13 @@ const Home = ({
       newModels.push(defaultModel.modelId);
     }
     if (newModels.length > 0) {
-      setSelectedModels(newModels);
+      const currentModels = selectedModelsRef.current;
+      const isModelsSame =
+        currentModels.length === newModels.length &&
+        currentModels.every((model, index) => model === newModels[index]);
+      if (!isModelsSame) {
+        setSelectedModels(newModels);
+      }
     }
   }, [
     chatId,
