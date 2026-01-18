@@ -11,6 +11,7 @@ export const ADMIN_ROUTES = {
   ADMIN_WORKSPACES: `${ADMIN_PREFIX}/workspaces`,
   ADMIN_ROLES: `${ADMIN_PREFIX}/roles`,
   ADMIN_AUDIT_LOGS: `${ADMIN_PREFIX}/audit-logs`,
+  ADMIN_SAML: `${ADMIN_PREFIX}/saml`,
 } as const;
 
 export const APP_ROUTES = {

@@ -13,6 +13,7 @@ import AdminPage from "@/pages/admin";
 import AdminAuditLogsPage from "@/pages/admin/AuditLogs";
 import AdminOrganizationPage from "@/pages/admin/Organization";
 import AdminRolesPage from "@/pages/admin/Roles";
+import AdminSamlPage from "@/pages/admin/Saml";
 import AdminSettingsPage from "@/pages/admin/Settings";
 import AdminWorkspacesPage from "@/pages/admin/Workspaces";
 import { APP_ROUTES } from "@/pages/routes";
@@ -108,6 +109,7 @@ function App() {
               <Route path={APP_ROUTES.ADMIN_ORGANIZATION} element={<AdminOrganizationPage />} />
               <Route path={APP_ROUTES.ADMIN_WORKSPACES} element={<AdminWorkspacesPage />} />
               <Route path={APP_ROUTES.ADMIN_ROLES} element={<AdminRolesPage />} />
+              <Route path={APP_ROUTES.ADMIN_SAML} element={<AdminSamlPage />} />
               <Route path={APP_ROUTES.ADMIN_AUDIT_LOGS} element={<AdminAuditLogsPage />} />
               {/* <Route path={APP_ROUTES.PLAYGROUND} element={<Playground />} /> */}
             </Route>

@@ -29,21 +29,13 @@ const AdminNavBar = () => {
       to: ADMIN_ROUTES.ADMIN_ROLES,
     },
     {
+      label: "SAML SSO",
+      to: ADMIN_ROUTES.ADMIN_SAML,
+    },
+    {
       label: "Audit Logs",
       to: ADMIN_ROUTES.ADMIN_AUDIT_LOGS,
     },
-    // {
-    //   label: t("Evaluations"),
-    //   to: ADMIN_ROUTES.ADMIN_EVALUATIONS,
-    // },
-    // {
-    //   label: t("Functions"),
-    //   to: ADMIN_ROUTES.ADMIN_FUNCTIONS,
-    // },
-    // {
-    //   label: t("Settings"),
-    //   to: ADMIN_ROUTES.ADMIN_SETTINGS,
-    // },
   ];
 
   return (

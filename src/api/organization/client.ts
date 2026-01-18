@@ -136,34 +136,43 @@ class OrganizationClient extends ApiClient {
   // SAML Configuration
   async getSamlConfig(): Promise<SamlConfig | null> {
     try {
-      return await this.get<SamlConfig>("/admin/saml/config");
+      return await this.get<SamlConfig>("/admin/saml");
     } catch {
       return null;
     }
   }
 
   async createSamlConfig(data: CreateSamlConfigRequest): Promise<SamlConfig> {
-    return this.post<SamlConfig>("/admin/saml/config", data);
+    return this.post<SamlConfig>("/admin/saml", data);
   }
 
   async updateSamlConfig(data: UpdateSamlConfigRequest): Promise<SamlConfig> {
-    return this.patch<SamlConfig>("/admin/saml/config", data);
+    return this.put<SamlConfig>("/admin/saml", data);
   }
 
   async deleteSamlConfig(): Promise<void> {
-    return this.delete<void>("/admin/saml/config");
+    return this.delete<void>("/admin/saml");
   }
 
-  async enableSaml(): Promise<void> {
-    return this.post<void>("/admin/saml/config/enable", {});
+  async enableSaml(): Promise<SamlConfig> {
+    return this.updateSamlConfig({ is_enabled: true });
   }
 
-  async disableSaml(): Promise<void> {
-    return this.post<void>("/admin/saml/config/disable", {});
+  async disableSaml(): Promise<SamlConfig> {
+    return this.updateSamlConfig({ is_enabled: false });
   }
 
-  async getSamlMetadata(): Promise<string> {
-    return this.get<string>("/admin/saml/metadata");
+  async getSamlMetadata(orgSlug: string): Promise<string> {
+    return this.get<string>(`/auth/saml/${orgSlug}/metadata`);
+  }
+
+  getSamlLoginUrl(orgSlug: string, relayState?: string): string {
+    const baseUrl = this.baseURLV1.replace("/api/v1", "");
+    let url = `${baseUrl}/v1/auth/saml/${orgSlug}/login`;
+    if (relayState) {
+      url += `?relay_state=${encodeURIComponent(relayState)}`;
+    }
+    return url;
   }
 }
 
