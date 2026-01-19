@@ -4,7 +4,7 @@ import SamlConfigForm from "@/components/admin/saml/SamlConfigForm";
 const AdminSamlPage = () => {
   return (
     <PermissionGate
-      permission="saml:manage"
+      permission="settings:update:saml"
       fallback={
         <div className="py-8 text-center text-muted-foreground">
           You don't have permission to manage SAML settings.

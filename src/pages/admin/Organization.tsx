@@ -25,7 +25,7 @@ const AdminOrganizationPage = () => {
           label: "Domains",
           icon: GlobeAltIcon,
           content: (
-            <PermissionGate permission="domains:manage" fallback={
+            <PermissionGate permission="settings:update:domains" fallback={
               <div className="py-8 text-center text-muted-foreground">
                 You don't have permission to manage domains.
               </div>
@@ -39,7 +39,7 @@ const AdminOrganizationPage = () => {
           label: "SAML SSO",
           icon: KeyIcon,
           content: (
-            <PermissionGate permission="saml:manage" fallback={
+            <PermissionGate permission="settings:update:saml" fallback={
               <div className="py-8 text-center text-muted-foreground">
                 You don't have permission to manage SAML settings.
               </div>
@@ -54,7 +54,7 @@ const AdminOrganizationPage = () => {
 
   return (
     <PermissionGate
-      permission="organization:read"
+      permission="settings:read:org"
       fallback={
         <div className="py-8 text-center text-muted-foreground">
           You don't have permission to view organization settings.

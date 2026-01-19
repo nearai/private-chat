@@ -22,11 +22,11 @@ interface PermissionGateProps {
  *   <AuditLogTable />
  * </PermissionGate>
  *
- * <PermissionGate anyOf={["roles:manage", "roles:assign"]}>
+ * <PermissionGate anyOf={["roles:update", "users:update:roles"]}>
  *   <RoleManagement />
  * </PermissionGate>
  *
- * <PermissionGate allOf={["workspaces:read", "workspaces:manage"]}>
+ * <PermissionGate allOf={["workspaces:read:all", "workspaces:update:all"]}>
  *   <WorkspaceAdmin />
  * </PermissionGate>
  */

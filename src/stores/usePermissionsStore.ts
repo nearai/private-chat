@@ -51,15 +51,29 @@ export const useHasAllPermissions = (permissions: string[]): boolean => {
 
 // Common permission checks
 export const useCanManageOrg = (): boolean => {
-  return useHasAnyPermission(["organizations:manage", "organizations:admin"]);
+  return useHasAnyPermission([
+    "organizations:update:own",
+    "organizations:manage:members",
+    "settings:update:org",
+  ]);
 };
 
 export const useCanManageWorkspaces = (): boolean => {
-  return useHasAnyPermission(["workspaces:manage", "workspaces:create"]);
+  return useHasAnyPermission([
+    "workspaces:create",
+    "workspaces:update:all",
+    "workspaces:delete:all",
+    "workspaces:manage:members",
+  ]);
 };
 
 export const useCanManageRoles = (): boolean => {
-  return useHasAnyPermission(["roles:manage", "roles:assign"]);
+  return useHasAnyPermission([
+    "roles:create",
+    "roles:update",
+    "roles:delete",
+    "users:update:roles",
+  ]);
 };
 
 export const useCanViewAuditLogs = (): boolean => {
@@ -71,9 +85,12 @@ export const useCanExportAuditLogs = (): boolean => {
 };
 
 export const useCanManageSaml = (): boolean => {
-  return useHasAnyPermission(["saml:manage", "sso:manage"]);
+  return useHasAnyPermission(["settings:update:saml", "settings:read:saml"]);
 };
 
 export const useCanManageDomains = (): boolean => {
-  return useHasPermission("domains:manage");
+  return useHasAnyPermission([
+    "settings:update:domains",
+    "settings:read:domains",
+  ]);
 };

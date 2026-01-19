@@ -10,15 +10,26 @@ const AdminProtectedRoute: React.FC<React.PropsWithChildren> = ({ children }) =>
   // Check if user has any admin-level permissions
   // This includes organization management, workspace management, role management, etc.
   const hasAdminAccess = hasAnyPermission([
-    "admin:access",
-    "organizations:manage",
-    "organizations:admin",
-    "workspaces:manage",
-    "roles:manage",
+    "organizations:update:own",
+    "organizations:manage:members",
+    "workspaces:create",
+    "workspaces:read:all",
+    "workspaces:update:all",
+    "workspaces:delete:all",
+    "workspaces:manage:members",
+    "roles:read",
+    "roles:create",
+    "roles:update",
+    "roles:delete",
+    "users:read:org",
+    "users:update:roles",
     "audit:read",
-    "saml:manage",
-    "domains:manage",
-    "settings:manage",
+    "settings:read:org",
+    "settings:update:org",
+    "settings:read:saml",
+    "settings:update:saml",
+    "settings:read:domains",
+    "settings:update:domains",
   ]);
 
   // Fallback to legacy role check if no permissions are loaded yet
