@@ -118,7 +118,12 @@ export default function ModelSelector() {
 
   const handleAddModel = () => {
     if (selectedModels.length < models.length) {
-      setSelectedModels([...selectedModels, '']);
+      const nextModelId = models
+        .map((model) => model.modelId)
+        .find((modelId) => !selectedModels.includes(modelId));
+      if (nextModelId) {
+        setSelectedModels([...selectedModels, nextModelId]);
+      }
     }
   };
 

@@ -105,7 +105,6 @@ const Home = ({
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationIsReady) return;
     if (!conversationData.data?.length) return;
-    console.log("Setting conversation data in store for chatId:", conversationData);
     setConversationData(conversationData);
     if (conversationData.data.length > 2) {
       dataInitializedRef.current = true;

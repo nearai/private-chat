@@ -230,7 +230,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
             }
           })
         );
-        console.log("All new_chat model streams completed");
         resetConversation();
         queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
         setConversationInitStatus(conversationLocalId, "ready");
@@ -281,6 +280,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       selectedModels,
       queryClient,
       pushResponse,
+      resetConversation,
       addStream,
       markStreamComplete,
       removeStream,
