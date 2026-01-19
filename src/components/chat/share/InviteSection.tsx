@@ -1,4 +1,5 @@
 import { ChevronDownIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ export const InviteSection = ({
   isPending,
   onInvite,
 }: InviteSectionProps) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
+
   const handleInvite = async () => {
     const emails = emailInput
       .split(/[,;\s]+/)
@@ -40,7 +43,7 @@ export const InviteSection = ({
     const uniqueEmails = [...new Set(emails)];
 
     if (uniqueEmails.length === 0) {
-      toast.error("Please enter an email address");
+      toast.error(t("Please enter an email address"));
       return;
     }
 
@@ -51,7 +54,7 @@ export const InviteSection = ({
     // Check if trying to share with self (the owner)
     const selfEmails = uniqueEmails.filter((e) => e === currentUserEmail);
     if (selfEmails.length > 0) {
-      toast.error("You can't share a conversation with yourself");
+      toast.error(t("You can't share a conversation with yourself"));
       return;
     }
 
@@ -63,7 +66,7 @@ export const InviteSection = ({
     const invalidEmails = recipients.filter((r) => r.kind === "email" && !emailRegex.test(r.value));
 
     if (invalidEmails.length > 0) {
-      toast.error(`Invalid email: ${invalidEmails[0].value}`);
+      toast.error(t("Invalid email: {{email}}", { email: invalidEmails[0].value }));
       return;
     }
 
@@ -80,28 +83,28 @@ export const InviteSection = ({
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleInvite()}
-            placeholder="Add people by email or NEAR account"
+            placeholder={t("Add people by email or NEAR account")}
             className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm transition-all placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" className="h-11 gap-1.5 rounded-xl border border-border px-3 font-normal">
-              {permission === "write" ? "Can edit" : "Can view"}
+              {permission === "write" ? t("Can edit") : t("Can view")}
               <ChevronDownIcon className="size-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="rounded-xl">
             <DropdownMenuItem onClick={() => setPermission("read")} className="rounded-lg">
               <div className="flex flex-col">
-                <span>Can view</span>
-                <span className="text-muted-foreground text-xs">Read-only access</span>
+                <span>{t("Can view")}</span>
+                <span className="text-muted-foreground text-xs">{t("Read-only access")}</span>
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setPermission("write")} className="rounded-lg">
               <div className="flex flex-col">
-                <span>Can edit</span>
-                <span className="text-muted-foreground text-xs">Can add messages</span>
+                <span>{t("Can edit")}</span>
+                <span className="text-muted-foreground text-xs">{t("Can add messages")}</span>
               </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -118,7 +121,7 @@ export const InviteSection = ({
         ) : (
           <>
             <UserPlusIcon className="mr-2 size-4" />
-            Send invite
+            {t("Send invite")}
           </>
         )}
       </Button>

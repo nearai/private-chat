@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { LinkIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn, copyToClipboard } from "@/lib";
@@ -10,6 +11,7 @@ interface CopyLinkSectionProps {
 }
 
 export const CopyLinkSection = ({ conversationId }: CopyLinkSectionProps) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const [linkCopied, setLinkCopied] = useState(false);
 
   const handleCopyLink = async () => {
@@ -18,10 +20,10 @@ export const CopyLinkSection = ({ conversationId }: CopyLinkSectionProps) => {
 
     if (success) {
       setLinkCopied(true);
-      toast.success("Link copied!");
+      toast.success(t("Link copied!"));
       setTimeout(() => setLinkCopied(false), 2000);
     } else {
-      toast.error("Failed to copy link");
+      toast.error(t("Failed to copy link"));
     }
   };
 
@@ -31,9 +33,9 @@ export const CopyLinkSection = ({ conversationId }: CopyLinkSectionProps) => {
         <LinkIcon className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-sm">Copy link</p>
+        <p className="font-medium text-sm">{t("Copy link")}</p>
         <p className="truncate text-muted-foreground text-xs">
-          Share this conversation with the link
+          {t("Share this conversation with the link")}
         </p>
       </div>
       <Button
@@ -48,12 +50,12 @@ export const CopyLinkSection = ({ conversationId }: CopyLinkSectionProps) => {
         {linkCopied ? (
           <>
             <CheckIcon className="mr-1.5 size-4" />
-            Copied
+            {t("Copied")}
           </>
         ) : (
           <>
             <LinkIcon className="mr-1.5 size-4" />
-            Copy link
+            {t("Copy link")}
           </>
         )}
       </Button>

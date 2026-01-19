@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { ChatBubbleLeftEllipsisIcon, ClipboardIcon, CubeIcon, ShareIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftEllipsisIcon, ClipboardIcon, CubeIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { chatClient } from "@/api/chat/client";
@@ -13,7 +12,6 @@ import {
 import { copyToClipboard } from "@/lib";
 import { Button } from "../ui/button";
 import DownloadDropdown from "./DownloadDropdown";
-import ShareConversationDialog from "./ShareConversationDialog";
 
 type ChatOptionsProps = {
   chatId: string;
@@ -21,7 +19,6 @@ type ChatOptionsProps = {
 
 const ChatOptions = ({ chatId }: ChatOptionsProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   const copyChatAsText = async () => {
     const chat = await chatClient.getConversation(chatId);
@@ -72,20 +69,8 @@ const ChatOptions = ({ chatId }: ChatOptionsProps) => {
             <ClipboardIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Copy")}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
-            <ShareIcon className="h-4 w-4" strokeWidth={2} />
-            <span>{t("Share Chat")}</span>
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <ShareConversationDialog
-        conversationId={chatId}
-        open={isShareDialogOpen}
-        onOpenChange={setIsShareDialogOpen}
-      />
     </>
   );
 };

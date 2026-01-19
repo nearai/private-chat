@@ -1,5 +1,6 @@
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
 import { useCreateConversationShare } from "@/api/sharing/useCreateConversationShare";
@@ -31,6 +32,7 @@ interface ShareConversationDialogProps {
 }
 
 export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: ShareConversationDialogProps) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const { data: userData } = useUserData();
   const { data: sharesData, isLoading: isSharesLoading } = useConversationShares(conversationId);
   const { data: shareGroups = [] } = useShareGroups();
@@ -104,9 +106,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
           },
         },
       });
-      toast.success(recipients.length === 1 ? `Invited ${recipients[0].value}` : `Invited ${recipients.length} people`);
+      toast.success(recipients.length === 1 ? t("Invited {{email}}", { email: recipients[0].value }) : t("Invited {{count}} people", { count: recipients.length }));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send invite");
+      toast.error(error instanceof Error ? error.message : t("Failed to send invite"));
     }
   };
 
@@ -117,7 +119,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
 
     if (advancedMode === "group") {
       if (!selectedGroupId) {
-        toast.error("Please select a group");
+        toast.error(t("Please select a group"));
         return;
       }
       payload = {
@@ -127,7 +129,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
     } else if (advancedMode === "organization") {
       const pattern = orgPattern.trim();
       if (!pattern) {
-        toast.error("Please enter an email pattern");
+        toast.error(t("Please enter an email pattern"));
         return;
       }
       payload = {
@@ -140,11 +142,11 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
 
     try {
       await createShare.mutateAsync({ conversationId, payload });
-      toast.success("Access granted");
+      toast.success(t("Access granted"));
       setAdvancedMode(null);
       setOrgPattern("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to share");
+      toast.error(error instanceof Error ? error.message : t("Failed to share"));
     }
   };
 
@@ -159,9 +161,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
           target: { mode: "public" },
         },
       });
-      toast.success("Public link created");
+      toast.success(t("Public link created"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create link");
+      toast.error(error instanceof Error ? error.message : t("Failed to create link"));
     }
   };
 
@@ -171,9 +173,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
     setPendingDeleteId(share.id);
     try {
       await deleteShare.mutateAsync({ conversationId, shareId: share.id });
-      toast.success("Access removed");
+      toast.success(t("Access removed"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to remove access");
+      toast.error(error instanceof Error ? error.message : t("Failed to remove access"));
     } finally {
       setPendingDeleteId(null);
     }
@@ -185,7 +187,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
         <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="text-xl">
-              {canShare ? "Share this conversation" : "Conversation access"}
+              {canShare ? t("Share this conversation") : t("Conversation access")}
             </DialogTitle>
           </DialogHeader>
 
@@ -214,9 +216,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
                   <UserGroupIcon className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm">Shared with you</p>
+                  <p className="font-medium text-sm">{t("Shared with you")}</p>
                   <p className="text-muted-foreground text-xs">
-                    You have access to this conversation. Only the owner can manage sharing.
+                    {t("You have access to this conversation. Only the owner can manage sharing.")}
                   </p>
                 </div>
               </div>

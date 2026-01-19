@@ -1,4 +1,5 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
@@ -27,10 +28,12 @@ export const PeopleWithAccessSection = ({
   pendingDeleteId,
   onRemoveAccess,
 }: PeopleWithAccessSectionProps) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
+
   return (
     <div className="space-y-3">
       <h3 className="font-medium text-muted-foreground text-sm">
-        People with access
+        {t("People with access")}
       </h3>
 
       {isLoading ? (
@@ -54,13 +57,13 @@ export const PeopleWithAccessSection = ({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-sm">
                   {currentUserName || currentUserEmail}
-                  <span className="ml-1.5 text-muted-foreground">(you)</span>
+                  <span className="ml-1.5 text-muted-foreground">{t("(you)")}</span>
                 </p>
                 <p className="text-muted-foreground text-xs">{currentUserEmail}</p>
               </div>
 
               <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary text-xs">
-                Owner
+                {t("Owner")}
               </span>
             </div>
           )}
@@ -89,14 +92,14 @@ export const PeopleWithAccessSection = ({
                   <p className="truncate font-medium text-sm">
                     {info.name}
                     {isCurrentUser && (
-                      <span className="ml-1.5 text-muted-foreground">(you)</span>
+                      <span className="ml-1.5 text-muted-foreground">{t("(you)")}</span>
                     )}
                   </p>
                   <p className="text-muted-foreground text-xs">{info.subtitle}</p>
                 </div>
 
                 <span className="rounded-md bg-muted/50 px-2 py-1 text-muted-foreground text-xs">
-                  {share.permission === "write" ? "Can edit" : "Can view"}
+                  {share.permission === "write" ? t("Can edit") : t("Can view")}
                 </span>
 
                 {isOwner && (
