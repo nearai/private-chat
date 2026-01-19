@@ -13,7 +13,6 @@ import { useScrollHandler } from "@/hooks/useScrollHandler";
 import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
-import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
 
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
@@ -48,7 +47,6 @@ const Home = ({
   const conversationState = useConversationStore((state) => state.conversation);
   const conversationInitStatus = useConversationStore((state) => state.conversationInitStatus);
   const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
-
   const conversationIsReady = useMemo(() => {
     if (!chatId) return true;
     if (!conversationInitStatus.has(chatId)) return true;
@@ -64,7 +62,6 @@ const Home = ({
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(conversationIsReady ? chatId : undefined);
   const setConversationData = useConversationStore((state) => state.setConversationData);
-  const { clearAllSignatures } = useMessagesSignaturesStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
   const handleSendMessage = useCallback(
@@ -122,7 +119,6 @@ const Home = ({
     conversationIsReady,
     conversationData,
     setConversationData,
-    clearAllSignatures,
   ]);
 
   const isMessageCompleted = useMemo(() => {
