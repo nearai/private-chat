@@ -49,17 +49,18 @@ const Home = ({
   const conversationInitStatus = useConversationStore((state) => state.conversationInitStatus);
   const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
 
-  const currentStreamIsActive = useMemo(() => {
-    if (!chatId) return false;
-    if (!conversationStreamStatus.has(chatId)) return false;
-    return conversationStreamStatus.get(chatId) === "streaming";
-  }, [chatId, conversationStreamStatus]);
-
   const conversationIsReady = useMemo(() => {
     if (!chatId) return true;
     if (!conversationInitStatus.has(chatId)) return true;
     return conversationInitStatus.get(chatId) === "ready";
   }, [chatId, conversationInitStatus]);
+
+  const currentStreamIsActive = useMemo(() => {
+    if (!chatId) return false;
+    if (!conversationIsReady) return true;
+    if (!conversationStreamStatus.has(chatId)) return false;
+    return conversationStreamStatus.get(chatId) === "streaming";
+  }, [chatId, conversationIsReady, conversationStreamStatus]);
 
   const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(conversationIsReady ? chatId : undefined);
   const setConversationData = useConversationStore((state) => state.setConversationData);
