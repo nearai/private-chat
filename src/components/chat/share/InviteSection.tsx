@@ -1,5 +1,6 @@
 import { ChevronDownIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
+import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -7,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Spinner from "@/components/common/Spinner";
 import type { SharePermission, ShareRecipient } from "@/types";
 
 interface InviteSectionProps {
@@ -36,7 +36,10 @@ export const InviteSection = ({
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0);
 
-    if (emails.length === 0) {
+    // Deduplicate emails
+    const uniqueEmails = [...new Set(emails)];
+
+    if (uniqueEmails.length === 0) {
       toast.error("Please enter an email address");
       return;
     }
@@ -46,20 +49,18 @@ export const InviteSection = ({
     const nearRegex = /^[a-z0-9_-]+\.near$/i;
 
     // Check if trying to share with self (the owner)
-    const selfEmails = emails.filter((e) => e === currentUserEmail);
+    const selfEmails = uniqueEmails.filter((e) => e === currentUserEmail);
     if (selfEmails.length > 0) {
       toast.error("You can't share a conversation with yourself");
       return;
     }
 
-    const recipients: ShareRecipient[] = emails.map((value) => ({
+    const recipients: ShareRecipient[] = uniqueEmails.map((value) => ({
       kind: nearRegex.test(value) ? "near_account" : "email",
       value,
     }));
 
-    const invalidEmails = recipients.filter(
-      (r) => r.kind === "email" && !emailRegex.test(r.value)
-    );
+    const invalidEmails = recipients.filter((r) => r.kind === "email" && !emailRegex.test(r.value));
 
     if (invalidEmails.length > 0) {
       toast.error(`Invalid email: ${invalidEmails[0].value}`);
@@ -85,10 +86,7 @@ export const InviteSection = ({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="secondary"
-              className="h-11 gap-1.5 rounded-xl border border-border px-3 font-normal"
-            >
+            <Button variant="secondary" className="h-11 gap-1.5 rounded-xl border border-border px-3 font-normal">
               {permission === "write" ? "Can edit" : "Can view"}
               <ChevronDownIcon className="size-4 text-muted-foreground" />
             </Button>

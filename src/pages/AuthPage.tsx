@@ -119,24 +119,28 @@ const AuthPage: React.FC = () => {
 
   const getRedirectPath = useCallback(() => {
     const savedRedirect = localStorage.getItem(LOCAL_STORAGE_KEYS.REDIRECT_AFTER_LOGIN);
-    if (savedRedirect) {
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.REDIRECT_AFTER_LOGIN);
-      return savedRedirect;
-    }
-    return APP_ROUTES.HOME;
+    return savedRedirect || APP_ROUTES.HOME;
+  }, []);
+
+  const clearRedirectPath = useCallback(() => {
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.REDIRECT_AFTER_LOGIN);
   }, []);
 
   const finalizeOAuth = useCallback(
     (payload: OAuthCompleteEvent) => {
       cleanupOAuthChannel();
+      const redirectPath = getRedirectPath();
       completeLogin(payload.token, payload.sessionId, payload.isNewUser)
-        .then(() => navigate(getRedirectPath(), { replace: true }))
+        .then(() => {
+          navigate(redirectPath, { replace: true });
+          clearRedirectPath();
+        })
         .catch((error) => {
           console.error("Failed to finalize OAuth login:", error);
           toast.error("Failed to complete login. Please try again.");
         });
     },
-    [cleanupOAuthChannel, completeLogin, navigate, getRedirectPath]
+    [cleanupOAuthChannel, completeLogin, navigate, getRedirectPath, clearRedirectPath]
   );
 
   const startOAuthChannelListener = useCallback(
@@ -211,12 +215,14 @@ const AuthPage: React.FC = () => {
       return true;
     } catch (pluginError) {
       console.error("Tauri shell plugin open failed:", pluginError);
-      const tauriGlobal = (window as typeof window & {
-        __TAURI__?: {
-          shell?: { open: (path: string) => Promise<void> };
-          core?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
-        };
-      }).__TAURI__;
+      const tauriGlobal = (
+        window as typeof window & {
+          __TAURI__?: {
+            shell?: { open: (path: string) => Promise<void> };
+            core?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
+          };
+        }
+      ).__TAURI__;
 
       try {
         if (tauriGlobal?.shell?.open) {
@@ -285,7 +291,9 @@ const AuthPage: React.FC = () => {
       const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
 
       await completeLogin(response.token, response.session_id, response.is_new_user);
-      navigate(getRedirectPath(), { replace: true });
+      const redirectPath = getRedirectPath();
+      navigate(redirectPath, { replace: true });
+      clearRedirectPath();
     } catch (error) {
       console.error("NEAR login failed:", error);
       toast.error("Failed to connect to NEAR wallet");
@@ -356,10 +364,14 @@ const AuthPage: React.FC = () => {
       return;
     }
 
+    const redirectPath = getRedirectPath();
     completeLogin(payload.token, payload.sessionId, payload.isNewUser)
-      .catch(() => toast.error("Failed to complete login."))
-      .finally(() => navigate(getRedirectPath(), { replace: true }));
-  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam, getRedirectPath]);
+      .then(() => {
+        navigate(redirectPath, { replace: true });
+        clearRedirectPath();
+      })
+      .catch(() => toast.error("Failed to complete login."));
+  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam, getRedirectPath, clearRedirectPath]);
 
   const authContent = !config ? (
     <div className="flex h-full items-center justify-center">

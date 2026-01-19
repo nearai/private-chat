@@ -3,9 +3,11 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import FileDialog from "@/components/common/dialogs/FileDialog";
 import { Button } from "@/components/ui/button";
 import { type CombinedResponse, cn } from "@/lib";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import markedExtension from "@/lib/utils/extension";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
@@ -15,8 +17,6 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ConversationItem, ConversationUserInput } from "@/types";
 import { type ContentItem, extractFiles, extractMessageContent } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
-import { useGetConversation } from "@/api/chat/queries/useGetConversation";
-import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -212,9 +212,11 @@ const UserMessage: React.FC<UserMessageProps> = ({
                           Cancel
                         </Button>
                       </div>
-                      <div className={cn({
-                        "cursor-not-allowed! opacity-40!": disabledSendButton,
-                      })}>
+                      <div
+                        className={cn({
+                          "cursor-not-allowed! opacity-40!": disabledSendButton,
+                        })}
+                      >
                         <Button
                           id="confirm-edit-message-button"
                           onClick={handleSave}
@@ -231,14 +233,11 @@ const UserMessage: React.FC<UserMessageProps> = ({
                 <div className="w-full">
                   <div className="flex w-full flex-col items-end pb-1">
                     {/* Show author name only for shared conversations */}
-                    {isSharedConversation && (() => {
-                      const authorName = message.metadata?.author_name as string | undefined;
-                      return authorName ? (
-                        <div className="mr-2 mb-1 text-muted-foreground text-xs">
-                          {authorName}
-                        </div>
-                      ) : null;
-                    })()}
+                    {isSharedConversation && message.metadata?.author_name && (
+                      <div className="mr-2 mb-1 text-muted-foreground text-xs">
+                        {message.metadata.author_name as string}
+                      </div>
+                    )}
                     <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">
                       {messageContent && (
                         <div className="markdown-content">

@@ -3,12 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
-
-import { useUserSettings } from "@/api/users/queries/useUserSettings";
 import { useUserData } from "@/api/users/queries/useUserData";
-
+import { useUserSettings } from "@/api/users/queries/useUserSettings";
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import {
@@ -23,7 +22,6 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
-import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -67,8 +65,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
           previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
           metadata: userData?.user
             ? {
-                author_id: userData.user.id,
-                author_name: userData.user.name,
+                ...(userData.user.id && { author_id: userData.user.id }),
+                ...(userData.user.name && { author_name: userData.user.name }),
               }
             : undefined,
         };
@@ -114,7 +112,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       webSearchEnabled: boolean,
       conversationId?: string,
       previous_response_id?: string,
-      currentModel?: string,
+      currentModel?: string
     ) => {
       const conversationLocalId = conversationId || params.chatId;
       if (!conversationLocalId) {

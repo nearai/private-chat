@@ -46,6 +46,7 @@ const Home = ({
   const [inputValue, setInputValue] = useState("");
   const modelInitializedRef = useRef<boolean>(false);
   const dataInitializedRef = useRef<boolean>(false);
+  const prevDataLengthRef = useRef<number>(0);
   const remoteConfig = useRemoteConfig();
 
   // Get permission info for shared conversations
@@ -173,14 +174,21 @@ const Home = ({
     if (conversationState?.conversationId !== chatId) {
       clearAllSignatures();
       dataInitializedRef.current = false;
+      prevDataLengthRef.current = 0;
     }
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationData.data?.length) return;
 
-    // Always update conversation data when it changes (including polling updates)
-    // Only skip if we're currently streaming to avoid conflicts
+    // Only update if data has actually changed (new messages added)
+    // This prevents unnecessary re-renders during polling when data is unchanged
+    const currentLength = conversationData.data.length;
+    if (dataInitializedRef.current && currentLength === prevDataLengthRef.current) {
+      return;
+    }
+
     setConversationData(conversationData);
     dataInitializedRef.current = true;
+    prevDataLengthRef.current = currentLength;
   }, [
     chatId,
     isConversationsLoading,
