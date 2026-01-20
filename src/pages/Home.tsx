@@ -27,6 +27,7 @@ import { useChatStore } from "@/stores/useChatStore";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { ConversationRoles, ConversationTypes } from "@/types";
+import type { ChatStartStreamOptions } from "@/types";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useStreamStore } from "@/stores/useStreamStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -37,12 +38,7 @@ const Home = ({
   startStream,
   stopStream,
 }: {
-  startStream: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string
-  ) => Promise<void>;
+  startStream: (options: ChatStartStreamOptions) => Promise<void>;
   stopStream?: () => void;
 }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
@@ -51,7 +47,7 @@ const Home = ({
   const navigate = useNavigate();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
-  const modelInitializedRef = useRef<boolean>(false);
+  const [modelsInitialized, setModelsInitialized] = useState(false);
   const dataInitializedRef = useRef<boolean>(false);
   const remoteConfig = useRemoteConfig();
 
@@ -79,23 +75,34 @@ const Home = ({
   const { addItemsToConversation } = useConversation();
 
   const { models, selectedModels, setSelectedModels, chatOnlyMode } = useChatStore();
-  const activeStreams = useStreamStore((state) => state.activeStreams);
+  const _activeStreams = useStreamStore((state) => state.activeStreams);
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
 
+  const conversationState = useConversationStore((state) => state.conversation);
+  const conversationInitStatus = useConversationStore((state) => state.conversationInitStatus);
+  const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
+  const conversationIsReady = useMemo(() => {
+    if (!chatId) return true;
+    if (!conversationInitStatus.has(chatId)) return true;
+    return conversationInitStatus.get(chatId) === "ready";
+  }, [chatId, conversationInitStatus]);
+
   const currentStreamIsActive = useMemo(() => {
     if (!chatId) return false;
-    return activeStreams.has(chatId);
-  }, [chatId, activeStreams]);
+    if (!conversationIsReady) return true;
+    if (!conversationStreamStatus.has(chatId)) return false;
+    return conversationStreamStatus.get(chatId) === "streaming";
+  }, [chatId, conversationIsReady, conversationStreamStatus]);
 
   // Enable polling for real-time sync, but disable while streaming to avoid conflicts
   const {
     isLoading: isConversationsLoading,
     data: conversationData,
     error: conversationError,
-  } = useGetConversation(chatId, {
+  } = useGetConversation(conversationIsReady ? chatId : undefined, {
     polling: !currentStreamIsActive,
   });
 
@@ -145,11 +152,9 @@ const Home = ({
   }, [conversationError]);
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const updateConversation = useConversationStore((state) => state.updateConversation);
-  const conversationState = useConversationStore((state) => state.conversation);
-  const { clearAllSignatures } = useMessagesSignaturesStore();
+  const { clearAllSignatures: _clearAllSignatures } = useMessagesSignaturesStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
-
   const handleSendMessage = useCallback(
     async (content: string, files: FileContentItem[], webSearchEnabled = false, options?: { forceAIMode?: boolean; forceChatMode?: boolean }) => {
       const { forceAIMode = false, forceChatMode = false } = options ?? {};
@@ -259,7 +264,13 @@ const Home = ({
         return;
       }
 
-      await startStream(contentItems, webSearchEnabled, chatId, prevRespId);
+      await startStream({
+        contentItems,
+        webSearchEnabled,
+        conversationId: chatId,
+        previous_response_id: prevRespId,
+        initiator: "new_message",
+      });
       scrollToBottom();
     },
     [chatId, scrollToBottom, startStream, chatOnlyMode, isSharedConversation, addItemsToConversation, conversationState?.lastResponseId, updateConversation]
@@ -282,29 +293,25 @@ const Home = ({
   }, [chatId, cloneChat, navigate]);
 
   useEffect(() => {
-    if (!chatId) return;
-    modelInitializedRef.current = false;
-  }, [chatId]);
-
-  useEffect(() => {
     if (!chatId || !conversationData) return;
     if (conversationState?.conversationId !== chatId) {
-      clearAllSignatures();
       dataInitializedRef.current = false;
     }
+    
     if (dataInitializedRef.current) return;
     if (isConversationsLoading || currentStreamIsActive) return;
+    if (!conversationIsReady) return;
     if (!conversationData.data?.length) return;
     setConversationData(conversationData);
     dataInitializedRef.current = true;
   }, [
-    chatId,
-    isConversationsLoading,
-    currentStreamIsActive,
-    clearAllSignatures,
-    conversationData,
-    setConversationData,
-    conversationState?.conversationId,
+    chatId, 
+    isConversationsLoading, 
+    currentStreamIsActive, 
+    conversationData, 
+    setConversationData, 
+    conversationState?.conversationId, 
+    conversationIsReady
   ]);
 
   // Sync store with query data when it changes (for real-time updates)
@@ -335,46 +342,6 @@ const Home = ({
     conversationState?.conversationId,
     conversationState?.conversation?.data?.length,
     conversationState?.lastResponseId,
-  ]);
-
-  // Sync selected model with latest conversation
-  const lastConversationMessage = conversationData?.data?.at(-1);
-
-  useEffect(() => {
-    if (!conversationData?.id) return;
-    if (modelInitializedRef.current) return;
-    const NEW_CHAT_KEY = "new";
-    const isNewChat = searchParams.has(NEW_CHAT_KEY);
-    if (isNewChat) {
-      modelInitializedRef.current = true;
-      setSearchParams((prev) => {
-        prev.delete(NEW_CHAT_KEY);
-        return prev;
-      });
-      return;
-    }
-
-    const lastMsg = lastConversationMessage;
-    const newModels = [...selectedModelsRef.current];
-    const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
-    let msgModel = lastMsg?.model;
-    if (msgModel) {
-      const findModel = modelsRef.current.find((m) => m.modelId.includes(msgModel!));
-      msgModel = findModel ? findModel.modelId : defaultModel?.modelId;
-    } else {
-      msgModel = defaultModel?.modelId;
-    }
-
-    newModels[0] = msgModel ?? newModels[0] ?? "";
-    setSelectedModels(newModels);
-    modelInitializedRef.current = true;
-  }, [
-    conversationData?.id,
-    lastConversationMessage,
-    searchParams,
-    remoteConfig.data?.default_model,
-    setSelectedModels,
-    setSearchParams,
   ]);
 
   const isMessageCompleted = useMemo(() => {
@@ -502,6 +469,79 @@ const Home = ({
       });
   }, [batches, history, allMessages, isSharedConversation, startStream, ownerName, currentUserId, currentUserName]);
 
+  const lastBatchMessages = useMemo(() => {
+    if (!batches.length) return [];
+    const lastBatchId = batches[batches.length - 1];
+    const lastBatchMessage = history.messages[lastBatchId];
+    if (!lastBatchMessage) return [];
+    const parentResponseId = lastBatchMessage.parentResponseId;
+    if (!parentResponseId) return [];
+    const parent = history.messages[parentResponseId];
+    if (!parent) return [];
+    if (!parent.nextResponseIds?.length) return [];
+    return parent.nextResponseIds.map((respId) => {
+      const batch = Object.values(history.messages).find((msg) => msg.responseId === respId);
+      return batch?.userPromptId ? allMessages[batch.userPromptId] : null;
+    }).filter((resp) => resp !== null).sort((a, b) => {
+      if (!a || !b) return 0;
+      return a.created_at - b.created_at;
+    }) as typeof allMessages[string][];
+  }, [history, batches, allMessages]);
+
+  useEffect(() => {
+    if (!chatId) return;
+
+    const NEW_CHAT_KEY = "new";
+    const isNewChat = searchParams.has(NEW_CHAT_KEY);
+    if (isNewChat) {
+      setModelsInitialized(true);
+      setSearchParams((prev) => {
+        prev.delete(NEW_CHAT_KEY);
+        return prev;
+      });
+      return;
+    }
+
+    if (modelsInitialized) return;
+    const newModels: string[] = [];
+    const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
+    lastBatchMessages.forEach((msg) => {
+      const msgModel = msg?.model;
+      if (!msgModel) return;
+      if (modelsRef.current.find((m) => m.modelId.includes(msgModel))) {
+        if (newModels.includes(msgModel)) return;
+        newModels.push(msgModel);
+      }
+    });
+
+    if (lastBatchMessages.length > 0) {
+      setModelsInitialized(true);
+    }
+
+    if (newModels.length === 0 && defaultModel) {
+      newModels.push(defaultModel.modelId);
+    }
+    if (newModels.length > 0) {
+      const currentModels = selectedModelsRef.current;
+      const isModelsSame =
+        currentModels.length === newModels.length &&
+        currentModels.every((model, index) => model === newModels[index]);
+      if (!isModelsSame) {
+        setSelectedModels(newModels);
+      }
+    }
+  }, [
+    chatId,
+    modelsInitialized,
+    lastBatchMessages,
+    searchParams,
+    remoteConfig.data?.default_model,
+    setSelectedModels,
+    setSearchParams,
+  ]);
+
+  const isLoading = isConversationsLoading || !conversationIsReady;
+
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
     const ErrorIcon = errorInfo.icon;
@@ -528,12 +568,11 @@ const Home = ({
       </div>
     );
   }
-
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />
 
-      {isConversationsLoading && <LoadingScreen />}
+      {isLoading && <LoadingScreen />}
 
       <div
         ref={scrollContainerRef}
@@ -541,7 +580,7 @@ const Home = ({
         onScroll={handleScroll}
         className={cn("flex-1 space-y-4 overflow-y-auto px-4 py-4 pt-8 transition-opacity delay-200 duration-500", {
           "pl-12.5": !isLeftSidebarOpen,
-          "hidden opacity-0": isConversationsLoading,
+          "hidden opacity-0": isLoading,
         })}
       >
         {renderedMessages}

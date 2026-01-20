@@ -115,6 +115,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       withoutHeaders?: boolean;
       requiresAuth?: boolean;
+      ignore401Error?: boolean;
     } = {}
   ): Promise<T> {
     try {
@@ -176,7 +177,9 @@ export class ApiClient {
           }
         }
         if (response.status === 401) {
-          eventEmitter.emit("logout");
+          if (!options.ignore401Error) {
+            eventEmitter.emit("logout");
+          }
         }
 
         throw error;
@@ -265,6 +268,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       stream?: boolean;
       withoutHeaders?: boolean;
+      ignore401Error?: boolean;
     } = {}
   ): Promise<T> {
     const requestOptions: RequestInit = {
@@ -284,6 +288,7 @@ export class ApiClient {
       ...requestOptions,
       apiVersion: options.apiVersion || "v1",
       withoutHeaders: options.withoutHeaders || false,
+      ignore401Error: options.ignore401Error || false,
     });
   }
 
@@ -314,6 +319,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       queryClient?: QueryClient;
       onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
+      onResponseCreated?: () => void;
     } = {}
   ): Promise<void> {
     const abortController = new AbortController();
@@ -384,6 +390,7 @@ export class ApiClient {
 
         switch (data.type) {
           case "response.created":
+            options.onResponseCreated?.();
             updateConversationData((draft) => {
               const tempUserMessage = draft.conversation?.conversation.data?.find(
                 (item) => item.response_id === TEMP_RESPONSE_ID

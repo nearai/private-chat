@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!public"]
+    "includes": ["**", "!public", "!dist", "!src-tauri/target"]
   },
   "formatter": {
     "enabled": true,
@@ -22,7 +22,7 @@
   },
   "linter": {
     "enabled": true,
-    "includes": ["**", "!/public/**"],
+    "includes": ["**", "!/public/**", "!/dist/**", "!/src-tauri/target/**"],
     "rules": {
       "recommended": true,
       "correctness": {

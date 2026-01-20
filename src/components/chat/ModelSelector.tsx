@@ -118,7 +118,12 @@ export default function ModelSelector() {
 
   const handleAddModel = () => {
     if (selectedModels.length < models.length) {
-      setSelectedModels([...selectedModels]);
+      const nextModelId = models
+        .map((model) => model.modelId)
+        .find((modelId) => !selectedModels.includes(modelId));
+      if (nextModelId) {
+        setSelectedModels([...selectedModels, nextModelId]);
+      }
     }
   };
 
@@ -136,13 +141,12 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  // const disabledAdd = selectedModels.length >= models.length;
-  const disabledAdd = true; // temporarily disable adding more models
+  const disabledAdd = selectedModels.length >= models.length || selectedModels.length >= 3;
 
   return (
     <div className="flex w-full flex-col items-start">
       {selectedModels.map((selectedModel, selectedModelIdx) => (
-        <div key={selectedModel} className="flex w-full items-center">
+        <div key={`${selectedModel}-${selectedModelIdx}`} className="flex w-full items-center">
           <ModelSelectorItem
             value={selectedModel}
             index={selectedModelIdx}

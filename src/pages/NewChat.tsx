@@ -19,7 +19,7 @@ import {
 } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
-import type { Conversation, ConversationInfo } from "@/types";
+import type { ChatStartStreamOptions, Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
@@ -28,12 +28,7 @@ export default function NewChat({
   startStream,
   stopStream,
 }: {
-  startStream: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string
-  ) => Promise<void>;
+  startStream: (options: ChatStartStreamOptions) => Promise<void>;
   stopStream?: () => void;
 }) {
   const [inputValue, setInputValue] = useState("");
@@ -130,7 +125,12 @@ export default function NewChat({
 
     await navigate(`/c/${newConversation.id}?new`);
 
-    startStream(contentItems, webSearchEnabled, newConversation.id);
+    startStream({
+      contentItems,
+      webSearchEnabled,
+      conversationId: newConversation.id,
+      initiator: "new_chat",
+    });
 
     // Capture conversationId before the async operation, as the conversation object may change
     setTimeout(async () => {

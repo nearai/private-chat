@@ -17,12 +17,19 @@ export type ConversationDerivedState = {
   batches: string[];
 };
 
+export type ConversationInitStatus = 'initializing' | 'ready';
+export type ConversationStreamStatus = 'streaming' | 'idle';
+
 export interface ConversationStoreState {
   conversation: ConversationDerivedState | null;
+  conversationInitStatus: Map<string, ConversationInitStatus>;
+  conversationStreamStatus: Map<string, ConversationStreamStatus>;
   setConversationData: (conversation: Conversation, previous_response_id?: string | null) => void;
   updateConversation: (updater: (state: ConversationStoreState) => ConversationStoreState) => void;
   setLastResponseId: (nextId: string) => void;
   resetConversation: () => void;
+  setConversationInitStatus: (conversationId: string, status: ConversationInitStatus) => void;
+  setConversationStreamStatus: (conversationId: string, status: ConversationStreamStatus) => void;
 }
 
 export const createEmptyConversation = (conversationId: string): Conversation => ({
@@ -79,6 +86,8 @@ export const buildConversationEntry = (
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
   conversation: null,
+  conversationInitStatus: new Map(),
+  conversationStreamStatus: new Map(),
   setConversationData: (conversation: Conversation, previous_response_id?: string | null) =>
     set((state) => {
       if (!conversation) return state;
@@ -112,5 +121,21 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
     set((state) => {
       if (!state.conversation) return state;
       return { conversation: null };
+    }),
+  setConversationInitStatus: (conversationId: string, status: ConversationInitStatus) =>
+    set((state) => {
+      const newStatus = new Map(state.conversationInitStatus);
+      newStatus.set(conversationId, status);
+      return {
+        conversationInitStatus: newStatus,
+      };
+    }),
+  setConversationStreamStatus: (conversationId: string, status: ConversationStreamStatus) =>
+    set((state) => {
+      const newStatus = new Map(state.conversationStreamStatus);
+      newStatus.set(conversationId, status);
+      return {
+        conversationStreamStatus: newStatus,
+      };
     }),
 }));

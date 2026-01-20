@@ -15,6 +15,7 @@ export const APP_ROUTES = {
   SHARED: "/shared",
   WELCOME: "/welcome",
   AUTH: "/auth/*",
+  NEAR_LOGIN: "/near-login",
   PLAYGROUND: "/playground",
   ADMIN: ADMIN_PREFIX,
   ...ADMIN_ROUTES,
