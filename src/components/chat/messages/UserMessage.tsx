@@ -91,21 +91,33 @@ const UserMessage: React.FC<UserMessageProps> = ({
 
   const handleSave = useCallback(async () => {
     if (disabledSendButton) return;
-    const userPromptMessage = allMessages[batch.userPromptId as string] as ConversationUserInput;
-    const filteredFiles = userPromptMessage.content.filter((item) => item.type === "input_file");
-    const contentItems: ContentItem[] = [...filteredFiles, { type: "input_text", text: editedContent.trim() }];
+    const userPromptMessage = allMessages[
+      batch.userPromptId as string
+    ] as ConversationUserInput;
+    const filteredFiles = userPromptMessage.content.filter(
+      (item) => item.type === "input_file",
+    );
+    const contentItems: ContentItem[] = [
+      ...filteredFiles,
+      { type: "input_text", text: editedContent.trim() },
+    ];
     const parentResponseId = batch?.parentResponseId || undefined;
     const currentModels: string[] = [];
     if (parentResponseId) {
       const parent = history.messages[parentResponseId];
       if (parent && parent.nextResponseIds?.length) {
-        const msgs = parent.nextResponseIds.map((respId) => {
-          const batch = Object.values(history.messages).find((msg) => msg.responseId === respId);
-          return batch?.userPromptId ? allMessages[batch.userPromptId] : null;
-        }).filter((resp) => resp !== null).sort((a, b) => {
-          if (!a || !b) return 0;
-          return b.created_at - a.created_at;
-        }) as typeof allMessages[string][];
+        const msgs = parent.nextResponseIds
+          .map((respId) => {
+            const batch = Object.values(history.messages).find(
+              (msg) => msg.responseId === respId,
+            );
+            return batch?.userPromptId ? allMessages[batch.userPromptId] : null;
+          })
+          .filter((resp) => resp !== null)
+          .sort((a, b) => {
+            if (!a || !b) return 0;
+            return b.created_at - a.created_at;
+          }) as (typeof allMessages)[string][];
         msgs.forEach((msg) => {
           if (msg?.model) {
             currentModels.push(msg.model);
@@ -127,7 +139,17 @@ const UserMessage: React.FC<UserMessageProps> = ({
     });
     setEdit(false);
     setEditedContent("");
-  }, [regenerateResponse, webSearchEnabled, batch, model, chatId, allMessages, editedContent, disabledSendButton]);
+  }, [
+    regenerateResponse,
+    webSearchEnabled,
+    batch,
+    model,
+    chatId,
+    allMessages,
+    history,
+    editedContent,
+    disabledSendButton,
+  ]);
 
   useEffect(() => {
     if (edit && messageEditTextAreaRef.current) {

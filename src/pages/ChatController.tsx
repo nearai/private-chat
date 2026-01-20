@@ -139,7 +139,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
         previousResponseId?: string
         onResponseCreated?: () => void
       }) => {
-        console.log(`Starting stream for model: ${model}`);
         const tempMsgId = pushResponse(conversationLocalId, model, contentItems, previousResponseId);
         const streamPromise = chatClient.startStream({
           model,
@@ -160,6 +159,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         try {
           await streamPromise;
           markStreamComplete(conversationLocalId, tempMsgId);
+          removeStream(conversationLocalId, tempMsgId);
         } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
@@ -187,8 +187,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
           markStreamComplete(conversationLocalId, tempMsgId);
           removeStream(conversationLocalId, tempMsgId);
           throw error;
-        } finally {
-          removeStream(conversationLocalId, tempMsgId);
         }
       };
 
@@ -217,7 +215,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
         }
 
         // Run the rest of the models attached to the same parent
-        console.log("Starting streams for remaining models in new_chat");
         const remainingModels = validModels.slice(1);
         await Promise.all(
           remainingModels.map(async (model) => {
