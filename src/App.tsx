@@ -13,6 +13,7 @@ import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
 import { APP_ROUTES } from "@/pages/routes";
 import WelcomePage from "@/pages/WelcomePage";
+import NearLogin from "./pages/NearLogin";
 import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
 import { posthogPageView, posthogReset } from "./lib/posthog";
@@ -109,6 +110,7 @@ function App() {
 
           <Route path={APP_ROUTES.WELCOME} element={<WelcomePage />} />
           <Route path={APP_ROUTES.AUTH} element={<AuthPage />} />
+          <Route path={APP_ROUTES.NEAR_LOGIN} element={<NearLogin />} />
         </Routes>
       </div>
     </Suspense>

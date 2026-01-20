@@ -11,21 +11,21 @@ interface ActiveStream {
 }
 
 interface StreamStore {
-  activeStreams: Map<string, ActiveStream>;
+  activeStreams: Map<string, Map<string, ActiveStream>>;
   streamCompletions: Map<string, boolean>;
 
   addStream: (
     chatId: string,
+    streamId: string,
     promise: Promise<void>,
     initialData?: Conversation,
     reader?: ReadableStreamDefaultReader<Uint8Array>,
     abortController?: AbortController
   ) => void;
-  removeStream: (chatId: string) => void;
-  markStreamComplete: (chatId: string) => void;
+  removeStream: (chatId: string, streamId: string) => void;
+  markStreamComplete: (chatId: string, streamId: string) => void;
   isStreamActive: (chatId: string) => boolean;
-  getActiveStreams: () => Map<string, ActiveStream>;
-  getStreamInitialData: (chatId: string) => Conversation | undefined;
+  getActiveStreams: () => Map<string, Map<string, ActiveStream>>;
   stopStream: (chatId: string) => void;
   stopAllStreams: () => void;
 }
@@ -36,6 +36,7 @@ export const useStreamStore = create<StreamStore>((set, get) => ({
 
   addStream: (
     chatId: string,
+    streamId: string,
     promise: Promise<void>,
     initialData?: Conversation,
     reader?: ReadableStreamDefaultReader<Uint8Array>,
@@ -43,7 +44,11 @@ export const useStreamStore = create<StreamStore>((set, get) => ({
   ) => {
     set((state) => {
       const newStreams = new Map(state.activeStreams);
-      newStreams.set(chatId, {
+      const currentChatStreams = newStreams.get(chatId);
+      // Create a copy of the inner map to avoid mutation
+      const newChatStreams = currentChatStreams ? new Map(currentChatStreams) : new Map();
+      
+      newChatStreams.set(streamId, {
         promise,
         chatId,
         startedAt: Date.now(),
@@ -51,22 +56,43 @@ export const useStreamStore = create<StreamStore>((set, get) => ({
         reader,
         abortController,
       });
+      newStreams.set(chatId, newChatStreams);
       return { activeStreams: newStreams };
     });
   },
 
-  removeStream: (chatId: string) => {
+  removeStream: (chatId: string, streamId: string) => {
     set((state) => {
       const newStreams = new Map(state.activeStreams);
-      newStreams.delete(chatId);
-      return { activeStreams: newStreams };
+      const currentChatStreams = newStreams.get(chatId);
+      
+      if (currentChatStreams) {
+        // Create a copy of the inner map
+        const newChatStreams = new Map(currentChatStreams);
+        newChatStreams.delete(streamId);
+        
+        if (newChatStreams.size === 0) {
+          newStreams.delete(chatId);
+        } else {
+          newStreams.set(chatId, newChatStreams);
+        }
+      }
+
+      // Cleanup completion status
+      const newCompletions = new Map(state.streamCompletions);
+      newCompletions.delete(`${chatId}-${streamId}`);
+
+      return { 
+        activeStreams: newStreams,
+        streamCompletions: newCompletions 
+      };
     });
   },
 
-  markStreamComplete: (chatId: string) => {
+  markStreamComplete: (chatId: string, streamId: string) => {
     set((state) => {
       const newCompletions = new Map(state.streamCompletions);
-      newCompletions.set(chatId, true);
+      newCompletions.set(`${chatId}-${streamId}`, true);
       return { streamCompletions: newCompletions };
     });
   },
@@ -79,26 +105,23 @@ export const useStreamStore = create<StreamStore>((set, get) => ({
     return get().activeStreams;
   },
 
-  getStreamInitialData: (chatId: string) => {
-    return get().activeStreams.get(chatId)?.initialData;
-  },
-
   stopStream: (chatId: string) => {
-    const stream = get().activeStreams.get(chatId);
-    if (stream) {
-      stream.reader?.cancel().catch((error) => {
-        console.error("Error cancelling stream reader:", error);
+    const streams = get().activeStreams.get(chatId);
+    if (streams) {
+      streams.forEach((stream, streamId) => {
+        stream.abortController?.abort();
+        get().removeStream(chatId, streamId);
       });
-      stream.abortController?.abort();
-      get().markStreamComplete(chatId);
-      get().removeStream(chatId);
     }
   },
 
   stopAllStreams: () => {
-    const streams = get().activeStreams;
-    streams.forEach((_, chatId) => {
-      get().stopStream(chatId);
+    const chatStreams = get().activeStreams;
+    chatStreams.forEach((streams, chatId) => {
+      streams.forEach((stream, streamId) => {
+        stream.abortController?.abort();
+        get().removeStream(chatId, streamId);
+      });
     });
   },
 }));

@@ -15,6 +15,14 @@ export const CHAT_API_BASE_URL = (
   runtimeOrigin ||
   "https://private.near.ai"
 ).replace(/\/+$/, "");
+
+// NEAR login URL can be different from CHAT_API_BASE_URL in some deployment scenarios
+// In development, use local dev server. In production, use the hosted app URL.
+export const NEAR_LOGIN_URL = import.meta.env.MODE === "development"
+  ? "http://localhost:3000" : (
+    import.meta.env.VITE_NEAR_LOGIN_URL ||
+    CHAT_API_BASE_URL
+  ).replace(/\/+$/, "");
 export const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY || "";
 export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || "";
 
