@@ -2,8 +2,11 @@ import { chatClient } from "@/api/chat/client";
 import { offlineCache } from "@/lib/offlineCache";
 import type { Conversation, ConversationInfo } from "@/types";
 
-const CONCURRENCY_LIMIT = 5;
+const CONCURRENCY_LIMIT = 3;
+const CHUNK_DELAY_MS = 300;
 let hasStartedSync = false;
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const resetSyncState = () => {
   hasStartedSync = false;
@@ -53,6 +56,9 @@ export const syncConversationsToLocalDb = async (onProgress?: (current: number, 
       
       completed += chunk.length;
       onProgress?.(completed, total);
+
+      // Add a small delay to avoid freezing the UI
+      await delay(CHUNK_DELAY_MS);
     }
     
     console.log("Conversation sync complete.");
