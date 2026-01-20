@@ -14,6 +14,7 @@ export const APP_ROUTES = {
   CHAT: `/c/${CHAT_ID}`,
   WELCOME: "/welcome",
   AUTH: "/auth/*",
+  NEAR_LOGIN: "/near-login",
   PLAYGROUND: "/playground",
   ADMIN: ADMIN_PREFIX,
   ...ADMIN_ROUTES,

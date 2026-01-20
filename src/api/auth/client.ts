@@ -123,7 +123,8 @@ class AuthClient extends ApiClient {
    */
   async sendNearAuth(
     signedMessage: SignedMessage,
-    payload: { message: string; nonce: Uint8Array; recipient: string }
+    payload: { message: string; nonce: Uint8Array; recipient: string },
+    ignore401Error = false
   ): Promise<NearAuthResponse> {
     return this.post<NearAuthResponse>(
       "/auth/near",
@@ -135,7 +136,7 @@ class AuthClient extends ApiClient {
           recipient: payload.recipient,
         },
       },
-      { apiVersion: "v2" }
+      { apiVersion: "v2", ignore401Error }
     );
   }
 }

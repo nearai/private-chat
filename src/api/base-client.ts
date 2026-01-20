@@ -114,6 +114,7 @@ export class ApiClient {
     options: RequestInit & {
       apiVersion?: "v1" | "v2";
       withoutHeaders?: boolean;
+      ignore401Error?: boolean;
     } = {}
   ): Promise<T> {
     try {
@@ -173,7 +174,9 @@ export class ApiClient {
           }
         }
         if (response.status === 401) {
-          eventEmitter.emit("logout");
+          if (!options.ignore401Error) {
+            eventEmitter.emit("logout");
+          }
         }
 
         throw error;
@@ -258,6 +261,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       stream?: boolean;
       withoutHeaders?: boolean;
+      ignore401Error?: boolean;
     } = {}
   ): Promise<T> {
     const requestOptions: RequestInit = {
@@ -277,6 +281,7 @@ export class ApiClient {
       ...requestOptions,
       apiVersion: options.apiVersion || "v1",
       withoutHeaders: options.withoutHeaders || false,
+      ignore401Error: options.ignore401Error || false,
     });
   }
 
