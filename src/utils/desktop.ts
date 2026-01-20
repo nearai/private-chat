@@ -18,6 +18,8 @@ export const isTauri = () =>
 
 export const initializeDesktopIntegrations = async () => {
   if (!isTauri()) return;
+  // Skip update check in development mode
+  if (import.meta.env.KEY === "development" || import.meta.env.DEV) return;
 
   try {
     const { check } = await import("@tauri-apps/plugin-updater");

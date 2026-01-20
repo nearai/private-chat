@@ -24,6 +24,7 @@ import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
 import { offlineCache } from "./lib/offlineCache";
 import { useIsOnline } from "./hooks/useIsOnline";
+import { resetSyncState } from "./lib/sync";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -54,12 +55,13 @@ function App() {
     posthogPageView(location.pathname);
   }, [location.pathname]);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     setUser(null);
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
-    offlineCache.clearAll();
+    await offlineCache.clearAll();
+    resetSyncState();
     queryClient.clear();
     navigate(APP_ROUTES.AUTH, { replace: true });
   }, [navigate, setUser, queryClient]);
