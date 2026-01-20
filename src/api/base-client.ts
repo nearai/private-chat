@@ -287,6 +287,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       queryClient?: QueryClient;
       onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
+      onResponseCreated?: () => void;
     } = {}
   ): Promise<void> {
     const abortController = new AbortController();
@@ -357,6 +358,7 @@ export class ApiClient {
 
         switch (data.type) {
           case "response.created":
+            options.onResponseCreated?.();
             updateConversationData((draft) => {
               const tempUserMessage = draft.conversation?.conversation.data?.find(
                 (item) => item.response_id === TEMP_RESPONSE_ID

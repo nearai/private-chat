@@ -2,8 +2,8 @@ import type React from "react";
 import { useMemo } from "react";
 import { cn, type CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
-import type { ConversationItem } from "@/types";
-import { type ContentItem, getModelAndCreatedTimestamp } from "@/types/openai";
+import type { ChatStartStreamOptions, ConversationItem } from "@/types";
+import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
 
 interface MultiResponseMessagesProps {
@@ -13,13 +13,7 @@ interface MultiResponseMessagesProps {
   allMessages: Record<string, ConversationItem>;
   isLastMessage: boolean;
   readOnly: boolean;
-  regenerateResponse: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string
-  ) => Promise<void>;
+  regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   responseSiblings?: string[];
 }
 
@@ -88,13 +82,14 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           const isCurrentMessage = currentBatchBundleObj[batchIds[currentIdx]] !== undefined;
           const isSeveralModels = Object.keys(groupedBatchIds).length > 1;
           const borderClass = isCurrentMessage
-            ? `border border-gray-300 dark:border-gray-700 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-80"}`
-            : `border border-gray-300 dark:border-gray-700 border-dashed ${isMobile ? "min-w-full" : "min-w-80"}`;
+            ? `border border-gray-300 dark:border-gray-700 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-[10vw]"}`
+            : `border border-gray-300 dark:border-gray-700 border-dashed ${isMobile ? "min-w-full" : "min-w-[10vw]"}`;
 
           return (
             <div
               key={batchIds[currentIdx]}
-              className={cn(`m-1 w-full max-w-full cursor-pointer snap-center rounded-2xl transition-all`, {
+              data-role={isCurrentMessage ? "current-response-message" : "other-response-message"}
+              className={cn(`m-1 w-full max-w-full snap-center rounded-2xl transition-all`, {
                 'p-5': isSeveralModels,
                 [borderClass]: isSeveralModels,
               })}
