@@ -7,28 +7,23 @@ import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import FileDialog from "@/components/common/dialogs/FileDialog";
 import { Button } from "@/components/ui/button";
 import { type CombinedResponse, cn } from "@/lib";
-import { MOCK_MESSAGE_RESPONSE_ID_PREFIX } from "@/lib/constants";
 import markedExtension from "@/lib/utils/extension";
 import { processResponseContent, replaceTokens } from "@/lib/utils/markdown";
 import markedKatexExtension from "@/lib/utils/marked-katex-extension";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import type { ConversationItem, ConversationUserInput } from "@/types";
-import { type ContentItem, extractFiles, extractMessageContent } from "@/types/openai";
+import type { ChatStartStreamOptions, ConversationItem, ConversationUserInput } from "@/types";
+import { type ContentItem, extractFiles, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
+import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
+import { TEMP_RESPONSE_ID } from "@/api/constants";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
   allMessages: Record<string, ConversationItem>;
   batchId: string;
-  regenerateResponse: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string
-  ) => Promise<void>;
+  regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   siblings?: string[];
   /** Only show author name if conversation is shared */
   isSharedConversation?: boolean;
@@ -52,6 +47,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const { chatId } = useParams();
   const messageContent = extractMessageContent(message?.content ?? []);
   const messageFiles = extractFiles(message?.content ?? []);
+  const { model } = getModelAndCreatedTimestamp(batch, allMessages);
   const { data: conversationData } = useGetConversation(chatId);
   const conversationImportedAt = conversationData?.metadata?.imported_at;
 
@@ -98,14 +94,65 @@ const UserMessage: React.FC<UserMessageProps> = ({
 
   const handleSave = useCallback(async () => {
     if (disabledSendButton) return;
-    const userPromptMessage = allMessages[batch.userPromptId as string] as ConversationUserInput;
-    const filteredFiles = userPromptMessage.content.filter((item) => item.type === "input_file");
-    const contentItems: ContentItem[] = [...filteredFiles, { type: "input_text", text: editedContent.trim() }];
+    const userPromptMessage = allMessages[
+      batch.userPromptId as string
+    ] as ConversationUserInput;
+    const filteredFiles = userPromptMessage.content.filter(
+      (item) => item.type === "input_file",
+    );
+    const contentItems: ContentItem[] = [
+      ...filteredFiles,
+      { type: "input_text", text: editedContent.trim() },
+    ];
+    const parentResponseId = batch?.parentResponseId || undefined;
+    const currentModels: string[] = [];
+    if (parentResponseId) {
+      const parent = history.messages[parentResponseId];
+      if (parent?.nextResponseIds?.length) {
+        const msgs = parent.nextResponseIds
+          .map((respId) => {
+            const batch = Object.values(history.messages).find(
+              (msg) => msg.responseId === respId,
+            );
+            return batch?.userPromptId ? allMessages[batch.userPromptId] : null;
+          })
+          .filter((resp) => resp !== null)
+          .sort((a, b) => {
+            if (!a || !b) return 0;
+            return b.created_at - a.created_at;
+          }) as (typeof allMessages)[string][];
+        msgs.forEach((msg) => {
+          if (msg?.model) {
+            currentModels.push(msg.model);
+          }
+        });
+      }
+    }
 
-    await regenerateResponse(contentItems, webSearchEnabled, chatId, batch?.parentResponseId || undefined);
+    if (currentModels.length === 0 && model) {
+      currentModels.push(model);
+    }
+    await regenerateResponse({
+      contentItems,
+      webSearchEnabled,
+      conversationId: chatId,
+      previous_response_id: parentResponseId,
+      currentModels,
+      initiator: "edit_message",
+    });
     setEdit(false);
     setEditedContent("");
-  }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, editedContent, disabledSendButton]);
+  }, [
+    regenerateResponse,
+    webSearchEnabled,
+    batch,
+    model,
+    chatId,
+    allMessages,
+    history,
+    editedContent,
+    disabledSendButton,
+  ]);
 
   useEffect(() => {
     if (edit && messageEditTextAreaRef.current) {
@@ -163,13 +210,16 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [messageContent, message]);
 
   if (!message) return null;
+  const isTempMsg = message.response_id === TEMP_RESPONSE_ID;
 
   return (
     <div
-      className="user-message group flex w-full"
+      className={cn("user-message group flex w-full", isTempMsg ? "" : USER_MESSAGE_CLASSNAME)}
       dir={settings.chatDirection || "ltr"}
       id={`message-${message.id}`}
       data-response-id={message.response_id || ""}
+      data-parent-response-id={batch.parentResponseId || ""}
+      data-model-id={model || ""}
     >
       <div className="w-0 max-w-full flex-auto pl-1">
         <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>

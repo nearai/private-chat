@@ -20,13 +20,14 @@ import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore"
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
 import type {
+  ChatStartStreamOptions,
   ConversationItem,
   ConversationModelOutput,
   ConversationReasoning,
   ConversationUserInput,
   ConversationWebSearchCall,
 } from "@/types";
-import { type ContentItem, extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
+import { extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
@@ -39,13 +40,7 @@ interface ResponseMessageProps {
   siblings: string[];
   isLastMessage: boolean;
   readOnly: boolean;
-  regenerateResponse: (
-    content: ContentItem[],
-    webSearchEnabled: boolean,
-    conversationId?: string,
-    previous_response_id?: string,
-    currentModel?: string
-  ) => Promise<void>;
+  regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -133,13 +128,14 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     if (prevResponseId?.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
       prevResponseId = unwrapMockResponseID(prevResponseId);
     }
-    await regenerateResponse(
-      userPrompt.content,
+    await regenerateResponse({
+      contentItems: userPrompt.content,
       webSearchEnabled,
-      chatId,
-      prevResponseId,
-      model || undefined,
-    );
+      conversationId: chatId,
+      previous_response_id: prevResponseId,
+      currentModels: model ? [model] : undefined,
+      initiator: "regenerate",
+    });
   }, [regenerateResponse, webSearchEnabled, batch, chatId, allMessages, model]);
 
   const modelIcon = useMemo(() => {
@@ -218,10 +214,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
   return (
     <div
-      className={cn("group flex w-full", RESPONSE_MESSAGE_CLASSNAME)}
+      className={cn("group flex w-full overflow-hidden", RESPONSE_MESSAGE_CLASSNAME)}
       id={`message-${batch.responseId}`}
       dir={settings.chatDirection || "ltr"}
       data-response-id={batch.responseId || ""}
+      data-parent-response-id={batch.parentResponseId || ""}
+      data-model-id={model || ""}
     >
       <div className="shrink-0 ltr:mr-2 rtl:ml-2">
         {modelIcon}
@@ -229,7 +227,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
       <div className="w-0 flex-auto pl-1">
         <div className="flex items-center space-x-2">
-          <span className="line-clamp-1 font-normal text-muted-foreground">{model || "Assistant"}</span>
+          <span
+            className="line-clamp-1 font-normal text-muted-foreground"
+            title={model || "Assistant"}
+          >
+            {model || "Assistant"}
+          </span>
 
           {/* Verification Badge */}
           <div className="message-verification-badge ml-3 flex items-center">
@@ -265,7 +268,10 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           </div>
 
           {createdTimestamp && (
-            <div className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible">
+            <div
+              className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible"
+              title={formatDate(createdTimestamp * 1000)}
+            >
               <span className="line-clamp-1">{formatDate(createdTimestamp * 1000)}</span>
             </div>
           )}
