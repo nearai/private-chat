@@ -257,9 +257,7 @@ const AuthPage: React.FC = () => {
         const callbackUrl = await getDesktopOAuthCallbackUrl();
         
         // Construct the URL for the new NearLogin page
-        // In development, use local dev server. In production, use the hosted app URL.
-        const baseUrl = import.meta.env.MODE === "development" ? "http://localhost:3000" : NEAR_LOGIN_URL;
-        const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, baseUrl);
+        const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, NEAR_LOGIN_URL);
         nearLoginUrl.searchParams.set("frontend_callback", callbackUrl);
         nearLoginUrl.searchParams.set("oauth_channel", channelId);
 
