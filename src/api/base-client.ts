@@ -204,6 +204,48 @@ export class ApiClient {
     }
   }
 
+  protected async requestWithoutJson(
+    endpoint: string,
+    options: RequestInit & {
+      apiVersion?: "v1" | "v2";
+      withoutHeaders?: boolean;
+    } = {}
+  ): Promise<Response> {
+    try {
+      const headers: Record<string, string> = options.withoutHeaders
+        ? {}
+        : {
+            ...this.defaultHeaders,
+            ...((options.headers as Record<string, string>) || {}),
+          };
+
+      if (this.includeAuth) {
+        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        } else {
+          throw new Error("No token found");
+        }
+      }
+      const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
+      const response = await fetch(`${baseURL}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw error;
+      }
+
+      return response;
+    } catch (err) {
+      console.error(err);
+      // biome-ignore lint/suspicious/noExplicitAny: explanation
+      throw (err as any)?.detail || err || "An unknown error occurred";
+    }
+  }
+
   protected async get<T>(endpoint: string, options: RequestInit & { apiVersion?: "v1" | "v2" } = {}): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -249,11 +291,15 @@ export class ApiClient {
     options: RequestInit & {
       apiVersion?: "v1" | "v2";
       queryClient?: QueryClient;
+      onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
+      onResponseCreated?: () => void;
     } = {}
   ): Promise<void> {
+    const abortController = new AbortController();
     const requestOptions: RequestInit = {
       ...options,
       method: "POST",
+      signal: abortController.signal,
     };
 
     if (body !== undefined) {
@@ -298,6 +344,11 @@ export class ApiClient {
       }
 
       const reader = response.body.getReader();
+      
+      // Notify reader is ready for cancellation
+      if (options.onReaderReady) {
+        options.onReaderReady(reader, abortController);
+      }
       const decoder = new TextDecoder();
       const parser = createParser({
         onEvent: onParse,
@@ -312,6 +363,7 @@ export class ApiClient {
 
         switch (data.type) {
           case "response.created":
+            options.onResponseCreated?.();
             updateConversationData((draft) => {
               const tempUserMessage = draft.conversation?.conversation.data?.find(
                 (item) => item.response_id === TEMP_RESPONSE_ID
@@ -598,12 +650,23 @@ export class ApiClient {
         }
       }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        parser.feed(chunk);
+          const chunk = decoder.decode(value, { stream: true });
+          parser.feed(chunk);
+        }
+      } catch (error) {
+        // expected if the stream was cancelled
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        throw error;
+      } finally {
+        // Release the reader lock
+        reader.releaseLock();
       }
 
       const currentChatIdFromLocation = location.pathname.split("/").pop();

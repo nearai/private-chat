@@ -12,8 +12,8 @@ import type {
 } from "@/types";
 
 import MessageVerifier from "./MessageVerifier";
-import { useStreamStore } from "@/stores/useStreamStore";
 import { useIsOnline } from "@/hooks/useIsOnline";
+import { useConversationStore } from "@/stores/useConversationStore";
 
 interface MessagesVerifierProps {
   conversation?: ConversationInfo;
@@ -37,7 +37,14 @@ interface MessagesVerifierProps {
 const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, history }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { messagesSignatures, messagesSignaturesErrors } = useMessagesSignaturesStore();
-  const { isStreamActive } = useStreamStore();
+  const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
+
+  const currentStreamIsActive = useMemo(() => {
+    if (!conversation?.id) return false;
+    if (!conversationStreamStatus.has(conversation.id)) return false;
+    return conversationStreamStatus.get(conversation.id) === "streaming";
+  }, [conversation?.id, conversationStreamStatus]);
+
   const isOnline = useIsOnline();
 
   const chatCompletions = useMemo(() => {
@@ -82,7 +89,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
 
           const msgHasSignature =
             messagesSignatures[message.chatCompletionId] || messagesSignaturesErrors[message.chatCompletionId];
-          if (!msgHasSignature && conversation && isStreamActive(conversation.id)) {
+          if (!msgHasSignature && conversation && currentStreamIsActive) {
             return null;
           }
 

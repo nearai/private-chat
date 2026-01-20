@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import { chatClient, isUploadError } from "@/api/chat/client";
 
 import SendMessageIcon from "@/assets/icons/send-message.svg?react";
@@ -18,19 +18,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
+import { ACCEPTED_FILE_TYPES, SUPPORTED_TEXT_EXTENSIONS } from "@/lib/constants";
 import { useIsOnline } from "@/hooks/useIsOnline";
 import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
-import { compressImage } from "@/lib/image";
+// import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useViewStore } from "@/stores/useViewStore";
-import type { History, Message, Model } from "@/types";
+import { ConversationRoles, ConversationTypes, type ConversationItem, type History, type Message, type Model } from "@/types";
 import type { FileContentItem } from "@/types/openai";
 import UserMenu from "../sidebar/UserMenu";
 import { Button } from "../ui/button";
 
 interface MessageInputProps {
   messages?: Message[];
+  allMessages?: Record<string, ConversationItem>
   onChange?: (data: {
     prompt: string;
     files: FileContentItem[];
@@ -39,7 +41,7 @@ interface MessageInputProps {
     webSearchEnabled: boolean;
   }) => void;
   createMessagePair?: (prompt: string) => void;
-  stopResponse?: () => void;
+  stopStream?: () => void;
   autoScroll?: boolean;
   atSelectedModel?: Model;
   selectedModels?: string[];
@@ -68,13 +70,13 @@ const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
 const MessageInput: React.FC<MessageInputProps> = ({
   messages,
+  allMessages,
   createMessagePair = () => {},
-  stopResponse = () => {},
+  stopStream = () => {},
   autoScroll = false,
   atSelectedModel,
   selectedModels,
   history,
-  taskIds = null,
   prompt,
   setPrompt,
   files: initialFiles = [],
@@ -124,18 +126,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const uploadFileHandler = useCallback(
     async (file: File): Promise<FileContentItem | undefined> => {
       try {
-        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         const maxFileSize = 10 * 1024 * 1024;
-        if (file.type === "application/pdf") {
-          toast.error("PDF files are not supported yet.");
-          return;
-        }
-
         if (file.size > maxFileSize) {
           toast.error(`File size should not exceed 10 MB.`);
           return;
         }
-
+        
+        if (file.type.startsWith("image/")) {
+          toast.info("Images are not supported yet.");
+          return;
+        }
+        
+        /*
+        const imageTypes = ["image/gif", "image/webp", "image/jpeg", "image/png", "image/avif"];
         if (imageTypes.includes(file.type)) {
           const imageUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -162,6 +165,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
           return newFile;
         }
+        */
+
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const isText = file.type === "text/plain" || SUPPORTED_TEXT_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (!isPdf && !isText) {
+          toast.error(t("The file type is not yet supported."));
+          return;
+        }
 
         const data = await chatClient.uploadFile(file);
 
@@ -173,7 +185,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       } catch (errorObj: unknown) {
         if (isUploadError(errorObj)) {
           if (errorObj.error.type === "invalid_request_error") {
-            toast.error(t("This file type is not supported. Please upload an image or other supported formats."));
+            toast.error(t("This file type is not supported. Please upload PDF or plain text files."));
           }
         } else {
           toast.error(t("Error uploading file."));
@@ -182,7 +194,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         return undefined;
       }
     },
-    [settings.imageCompression, settings.imageCompressionSize, t]
+    [t]
   );
 
   const disabledSendButton = useMemo(() => {
@@ -286,7 +298,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     const isCtrlPressed = e.ctrlKey || e.metaKey;
 
     if (e.key === "Escape") {
-      stopResponse();
+      handleStopResponse();
       setAtSelectedModel();
       setSelectedToolIds([]);
       // setImageGenerationEnabled(false);
@@ -339,10 +351,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (clipboardData?.items) {
       for (const item of Array.from(clipboardData.items)) {
         if (item.type.indexOf("image") !== -1) {
-          const blob = item.getAsFile();
-          if (blob) {
-            await uploadFileHandler(blob);
-          }
+          // const blob = item.getAsFile();
+          // if (blob) {
+          //   await uploadFileHandler(blob);
+          // }
+           toast.info("Images are not supported yet.");
         } else if (item.type === "text/plain") {
           if (settings.largeTextAsFile ?? false) {
             const text = clipboardData.getData("text/plain");
@@ -379,6 +392,64 @@ const MessageInput: React.FC<MessageInputProps> = ({
     // This would be handled by parent component or store
   };
 
+  const disabledStopButton = useMemo(() => {
+    if (!isConversationStreamActive) return false;
+    if (!allMessages) return false;
+    const hasUnfinishedNonReasoning = Object.values(allMessages).some(
+      (msg) =>
+        msg.role === ConversationRoles.ASSISTANT &&
+        msg.status === "pending" &&
+        msg.type !== ConversationTypes.REASONING &&
+        msg.type !== ConversationTypes.WEB_SEARCH_CALL
+    );
+
+    return !hasUnfinishedNonReasoning;
+  }, [isConversationStreamActive, allMessages]);
+
+  const handleStopResponse = () => {
+    if (!isConversationStreamActive) return;
+    if (disabledStopButton) return;
+    stopStream();
+  };
+
+  const renderSendButton = () => {
+    if (isConversationStreamActive) {
+      return (
+        <div className="mr-1 flex shrink-0 space-x-1 self-end">
+          <Button
+            id="stop-message-button"
+            className={cn("size-10 rounded-full", {
+              'cursor-not-allowed!': disabledStopButton,
+            })}
+            type="button"
+            title="Stop"
+            size="icon"
+            onClick={handleStopResponse}
+          >
+            <StopMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+        <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+          'cursor-not-allowed!': disabledSendButton,
+        })}>
+          <Button
+            id="send-message-button"
+            className="size-10 rounded-full"
+            type="submit"
+            title="Send"
+            disabled={disabledSendButton || !isOnline}
+            size="icon"
+          >
+            <SendMessageIcon className="size-5" />
+          </Button>
+        </div>
+      );
+  };
+
   if (!loaded) return null;
 
   return (
@@ -388,7 +459,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
         <div
           className={cn(
             "pointer-events-none fixed top-0 right-0 bottom-0 z-9999 flex h-full w-full touch-none",
-            isLeftSidebarOpen ? "left-0 md:left-[260px] md:w-[calc(100%-260px)]" : "left-0"
+            isLeftSidebarOpen
+              ? "left-0 md:left-[260px] md:w-[calc(100%-260px)]"
+              : "left-0",
           )}
           id="dropzone"
           role="region"
@@ -399,7 +472,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
               <div className="max-w-md">
                 <div className="px-3">
                   <div className="mb-3 text-center text-6xl">📄</div>
-                  <div className="z-50 text-center font-semibold text-xl">Add Files</div>
+                  <div className="z-50 text-center font-semibold text-xl">
+                    Add Files
+                  </div>
 
                   <div className="mt-2 w-full px-2 text-center text-sm">
                     Drop any files here to add to the conversation
@@ -415,11 +490,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
         className={cn(
           "flex-row font-primary",
           messages?.length === 0 ? "flex-1" : "",
-          fullWidth ? "w-full" : "w-full md:max-w-3xl"
+          fullWidth ? "w-full" : "w-full md:max-w-3xl",
         )}
       >
         <div className="inset-x-0 mx-auto flex justify-center bg-transparent">
-          <div className={cn("flex w-full flex-col px-3", settings.widescreenMode ? "max-w-full" : "max-w-6xl")}>
+          <div
+            className={cn(
+              "flex w-full flex-col px-3",
+              settings.widescreenMode ? "max-w-full" : "max-w-6xl",
+            )}
+          >
             <div className="relative">
               {autoScroll === false && history?.currentId && (
                 <div className="-top-12 pointer-events-none absolute right-0 left-0 z-30 flex justify-center">
@@ -429,7 +509,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
                       scrollToBottom();
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-5 w-5"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z"
@@ -442,7 +527,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
             </div>
 
             <div className="relative w-full">
-              {(atSelectedModel !== undefined || selectedToolIds.length > 0 || webSearchEnabled) && (
+              {(atSelectedModel !== undefined ||
+                selectedToolIds.length > 0 ||
+                webSearchEnabled) && (
                 <div className="absolute right-0 bottom-0 left-0 z-10 flex w-full flex-col bg-gradient-to-t from-background px-3 pt-1.5 pb-0.5 text-left">
                   {atSelectedModel !== undefined && (
                     <div className="flex w-full items-center justify-between">
@@ -457,12 +544,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           }
                         />
                         <div className="translate-y-[0.5px]">
-                          Talking to <span className="font-medium">{atSelectedModel.name}</span>
+                          Talking to{" "}
+                          <span className="font-medium">
+                            {atSelectedModel.name}
+                          </span>
                         </div>
                       </div>
                       <div>
-                        <button className="flex items-center" onClick={() => setAtSelectedModel()}>
-                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <button
+                          className="flex items-center"
+                          onClick={() => setAtSelectedModel()}
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
                             <path
                               fillRule="evenodd"
                               d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -485,13 +582,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
               <UserMenu collapsed={true} />
             </div>
           )}
-          <div className={`inset-x-0 mx-auto w-full max-w-full flex-1 grow px-2.5 md:max-w-3xl`}>
+          <div
+            className={`inset-x-0 mx-auto w-full max-w-full flex-1 grow px-2.5 md:max-w-3xl`}
+          >
             <div className="">
               <input
                 ref={filesInputRef}
                 type="file"
                 hidden
                 multiple
+                accept={ACCEPTED_FILE_TYPES}
                 disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
@@ -526,10 +626,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           {file.type === "input_image" ? (
                             <div className="group relative">
                               <div className="relative flex items-center">
-                                <img src={file.image_url} alt="input" className="size-14 rounded-xl object-cover" />
+                                <img
+                                  src={file.image_url}
+                                  alt="input"
+                                  className="size-14 rounded-xl object-cover"
+                                />
                                 {(atSelectedModel
                                   ? visionCapableModels.length === 0
-                                  : selectedModels?.length !== visionCapableModels.length) && (
+                                  : selectedModels?.length !==
+                                    visionCapableModels.length) && (
                                   <div className="absolute top-1 left-1">
                                     <svg
                                       xmlns="http://www.w3.org/2000/svg"
@@ -566,7 +671,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                           ) : (
                             <div className="flex items-center gap-2 rounded-lg bg-secondary/30 p-2">
                               <div className="flex flex-1 items-center gap-2">
-                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
                                   <path
                                     fillRule="evenodd"
                                     d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
@@ -579,7 +688,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                 onClick={() => removeFile(file.id)}
                                 className="text-muted-foreground hover:text-destructive-foreground"
                               >
-                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
                                   <path
                                     fillRule="evenodd"
                                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -604,7 +717,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
                         id="chat-input"
                         className="field-sizing-content relative h-full min-h-fit w-full min-w-full resize-none border-none bg-transparent text-base outline-none disabled:cursor-not-allowed dark:placeholder:text-white/70"
                         placeholder={
-                          !isOnline ? t("Not available offline (yet).", { defaultValue: "Not available offline (yet)." }) : placeholder || t("How can I help you today?")
+                          !isOnline
+                            ? t("Not available offline (yet).", {
+                                defaultValue: "Not available offline (yet).",
+                              })
+                            : placeholder || t("How can I help you today?")
                         }
                         value={prompt}
                         disabled={isLowBalance || !isOnline}
@@ -618,7 +735,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
                     </div>
                   </div>
 
-                  <div className="mx-0.5 mt-1 mb-2.5 flex max-w-full justify-between" dir="ltr">
+                  <div
+                    className="mx-0.5 mt-1 mb-2.5 flex max-w-full justify-between"
+                    dir="ltr"
+                  >
                     <div className="ml-1 flex max-w-[80%] flex-1 items-center gap-0.5 self-end">
                       {!toolsDisabled && (
                         <>
@@ -647,14 +767,20 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             </button>
                           </div>
                           <div className="scrollbar-none flex flex-1 items-center gap-1 overflow-x-auto">
-                            {toolServers.length + selectedToolIds.length > 0 && (
+                            {toolServers.length + selectedToolIds.length >
+                              0 && (
                               <button
                                 className="flex translate-y-[0.5px] items-center gap-1 self-center rounded-lg p-1 text-muted-foreground transition hover:text-muted-foreground/80"
                                 aria-label="Available Tools"
                                 type="button"
                                 onClick={() => setShowTools(!showTools)}
                               >
-                                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg
+                                  className="size-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
                                   <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -678,34 +804,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                       )}
                     </div>
 
-                    {(taskIds && taskIds.length > 0) ||
-                    (history?.currentId && history.messages?.[history.currentId]?.done !== true) ? (
-                      <div className="mr-1 flex shrink-0 space-x-1 self-end">
-                        <Button size="icon" onClick={stopResponse} className="size-10">
-                          <StopMessageIcon className="size-5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
-                        'cursor-not-allowed!': disabledSendButton,
-                      })}>
-                        <Button
-                          id="send-message-button"
-                          className={cn("size-10 rounded-full")}
-                          type="submit"
-                          title={isMessageCompleted ? "Send" : "Stop"}
-                          disabled={disabledSendButton || !isOnline}
-                          size="icon"
-                        >
-                          {isMessageCompleted ? (
-                            <SendMessageIcon className="size-5" />
-                          ) : (
-                            // TODO: stop message
-                            <StopMessageIcon className="size-5" />
-                          )}
-                        </Button>
-                      </div>
-                    )}
+                    {renderSendButton()}
                   </div>
                 </div>
               </form>
@@ -713,14 +812,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </div>
         </div>
       </div>
-  
-      <AlertDialog open={showLowBalanceAlert} onOpenChange={setShowLowBalanceAlert}>
+
+      <AlertDialog
+        open={showLowBalanceAlert}
+        onOpenChange={setShowLowBalanceAlert}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Insufficient Balance</AlertDialogTitle>
             <AlertDialogDescription>
-              To use Private Chat, your NEAR account must have at least {MIN_NEAR_BALANCE} NEAR.
-              Please add funds to your wallet to continue.
+              To use Private Chat, your NEAR account must have at least{" "}
+              {MIN_NEAR_BALANCE} NEAR. Please add funds to your wallet to
+              continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -729,7 +832,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
               onClick={async () => {
                 const status = await refetchBalance();
                 if (!status) return;
-                toast.success("Balance updated. Private Chat is now available.");
+                toast.success(
+                  "Balance updated. Private Chat is now available.",
+                );
                 setShowLowBalanceAlert(false);
               }}
               disabled={checkingBalance}
