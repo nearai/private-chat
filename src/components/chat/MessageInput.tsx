@@ -682,7 +682,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                                     clipRule="evenodd"
                                   />
                                 </svg>
-                                <span className="text-sm">{file.type}</span>
+                                <span className="text-sm">{file.name || file.type}</span>
                               </div>
                               <button
                                 onClick={() => removeFile(file.id)}
