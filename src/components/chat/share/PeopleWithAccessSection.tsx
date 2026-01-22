@@ -74,6 +74,8 @@ export const PeopleWithAccessSection = ({
             const isDeleting = pendingDeleteId === share.id;
             const isCurrentUser = share.share_type === "direct" &&
               share.recipient?.value?.toLowerCase() === currentUserEmail;
+            
+            if (!info) return null;
 
             return (
               <div

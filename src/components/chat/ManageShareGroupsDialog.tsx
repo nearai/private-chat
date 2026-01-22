@@ -17,7 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { cn, generateId } from "@/lib";
 import type { ShareGroup, ShareRecipient } from "@/types";
-import { createRecipientInput, type RecipientInputValue, ShareRecipientInputs } from "./ShareRecipientInputs";
+import {
+  createRecipientInput,
+  isValidEmail,
+  isValidNearAccount,
+  type RecipientInputValue,
+  ShareRecipientInputs,
+} from "./ShareRecipientInputs";
 
 interface ManageShareGroupsDialogProps {
   open: boolean;
@@ -48,6 +54,18 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
   const isSaving = createGroup.isPending || updateGroup.isPending;
   const isDeleting = deleteGroup.isPending;
 
+  const isFormValid = useMemo(() => {
+    if (!name.trim()) return false;
+    const activeMembers = members.filter(m => m.value.trim().length > 0);
+    if (!activeMembers.length) return false;
+    return activeMembers.every(member => {
+      const value = member.value.trim();
+      if (member.kind === "email") return isValidEmail(value);
+      if (member.kind === "near_account") return isValidNearAccount(value);
+      return false;
+    });
+  }, [name, members]);
+
   useEffect(() => {
     if (editingGroup) {
       setName(editingGroup.name);
@@ -62,6 +80,17 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
     const payloadMembers = members
       .map((member) => ({ kind: member.kind, value: member.value.trim() }))
       .filter((member) => member.value.length > 0);
+
+    const invalidMember = payloadMembers.find((member) => {
+      if (member.kind === "email") return !isValidEmail(member.value);
+      if (member.kind === "near_account") return !isValidNearAccount(member.value);
+      return false;
+    });
+
+    if (invalidMember) {
+      toast.error(`Invalid ${invalidMember.kind === "email" ? "email" : "NEAR account"}: ${invalidMember.value}`);
+      return;
+    }
 
     if (!name.trim()) {
       toast.error("Group name is required");
@@ -183,7 +212,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   Cancel edit
                 </Button>
               )}
-              <Button type="button" onClick={handleSubmit} disabled={isSaving}>
+              <Button type="button" onClick={handleSubmit} disabled={isSaving || !isFormValid}>
                 {editingGroup ? "Save changes" : "Create group"}
               </Button>
             </DialogFooter>

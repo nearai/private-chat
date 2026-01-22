@@ -4,6 +4,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn, generateId } from "@/lib";
 import type { ShareRecipientKind } from "@/types";
 
+export const isValidEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+export const isValidNearAccount = (account: string) => {
+  if (account.length < 2 || account.length > 64) return false;
+  return /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/.test(account);
+};
+
 export type RecipientInputValue = {
   id: string;
   kind: ShareRecipientKind;
@@ -46,7 +55,10 @@ export const ShareRecipientInputs = ({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {recipients.map((recipient, index) => (
+      {recipients.map((recipient, index) => {
+        const isValid = !recipient.value || (recipient.kind === "email" ? isValidEmail(recipient.value) : isValidNearAccount(recipient.value));
+
+        return (
         <div
           key={recipient.id}
           className="flex flex-col gap-2 rounded-2xl border border-border/80 p-3 md:flex-row md:items-center"
@@ -69,10 +81,15 @@ export const ShareRecipientInputs = ({
               value={recipient.value}
               onChange={(event) => updateRecipient(recipient.id, { value: event.target.value })}
               placeholder={placeholder ?? (recipient.kind === "near_account" ? "example.near" : "person@example.com")}
-              className="flex-1 rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-0"
+              className={cn(
+                "flex-1 rounded-xl border bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-0",
+                isValid 
+                  ? "border-border/70 focus-visible:ring-foreground/30" 
+                  : "border-destructive focus-visible:ring-destructive/30"
+              )}
             />
           </div>
-          {allowMultiple && (
+          {allowMultiple && recipients.length > 1 && (
             <Button
               variant="ghost"
               size="icon"
@@ -84,9 +101,9 @@ export const ShareRecipientInputs = ({
               <TrashIcon className="size-4" />
             </Button>
           )}
-          {!allowMultiple && index === recipients.length - 1 && <div className="hidden" />}
+          {(!allowMultiple || recipients.length === 1) && index === recipients.length - 1 && <div className="hidden" />}
         </div>
-      ))}
+      ); })}
       {allowMultiple && (
         <Button
           variant="ghost"
