@@ -264,6 +264,7 @@ export default function FileDialog({
                             ? `${obj.url}/content`
                             : `${obj.url}`,
                           "_blank",
+                          "noopener,noreferrer",
                         );
                         return;
                       }
