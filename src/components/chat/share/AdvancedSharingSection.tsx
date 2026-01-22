@@ -6,7 +6,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
-import type { ShareGroup, SharePermission } from "@/types";
+import type { ConversationShareInfo, ShareGroup, SharePermission } from "@/types";
 
 type AdvancedMode = "group" | "organization" | null;
 
@@ -20,6 +20,7 @@ interface AdvancedSharingSectionProps {
   orgPattern: string;
   setOrgPattern: (value: string) => void;
   shareGroups: ShareGroup[];
+  peopleShares: ConversationShareInfo[];
   permission: SharePermission;
   isPending: boolean;
   onAdvancedShare: () => Promise<void>;
@@ -36,11 +37,17 @@ export const AdvancedSharingSection = ({
   orgPattern,
   setOrgPattern,
   shareGroups,
+  peopleShares,
   isPending,
   onAdvancedShare,
   onManageGroups,
 }: AdvancedSharingSectionProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
+  const availableShareGroups = shareGroups.filter((group =>
+    !peopleShares.some(share =>
+      share.share_type === "group" && share.group_id === group.id
+    )
+  ));
 
   return (
     <div className="border-border/50 border-t pt-2">
@@ -51,7 +58,7 @@ export const AdvancedSharingSection = ({
         <ChevronDownIcon
           className={cn(
             "size-4 transition-transform",
-            showAdvanced && "rotate-180"
+            showAdvanced && "rotate-180",
           )}
         />
         {t("Advanced sharing options")}
@@ -62,34 +69,44 @@ export const AdvancedSharingSection = ({
           {/* Advanced option buttons */}
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => setAdvancedMode(advancedMode === "group" ? null : "group")}
+              onClick={() =>
+                setAdvancedMode(advancedMode === "group" ? null : "group")
+              }
               className={cn(
                 "flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
                 advancedMode === "group"
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/30"
+                  : "border-border hover:border-primary/50 hover:bg-muted/30",
               )}
             >
               <UserGroupIcon className="size-5 shrink-0 text-muted-foreground" />
               <div>
                 <p className="font-medium text-sm">{t("Share with group")}</p>
-                <p className="text-muted-foreground text-xs">{t("Reuse saved lists")}</p>
+                <p className="text-muted-foreground text-xs">
+                  {t("Reuse saved lists")}
+                </p>
               </div>
             </button>
 
             <button
-              onClick={() => setAdvancedMode(advancedMode === "organization" ? null : "organization")}
+              onClick={() =>
+                setAdvancedMode(
+                  advancedMode === "organization" ? null : "organization",
+                )
+              }
               className={cn(
                 "flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
                 advancedMode === "organization"
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/30"
+                  : "border-border hover:border-primary/50 hover:bg-muted/30",
               )}
             >
               <BuildingOfficeIcon className="size-5 shrink-0 text-muted-foreground" />
               <div>
                 <p className="font-medium text-sm">{t("Organization")}</p>
-                <p className="text-muted-foreground text-xs">{t("By email domain")}</p>
+                <p className="text-muted-foreground text-xs">
+                  {t("By email domain")}
+                </p>
               </div>
             </button>
           </div>
@@ -109,9 +126,11 @@ export const AdvancedSharingSection = ({
                 </Button>
               </div>
 
-              {shareGroups.length === 0 ? (
+              {availableShareGroups.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  {t("No groups yet. Create one to save frequent collaborators.")}
+                  {t(
+                    "No groups yet. Create one to save frequent collaborators.",
+                  )}
                 </p>
               ) : (
                 <>
@@ -120,18 +139,23 @@ export const AdvancedSharingSection = ({
                     onChange={(e) => setSelectedGroupId(e.target.value)}
                     className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    {shareGroups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name} ({t("{{count}} members", { count: group.members.length })})
-                      </option>
-                    ))}
+                    {availableShareGroups
+                      .map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name} (
+                          {t("{{count}} members", {
+                            count: group.members.length,
+                          })}
+                          )
+                        </option>
+                      ))}
                   </select>
                   <Button
                     onClick={onAdvancedShare}
                     disabled={isPending}
                     className="w-full rounded-lg"
                   >
-                    {t("Share with group")}
+                    {isPending ? t("Sharing...") : t("Share with group")}
                   </Button>
                 </>
               )}
@@ -142,7 +166,9 @@ export const AdvancedSharingSection = ({
           {advancedMode === "organization" && (
             <div className="space-y-3 rounded-xl border border-border/50 bg-muted/30 p-4">
               <div>
-                <p className="mb-1 font-medium text-sm">{t("Email domain pattern")}</p>
+                <p className="mb-1 font-medium text-sm">
+                  {t("Email domain pattern")}
+                </p>
                 <p className="text-muted-foreground text-xs">
                   {t("Anyone with a matching email address will have access")}
                 </p>

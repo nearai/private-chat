@@ -187,11 +187,13 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
         <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="text-xl">
-              {canShare ? t("Share this conversation") : t("Conversation access")}
+              {canShare
+                ? t("Share this conversation")
+                : t("Conversation access")}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 px-6 pb-6">
+          <div className="max-h-[80vh] space-y-6 overflow-y-auto px-6 pb-6">
             {/* Main invite section - for users who can share */}
             {canShare && conversationId && (
               <InviteSection
@@ -207,7 +209,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
             )}
 
             {/* Copy link section - available to everyone */}
-            {conversationId && <CopyLinkSection conversationId={conversationId} />}
+            {conversationId && (
+              <CopyLinkSection conversationId={conversationId} />
+            )}
 
             {/* Non-sharer info message */}
             {!canShare && !isSharesLoading && (
@@ -218,7 +222,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm">{t("Shared with you")}</p>
                   <p className="text-muted-foreground text-xs">
-                    {t("You have access to this conversation. Only the owner can manage sharing.")}
+                    {t(
+                      "You have access to this conversation. Only the owner can manage sharing.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -259,6 +265,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
                 orgPattern={orgPattern}
                 setOrgPattern={setOrgPattern}
                 shareGroups={shareGroups}
+                peopleShares={peopleShares}
                 permission={permission}
                 isPending={createShare.isPending}
                 onAdvancedShare={handleAdvancedShare}
