@@ -144,14 +144,19 @@ export default function FileDialog({
       <DialogTrigger
         className={cn(
           "group relative flex w-60 items-center gap-1 overflow-hidden bg-card p-1.5 text-left",
-          smallView ? "rounded-xl" : "rounded-2xl"
+          smallView ? "rounded-xl" : "rounded-2xl",
         )}
         type="button"
       >
         {!smallView && (
           <div className="rounded-xl bg-black/20 p-3 dark:bg-white/10">
             {!loading ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="size-5"
+              >
                 <path
                   fill-rule="evenodd"
                   d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H8.25Z"
@@ -173,7 +178,11 @@ export default function FileDialog({
 
             <div className="line-clamp-1 flex justify-between text-gray-500 text-xs">
               {renderContent()}
-              {fileData?.bytes && <span className="capitalize">{formatFileSize(fileData.bytes)}</span>}
+              {fileData?.bytes && (
+                <span className="capitalize">
+                  {formatFileSize(fileData.bytes)}
+                </span>
+              )}
             </div>
           </div>
         ) : (
@@ -185,8 +194,12 @@ export default function FileDialog({
                     <Spinner className="size-4" />
                   </div>
                 )}
-                <div className="line-clamp-1 flex-1 font-medium">{decodeString(fileData?.filename ?? "")}</div>
-                <div className="shrink-0 text-gray-500 text-xs capitalize">{formatFileSize(fileData?.bytes ?? 0)}</div>
+                <div className="line-clamp-1 flex-1 font-medium">
+                  {decodeString(fileData?.filename ?? "")}
+                </div>
+                <div className="shrink-0 text-gray-500 text-xs capitalize">
+                  {formatFileSize(fileData?.bytes ?? 0)}
+                </div>
               </div>
             </div>
           </Tooltip>
@@ -201,7 +214,12 @@ export default function FileDialog({
                 onDismiss();
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+              >
                 <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
               </svg>
             </button>
@@ -216,7 +234,8 @@ export default function FileDialog({
                 <div className="font-medium text-lg dark:text-gray-100">
                   <a
                     href="#"
-                    className="line-clamp-1 hover:underline"
+                    title={fileData?.filename ?? "File"}
+                    className="line-clamp-1 break-all hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
 
@@ -234,16 +253,28 @@ export default function FileDialog({
                       }
 
                       // Legacy object with url
-                      if (fc && typeof fc === "object" && "url" in (fc as Record<string, unknown>)) {
+                      if (
+                        fc &&
+                        typeof fc === "object" &&
+                        "url" in (fc as Record<string, unknown>)
+                      ) {
                         const obj = fc as { url: string; type?: string };
-                        window.open(obj.type === "file" ? `${obj.url}/content` : `${obj.url}`, "_blank");
+                        window.open(
+                          obj.type === "file"
+                            ? `${obj.url}/content`
+                            : `${obj.url}`,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
                         return;
                       }
 
                       // Fallback: JSON download of unknown object
                       if (fc && typeof fc === "object") {
                         const jsonString = JSON.stringify(fc, null, 2);
-                        const blob = new Blob([jsonString], { type: "application/json" });
+                        const blob = new Blob([jsonString], {
+                          type: "application/json",
+                        });
                         const url = URL.createObjectURL(blob);
 
                         const a = document.createElement("a");
@@ -267,7 +298,10 @@ export default function FileDialog({
                 <div className="flex w-full flex-wrap gap-1 text-gray-500 text-sm">
                   {fileData?.bytes && (
                     <>
-                      <div className="shrink-0 capitalize">{formatFileSize(fileData.bytes)}</div>•
+                      <div className="shrink-0 capitalize">
+                        {formatFileSize(fileData.bytes)}
+                      </div>
+                      •
                     </>
                   )}
                   {isFileContentLoading ? (
