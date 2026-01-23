@@ -148,7 +148,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
               <p className="font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wider">Your Groups</p>
               {isLoading && <Spinner className="size-3" />}
             </div>
-            <div className="max-h-[50vh] space-y-1 overflow-y-auto rounded-2xl border border-border/40 bg-muted/10 p-1.5">
+            <div className="max-h-[50vh] space-y-2 overflow-y-auto rounded-2xl border border-border/20 bg-muted/20 p-2">
               {currentGroups.length === 0 && (
                 <p className="text-muted-foreground text-sm">No groups yet. Create one to reuse recipients.</p>
               )}
@@ -160,8 +160,8 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   className={cn(
                     "w-full rounded-xl border border-transparent px-3 py-2.5 text-left transition-all duration-200",
                     editingGroup?.id === group.id
-                      ? "translate-x-1 bg-background shadow-md ring-1 ring-border/50"
-                      : "hover:bg-foreground/5"
+                      ? "bg-background shadow-xs ring-1 ring-border/50"
+                      : "hover:bg-foreground/5 hover:text-foreground"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -185,7 +185,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-border/70 p-4">
+          <div className="rounded-2xl border border-border/40 p-4">
             <div className="space-y-3">
               <div>
                 <label className="ml-1 font-medium text-muted-foreground text-xs" htmlFor="group-name">
@@ -197,7 +197,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="My collaborators"
-                  className="mt-1.5 w-full rounded-xl border border-border/50 bg-background/50 px-3 py-2 text-sm outline-none transition-all focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10"
+                  className="mt-1.5 w-full rounded-xl border border-border/30 bg-muted/10 px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/20 focus:bg-background focus:ring-2 focus:ring-primary/5"
                 />
               </div>
               <div className="pt-2">
