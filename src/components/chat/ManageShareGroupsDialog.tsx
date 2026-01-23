@@ -1,4 +1,4 @@
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useCreateShareGroup } from "@/api/sharing/useCreateShareGroup";
@@ -135,22 +135,30 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto lg:max-w-3xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto lg:max-w-lg">
         <DialogHeader className="pb-2">
           <DialogTitle className="font-bold text-xl tracking-tight">Manage Share Groups</DialogTitle>
-          <DialogDescription className="text-muted-foreground/80">
+          <DialogDescription className="w-full text-muted-foreground/80">
             Create and organize reusable groups for easier sharing.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 md:grid-cols-[320px,1fr]">
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <p className="font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wider">Your Groups</p>
+              <p className="pl-1 font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wider">Your Groups</p>
               {isLoading && <Spinner className="size-3" />}
             </div>
-            <div className="max-h-[50vh] space-y-2 overflow-y-auto rounded-2xl border border-border/20 bg-muted/20 p-2">
+            <div className="max-h-[50vh] space-y-2 overflow-y-auto rounded-2xl border border-border/40 bg-background/50 p-2">
               {currentGroups.length === 0 && (
-                <p className="text-muted-foreground text-sm">No groups yet. Create one to reuse recipients.</p>
+                <div className="fade-in zoom-in-95 flex animate-in flex-col items-center justify-center p-4 text-center duration-500">
+                  <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-background shadow-xs ring-1 ring-border/30">
+                    <UsersIcon className="size-6 text-primary/40" />
+                  </div>
+                  <h3 className="mb-1 font-medium text-foreground text-sm">No share groups</h3>
+                  <p className="max-w-[220px] text-muted-foreground text-xs leading-relaxed">
+                    Create a group to easily share chats with your team or friends.
+                  </p>
+                </div>
               )}
               {currentGroups.map((group) => (
                 <button
@@ -197,7 +205,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="My collaborators"
-                  className="mt-1.5 w-full rounded-xl border border-border/30 bg-muted/10 px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/20 focus:bg-background focus:ring-2 focus:ring-primary/5"
+                  className="mt-1.5 w-full rounded-xl border border-border/40 bg-background px-3 py-2 text-sm shadow-xs outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/20 focus:ring-2 focus:ring-primary/5"
                 />
               </div>
               <div className="pt-2">

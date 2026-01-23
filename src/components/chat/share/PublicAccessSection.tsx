@@ -7,12 +7,14 @@ interface PublicAccessSectionProps {
   publicShare: ConversationShareInfo | undefined;
   isPending: boolean;
   onCreatePublicLink: () => Promise<void>;
+  onRemovePublicLink: () => Promise<void>;
 }
 
 export const PublicAccessSection = ({
   publicShare,
   isPending,
   onCreatePublicLink,
+  onRemovePublicLink,
 }: PublicAccessSectionProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
 
@@ -32,16 +34,22 @@ export const PublicAccessSection = ({
         </p>
       </div>
       {publicShare ? (
-        <span className="rounded-md bg-green/15 px-2 py-1 font-medium text-green-dark text-xs dark:text-green">
-          {t("Enabled")}
-        </span>
+        <Button
+          variant="secondary"
+          size="small"
+          onClick={onRemovePublicLink}
+          disabled={isPending}
+          className="h-8 rounded-lg px-3 font-medium text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive"
+        >
+          {t("Disable")}
+        </Button>
       ) : (
         <Button
           variant="secondary"
           size="small"
           onClick={onCreatePublicLink}
           disabled={isPending}
-          className="rounded-lg border border-border/60 transition-all hover:border-foreground/30 hover:bg-foreground/5"
+          className="h-8 rounded-lg border border-border/60 transition-all hover:border-foreground/30 hover:bg-foreground/5"
         >
           {t("Enable")}
         </Button>

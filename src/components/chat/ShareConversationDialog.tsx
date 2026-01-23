@@ -18,6 +18,11 @@ import type {
 import { ManageShareGroupsDialog } from "./ManageShareGroupsDialog";
 
 import {
+  createRecipientInput,
+  type RecipientInputValue,
+} from "./ShareRecipientInputs";
+
+import {
   AdvancedSharingSection,
   CopyLinkSection,
   InviteSection,
@@ -49,7 +54,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   const currentUserName = userData?.user?.name || "";
 
   // Form state
-  const [emailInput, setEmailInput] = useState("");
+  const [recipients, setRecipients] = useState<RecipientInputValue[]>([createRecipientInput()]);
   const [permission, setPermission] = useState<SharePermission>("read");
   const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -63,7 +68,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setEmailInput("");
+      setRecipients([createRecipientInput()]);
       setPermission("read");
       setShowAdvanced(false);
       setAdvancedMode(null);
@@ -92,7 +97,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   const peopleShares = useMemo(() => shares.filter((s) => s.share_type !== "public"), [shares]);
 
   // Handlers
-  const handleInvite = async (recipients: ShareRecipient[], perm: SharePermission) => {
+  const handleInvite = async (recipientsToInvite: ShareRecipient[], perm: SharePermission) => {
     if (!conversationId) return;
 
     try {
@@ -102,11 +107,11 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
           permission: perm,
           target: {
             mode: "direct",
-            recipients,
+            recipients: recipientsToInvite,
           },
         },
       });
-      toast.success(recipients.length === 1 ? t("Invited {{email}}", { email: recipients[0].value }) : t("Invited {{count}} people", { count: recipients.length }));
+      toast.success(recipientsToInvite.length === 1 ? t("Invited {{email}}", { email: recipientsToInvite[0].value }) : t("Invited {{count}} people", { count: recipientsToInvite.length }));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to send invite"));
     }
@@ -197,8 +202,8 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
             {/* Main invite section - for users who can share */}
             {canShare && conversationId && (
               <InviteSection
-                emailInput={emailInput}
-                setEmailInput={setEmailInput}
+                recipients={recipients}
+                onRecipientsChange={setRecipients}
                 permission={permission}
                 setPermission={setPermission}
                 currentUserEmail={currentUserEmail}
@@ -234,8 +239,13 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
             {canShare && (
               <PublicAccessSection
                 publicShare={publicShare}
-                isPending={createShare.isPending}
+                isPending={createShare.isPending || deleteShare.isPending || isSharesLoading}
                 onCreatePublicLink={handleCreatePublicLink}
+                onRemovePublicLink={async () => {
+                  if (publicShare) {
+                    await handleRemoveAccess(publicShare);
+                  }
+                }}
               />
             )}
 

@@ -10,10 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { SharePermission, ShareRecipient } from "@/types";
+import {
+  createRecipientInput,
+  isValidEmail,
+  isValidNearAccount,
+  type RecipientInputValue,
+  ShareRecipientInputs,
+} from "../ShareRecipientInputs";
 
 interface InviteSectionProps {
-  emailInput: string;
-  setEmailInput: (value: string) => void;
+  recipients: RecipientInputValue[];
+  onRecipientsChange: (recipients: RecipientInputValue[]) => void;
   permission: SharePermission;
   setPermission: (value: SharePermission) => void;
   currentUserEmail: string;
@@ -23,8 +30,8 @@ interface InviteSectionProps {
 }
 
 export const InviteSection = ({
-  emailInput,
-  setEmailInput,
+  recipients,
+  onRecipientsChange,
   permission,
   setPermission,
   currentUserEmail,
@@ -34,86 +41,89 @@ export const InviteSection = ({
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const handleInvite = async () => {
-    const emails = emailInput
-      .split(/[,;\s]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.length > 0);
+    // Filter out empty values
+    const validRecipients = recipients.filter((r) => r.value.trim().length > 0);
 
-    // Deduplicate emails
-    const uniqueEmails = [...new Set(emails)];
-
-    if (uniqueEmails.length === 0) {
-      toast.error(t("Please enter an email address"));
+    if (validRecipients.length === 0) {
+      toast.error(t("Please enter at least one recipient"));
       return;
     }
 
-    // Validate emails
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const nearRegex = /^[a-z0-9_-]+\.near$/i;
+    // Check validation of each recipient
+    const invalidRecipient = validRecipients.find((r) => {
+      if (r.kind === "email") return !isValidEmail(r.value);
+      if (r.kind === "near_account") return !isValidNearAccount(r.value);
+      return false;
+    });
 
-    // Check if trying to share with self (the owner)
-    const selfEmails = uniqueEmails.filter((e) => e === currentUserEmail);
-    if (selfEmails.length > 0) {
+    if (invalidRecipient) {
+      toast.error(
+        t("Invalid {{kind}}: {{value}}", {
+          kind: invalidRecipient.kind === "email" ? "email" : "NEAR account",
+          value: invalidRecipient.value,
+        })
+      );
+      return;
+    }
+
+    // Check if trying to share with self
+    const selfRecipient = validRecipients.find((r) => r.value.toLowerCase() === currentUserEmail.toLowerCase());
+    if (selfRecipient) {
       toast.error(t("You can't share a conversation with yourself"));
       return;
     }
 
-    const recipients: ShareRecipient[] = uniqueEmails.map((value) => ({
-      kind: nearRegex.test(value) ? "near_account" : "email",
-      value,
+    // Convert to API format
+    const apiRecipients: ShareRecipient[] = validRecipients.map((r) => ({
+      kind: r.kind,
+      value: r.value.trim(),
     }));
 
-    const invalidEmails = recipients.filter((r) => r.kind === "email" && !emailRegex.test(r.value));
-
-    if (invalidEmails.length > 0) {
-      toast.error(t("Invalid email: {{email}}", { email: invalidEmails[0].value }));
-      return;
-    }
-
-    await onInvite(recipients, permission);
-    setEmailInput("");
+    await onInvite(apiRecipients, permission);
+    onRecipientsChange([createRecipientInput()]);
   };
+
+  const hasContent = recipients.some((r) => r.value.trim().length > 0);
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleInvite()}
-            placeholder={t("Add people by email or NEAR account")}
-            className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm transition-all placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+      <div className="flex flex-col gap-1">
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 gap-1.5 rounded-lg font-normal text-muted-foreground text-xs dark:hover:bg-muted/0">
+                {permission === "write" ? t("Can edit") : t("Can view")}
+                <ChevronDownIcon className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl">
+              <DropdownMenuItem onClick={() => setPermission("read")} className="rounded-lg">
+                <div className="flex flex-col">
+                  <span>{t("Can view")}</span>
+                  <span className="text-muted-foreground text-xs">{t("Read-only access")}</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPermission("write")} className="rounded-lg">
+                <div className="flex flex-col">
+                  <span>{t("Can edit")}</span>
+                  <span className="text-muted-foreground text-xs">{t("Can add messages")}</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" className="h-11 gap-1.5 rounded-xl border border-border px-3 font-normal">
-              {permission === "write" ? t("Can edit") : t("Can view")}
-              <ChevronDownIcon className="size-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="rounded-xl">
-            <DropdownMenuItem onClick={() => setPermission("read")} className="rounded-lg">
-              <div className="flex flex-col">
-                <span>{t("Can view")}</span>
-                <span className="text-muted-foreground text-xs">{t("Read-only access")}</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setPermission("write")} className="rounded-lg">
-              <div className="flex flex-col">
-                <span>{t("Can edit")}</span>
-                <span className="text-muted-foreground text-xs">{t("Can add messages")}</span>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ShareRecipientInputs
+          recipients={recipients}
+          onChange={onRecipientsChange}
+          allowMultiple={true}
+          className="w-full"
+          placeholder={t("Add people by email or NEAR account")}
+        />
       </div>
 
       <Button
         onClick={handleInvite}
-        disabled={!emailInput.trim() || isPending}
+        disabled={!hasContent || isPending}
         className="h-11 w-full rounded-xl bg-primary font-medium text-primary-foreground hover:bg-primary/90"
       >
         {isPending ? (
