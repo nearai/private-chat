@@ -29,6 +29,7 @@ export default defineConfig({
           /^\/docs/,
           /^\/v1\//,
           /^\/api\//,
+          /^\/auth\//,
         ],
       },
       manifest: {
