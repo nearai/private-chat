@@ -1,5 +1,5 @@
 import { UserGroupIcon } from "@heroicons/react/24/outline";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
@@ -43,6 +43,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   const { data: shareGroups = [] } = useShareGroups();
   const createShare = useCreateConversationShare();
   const deleteShare = useDeleteConversationShare();
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   // Extract is_owner, can_share, and shares from the response
   const isOwner = sharesData?.is_owner ?? false;
@@ -186,6 +187,14 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
     }
   };
 
+  useEffect(() => {
+    if (!containerRef.current || !showAdvanced) return
+    setTimeout(() => {
+      if (!containerRef.current) return
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }, 300);
+  }, [advancedMode, showAdvanced])
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -198,7 +207,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
             </DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-[80vh] space-y-6 overflow-y-auto px-6 pb-6">
+          <div ref={containerRef} className="max-h-[80vh] space-y-6 overflow-y-auto px-6 pb-6">
             {/* Main invite section - for users who can share */}
             {canShare && conversationId && (
               <InviteSection
@@ -279,7 +288,9 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
                 permission={permission}
                 isPending={createShare.isPending}
                 onAdvancedShare={handleAdvancedShare}
-                onManageGroups={() => setIsManageGroupsOpen(true)}
+                onManageGroups={() => {
+                  setIsManageGroupsOpen(true)
+                }}
               />
             )}
           </div>

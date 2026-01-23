@@ -37,17 +37,13 @@ export const AdvancedSharingSection = ({
   orgPattern,
   setOrgPattern,
   shareGroups,
-  peopleShares,
+  // peopleShares,
   isPending,
   onAdvancedShare,
   onManageGroups,
 }: AdvancedSharingSectionProps) => {
   const { t } = useTranslation("translation", { useSuspense: false });
-  const availableShareGroups = shareGroups.filter((group =>
-    !peopleShares.some(share =>
-      share.share_type === "group" && share.group_id === group.id
-    )
-  ));
+  const availableShareGroups = shareGroups;
 
   return (
     <div className="border-border/50 border-t pt-2">
