@@ -24,6 +24,12 @@ export default defineConfig({
       ],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        navigateFallbackDenylist: [
+          // Exclude API endpoints from service worker navigation interception
+          /^\/docs/,
+          /^\/v1\//,
+          /^\/api\//,
+        ],
       },
       manifest: {
         name: "NEAR AI",
