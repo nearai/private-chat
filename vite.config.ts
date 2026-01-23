@@ -31,6 +31,7 @@ export default defineConfig({
           /^\/api\//,
           /^\/auth\//,
         ],
+        cleanupOutdatedCaches: true,
       },
       manifest: {
         name: "NEAR AI",
