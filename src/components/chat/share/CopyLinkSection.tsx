@@ -28,8 +28,8 @@ export const CopyLinkSection = ({ conversationId }: CopyLinkSectionProps) => {
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/50 p-3">
-      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+    <div className="flex items-center gap-3 rounded-xl border border-border/40 p-3 transition-colors hover:bg-muted/20">
+      <div className="flex size-10 items-center justify-center rounded-full bg-foreground/10 text-foreground/70">
         <LinkIcon className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -43,18 +43,18 @@ export const CopyLinkSection = ({ conversationId }: CopyLinkSectionProps) => {
         size="small"
         onClick={handleCopyLink}
         className={cn(
-          "rounded-lg border border-border transition-all",
-          linkCopied && "border-green-500/30 bg-green-500/10 text-green-600"
+          "rounded-lg border border-border/60 px-3! transition-all hover:border-foreground/30 hover:bg-foreground/5",
+          linkCopied && "border-green/50 bg-green/10 text-green-dark dark:text-green"
         )}
       >
         {linkCopied ? (
           <>
-            <CheckIcon className="mr-1.5 size-4" />
+            <CheckIcon className="mr-0.5 size-4" />
             {t("Copied")}
           </>
         ) : (
           <>
-            <LinkIcon className="mr-1.5 size-4" />
+            <LinkIcon className="mr-0.5 size-4" />
             {t("Copy link")}
           </>
         )}

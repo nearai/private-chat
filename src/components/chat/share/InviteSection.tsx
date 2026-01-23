@@ -114,7 +114,7 @@ export const InviteSection = ({
       <Button
         onClick={handleInvite}
         disabled={!emailInput.trim() || isPending}
-        className="h-11 w-full rounded-xl font-medium"
+        className="h-11 w-full rounded-xl bg-primary font-medium text-primary-foreground hover:bg-primary/90"
       >
         {isPending ? (
           <Spinner className="size-4" />

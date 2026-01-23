@@ -136,17 +136,19 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto lg:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Manage Share Groups</DialogTitle>
-          <DialogDescription>Organize frequent collaborators into reusable groups.</DialogDescription>
+        <DialogHeader className="pb-2">
+          <DialogTitle className="font-bold text-xl tracking-tight">Manage Share Groups</DialogTitle>
+          <DialogDescription className="text-muted-foreground/80">
+            Create and organize reusable groups for easier sharing.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 md:grid-cols-[320px,1fr]">
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-muted-foreground text-sm">Your Groups</p>
-              {isLoading && <Spinner className="size-4" />}
+            <div className="flex items-center justify-between px-1">
+              <p className="font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wider">Your Groups</p>
+              {isLoading && <Spinner className="size-3" />}
             </div>
-            <div className="space-y-2 rounded-2xl border border-border/70 p-2">
+            <div className="max-h-[50vh] space-y-1 overflow-y-auto rounded-2xl border border-border/40 bg-muted/10 p-1.5">
               {currentGroups.length === 0 && (
                 <p className="text-muted-foreground text-sm">No groups yet. Create one to reuse recipients.</p>
               )}
@@ -156,8 +158,10 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   key={group.id}
                   onClick={() => setEditingGroup(group)}
                   className={cn(
-                    "w-full rounded-xl border border-transparent px-3 py-2 text-left text-sm transition hover:border-border",
-                    editingGroup?.id === group.id ? "bg-secondary/60" : "bg-transparent"
+                    "w-full rounded-xl border border-transparent px-3 py-2.5 text-left transition-all duration-200",
+                    editingGroup?.id === group.id
+                      ? "translate-x-1 bg-background shadow-md ring-1 ring-border/50"
+                      : "hover:bg-foreground/5"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -184,7 +188,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
           <div className="rounded-2xl border border-border/70 p-4">
             <div className="space-y-3">
               <div>
-                <label className="font-medium text-muted-foreground text-sm" htmlFor="group-name">
+                <label className="ml-1 font-medium text-muted-foreground text-xs" htmlFor="group-name">
                   {editingGroup ? "Edit Group Name" : "Group Name"}
                 </label>
                 <input
@@ -193,27 +197,32 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="My collaborators"
-                  className="mt-1 w-full rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:ring-offset-0"
+                  className="mt-1.5 w-full rounded-xl border border-border/50 bg-background/50 px-3 py-2 text-sm outline-none transition-all focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10"
                 />
               </div>
-              <div>
-                <p className="mb-1 font-medium text-muted-foreground text-sm">Members</p>
+              <div className="pt-2">
+                <p className="mb-2 ml-1 font-medium text-muted-foreground text-xs">Members</p>
                 <ShareRecipientInputs recipients={members} onChange={setMembers} allowMultiple />
               </div>
             </div>
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-6 border-border/20 border-t pt-4">
               {editingGroup && (
                 <Button
                   variant="ghost"
                   type="button"
                   onClick={() => setEditingGroup(null)}
-                  className="text-muted-foreground"
+                  className="rounded-xl px-4 text-muted-foreground hover:bg-foreground/5"
                 >
-                  Cancel edit
+                  Cancel
                 </Button>
               )}
-              <Button type="button" onClick={handleSubmit} disabled={isSaving || !isFormValid}>
-                {editingGroup ? "Save changes" : "Create group"}
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSaving || !isFormValid}
+                className="rounded-xl px-8 font-semibold shadow-sm transition-all active:scale-[0.98]"
+              >
+                {editingGroup ? "Save Changes" : "Create Group"}
               </Button>
             </DialogFooter>
           </div>

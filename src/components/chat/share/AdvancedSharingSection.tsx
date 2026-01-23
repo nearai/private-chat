@@ -73,10 +73,8 @@ export const AdvancedSharingSection = ({
                 setAdvancedMode(advancedMode === "group" ? null : "group")
               }
               className={cn(
-                "flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
-                advancedMode === "group"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/30",
+                "flex items-center gap-3 rounded-xl border border-border/40 p-3 text-left transition-all hover:border-muted-foreground/50",
+                advancedMode === "group" && "border-muted-foreground/50",
               )}
             >
               <UserGroupIcon className="size-5 shrink-0 text-muted-foreground" />
@@ -95,10 +93,8 @@ export const AdvancedSharingSection = ({
                 )
               }
               className={cn(
-                "flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
-                advancedMode === "organization"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/30",
+                "flex items-center gap-3 rounded-xl border border-border/40 p-3 text-left transition-all hover:border-muted-foreground/50",
+                advancedMode === "organization" && "border-muted-foreground/50",
               )}
             >
               <BuildingOfficeIcon className="size-5 shrink-0 text-muted-foreground" />
@@ -113,14 +109,14 @@ export const AdvancedSharingSection = ({
 
           {/* Group selection */}
           {advancedMode === "group" && (
-            <div className="space-y-3 rounded-xl border border-border/50 bg-muted/30 p-4">
+            <div className="space-y-3 rounded-xl border border-border/40 p-4">
               <div className="flex items-center justify-between">
                 <p className="font-medium text-sm">{t("Select a group")}</p>
                 <Button
                   variant="ghost"
                   size="small"
                   onClick={onManageGroups}
-                  className="h-7 text-xs"
+                  className="h-7 text-muted-foreground text-xs hover:text-foreground"
                 >
                   {t("Manage groups")}
                 </Button>
@@ -164,7 +160,7 @@ export const AdvancedSharingSection = ({
 
           {/* Organization pattern */}
           {advancedMode === "organization" && (
-            <div className="space-y-3 rounded-xl border border-border/50 bg-muted/30 p-4">
+            <div className="space-y-3 rounded-xl border border-border/40 p-4">
               <div>
                 <p className="mb-1 font-medium text-sm">
                   {t("Email domain pattern")}

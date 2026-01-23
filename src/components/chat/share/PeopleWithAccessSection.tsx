@@ -62,7 +62,7 @@ export const PeopleWithAccessSection = ({
                 <p className="text-muted-foreground text-xs">{currentUserEmail}</p>
               </div>
 
-              <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary text-xs">
+              <span className="rounded-md bg-foreground/10 px-2 py-1 font-medium text-foreground/80 text-xs">
                 {t("Owner")}
               </span>
             </div>
@@ -74,7 +74,7 @@ export const PeopleWithAccessSection = ({
             const isDeleting = pendingDeleteId === share.id;
             const isCurrentUser = share.share_type === "direct" &&
               share.recipient?.value?.toLowerCase() === currentUserEmail;
-            
+
             if (!info) return null;
 
             return (
@@ -104,7 +104,7 @@ export const PeopleWithAccessSection = ({
                   </p>
                 </div>
 
-                <span className="rounded-md bg-muted/50 px-2 py-1 text-muted-foreground text-xs">
+                <span className="rounded-md bg-foreground/5 px-2 py-1 text-muted-foreground text-xs">
                   {share.permission === "write" ? t("Can edit") : t("Can view")}
                 </span>
 
@@ -115,7 +115,7 @@ export const PeopleWithAccessSection = ({
                     onClick={() => onRemoveAccess(share)}
                     disabled={isDeleting}
                     className={cn(
-                      "size-7 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/40",
+                      "size-7 rounded-lg bg-destructive/10 text-destructive/80 hover:bg-destructive/20 hover:text-destructive",
                     )}
                   >
                     {isDeleting ? (

@@ -215,8 +215,8 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
 
             {/* Non-sharer info message */}
             {!canShare && !isSharesLoading && (
-              <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/50 p-3">
-                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <div className="flex items-center gap-3 rounded-xl border border-border/40 p-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-foreground/10 text-foreground/70">
                   <UserGroupIcon className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
