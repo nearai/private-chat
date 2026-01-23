@@ -23,32 +23,11 @@ export default defineConfig({
         "maskable-icon-512x512.png",
       ],
       workbox: {
-        runtimeCaching: [
-          {
-            urlPattern: /^\/(v1|docs|auth)\//,
-            handler: 'NetworkOnly',
-            method: 'GET',
-          },
-          {
-            urlPattern: /^\/(v1|docs|auth)\//,
-            handler: 'NetworkOnly',
-            method: 'POST',
-          },
-          {
-            urlPattern: /^\/(v1|docs|auth)\//,
-            handler: 'NetworkOnly',
-            method: 'PUT',
-          },
-          {
-            urlPattern: /^\/(v1|docs|auth)\//,
-            handler: 'NetworkOnly',
-            method: 'DELETE',
-          },
-        ],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/(v1|docs|auth)\//],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
       },
       manifest: {
         name: "NEAR AI",
