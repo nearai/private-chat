@@ -26,20 +26,13 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        navigateFallback: '/index.html',
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         runtimeCaching: [
           { 
             urlPattern: /^\/v1\/.*/,
             handler: 'NetworkOnly'
           },
-        ],
-        navigateFallbackDenylist: [
-          /^\/docs(\/|$)/,
-          /^\/v1(\/|$)/,
-          /^\/api(\/|$)/,
-          /^\/auth(\/|$)/,
-        ],
+        ]
       },
       manifest: {
         name: "NEAR AI",
