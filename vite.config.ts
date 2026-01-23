@@ -29,10 +29,16 @@ export default defineConfig({
         navigateFallback: '/index.html',
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*near\.ai\/v1\//,
-            handler: 'NetworkOnly',
+          { 
+            urlPattern: /^\/v1\/.*/,
+            handler: 'NetworkOnly'
           },
+        ],
+        navigateFallbackDenylist: [
+          /^\/docs(\/|$)/,
+          /^\/v1(\/|$)/,
+          /^\/api(\/|$)/,
+          /^\/auth(\/|$)/,
         ],
       },
       manifest: {
