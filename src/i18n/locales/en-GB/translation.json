@@ -1381,5 +1381,7 @@
   "Owner": "Owner",
   "Sharing...": "Sharing...",
   "Please enter at least one recipient": "Please enter at least one recipient",
-  "Invalid {{kind}}: {{value}}": "Invalid {{kind}}: {{value}}"
+  "Invalid {{kind}}: {{value}}": "Invalid {{kind}}: {{value}}",
+  "Insufficient balance (needs at least {{min}} NEAR)": "Insufficient balance (needs at least {{min}} NEAR)",
+  "Account not found": "Account not found"
 }

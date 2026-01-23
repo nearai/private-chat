@@ -25,6 +25,7 @@ interface ShareRecipientInputsProps {
   allowMultiple?: boolean;
   className?: string;
   placeholder?: string;
+  errors?: Record<string, string>;
 }
 
 export const createRecipientInput = (kind: ShareRecipientKind = "email"): RecipientInputValue => ({
@@ -39,9 +40,10 @@ export const ShareRecipientInputs = ({
   allowMultiple = true,
   className,
   placeholder,
+  errors = {},
 }: ShareRecipientInputsProps) => {
-  const maxRecipientCount = 5
-  const disabedAddRecipient = recipients.length >= maxRecipientCount
+  const maxRecipientCount = 5;
+  const disabedAddRecipient = recipients.length >= maxRecipientCount;
 
   const updateRecipient = (id: string, updates: Partial<RecipientInputValue>) => {
     onChange(recipients.map((recipient) => (recipient.id === id ? { ...recipient, ...updates } : recipient)));
@@ -53,58 +55,67 @@ export const ShareRecipientInputs = ({
   };
 
   const addRecipient = () => {
-    onChange([...recipients, createRecipientInput()]);
+    const lastKind = recipients[recipients.length - 1]?.kind || "email";
+    onChange([...recipients, createRecipientInput(lastKind)]);
   };
 
   return (
     <div className={cn("space-y-2", className)}>
       {recipients.map((recipient, index) => {
-        const isValid = !recipient.value || (recipient.kind === "email" ? isValidEmail(recipient.value) : isValidNearAccount(recipient.value));
+        const isValid =
+          !recipient.value || (recipient.kind === "email" ? isValidEmail(recipient.value) : isValidNearAccount(recipient.value));
+        const error = errors[recipient.id];
+        const hasError = !!error || !isValid;
 
         return (
-          <div
-            key={recipient.id}
-            className="flex flex-col gap-2 rounded-2xl border border-border/30 bg-muted/10 p-2 transition-all focus-within:bg-background focus-within:shadow-sm focus-within:ring-1 focus-within:ring-border/50 md:flex-row md:items-center"
-          >
-            <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center">
-              <Select
-                value={recipient.kind}
-                onValueChange={(value) => updateRecipient(recipient.id, { kind: value as ShareRecipientKind })}
-              >
-                <SelectTrigger className="h-9 w-full rounded-xl border-border/40 bg-background text-xs md:w-[130px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border border-border/70">
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="near_account">NEAR Account</SelectItem>
-                </SelectContent>
-              </Select>
-              <input
-                type="text"
-                value={recipient.value}
-                onChange={(event) => updateRecipient(recipient.id, { value: event.target.value })}
-                placeholder={placeholder ?? (recipient.kind === "near_account" ? "example.near" : "person@example.com")}
-                className={cn(
-                  "h-9 flex-1 rounded-xl border bg-background px-3 text-sm outline-none transition-all",
-                  isValid
-                    ? "border-border/40 focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10"
-                    : "border-destructive/50 focus:border-destructive"
-                )}
-              />
+          <div key={recipient.id} className="group flex flex-col gap-1">
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-2xl border border-border/30 bg-muted/10 p-2 transition-all focus-within:bg-background focus-within:shadow-sm focus-within:ring-1 focus-within:ring-border/50",
+                hasError && "border-destructive/50 ring-destructive/20 focus-within:border-destructive focus-within:ring-destructive/20"
+              )}
+            >
+              <div className="flex flex-1 flex-col items-center gap-2 sm:flex-row">
+                <Select
+                  value={recipient.kind}
+                  onValueChange={(value) => updateRecipient(recipient.id, { kind: value as ShareRecipientKind })}
+                >
+                  <SelectTrigger className="h-9 w-full rounded-xl border-border/40 bg-background text-xs sm:w-[130px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border border-border/70">
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="near_account">NEAR Account</SelectItem>
+                  </SelectContent>
+                </Select>
+                <input
+                  type="text"
+                  value={recipient.value}
+                  onChange={(event) => updateRecipient(recipient.id, { value: event.target.value })}
+                  placeholder={placeholder ?? (recipient.kind === "near_account" ? "example.near" : "person@example.com")}
+                  className={cn(
+                    "h-9 w-full rounded-xl border bg-background px-3 text-sm outline-none transition-all sm:w-auto sm:flex-1",
+                    isValid && !error
+                      ? "border-border/40 focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10"
+                      : "border-destructive/50 text-destructive placeholder:text-destructive/50 focus:border-destructive focus:ring-1 focus:ring-destructive/20"
+                  )}
+                />
+              </div>
+              {allowMultiple && recipients.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  onClick={() => removeRecipient(recipient.id)}
+                  title="Remove recipient"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <TrashIcon className="size-4" />
+                </Button>
+              )}
+              {(!allowMultiple || recipients.length === 1) && index === recipients.length - 1 && <div className="hidden" />}
             </div>
-            {allowMultiple && recipients.length > 1 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={() => removeRecipient(recipient.id)}
-                title="Remove recipient"
-                className="self-start text-muted-foreground hover:text-foreground"
-              >
-                <TrashIcon className="size-4" />
-              </Button>
-            )}
-            {(!allowMultiple || recipients.length === 1) && index === recipients.length - 1 && <div className="hidden" />}
+            {error && <p className="ml-1 font-medium text-[11px] text-destructive tracking-wide">{error}</p>}
           </div>
         );
       })}
