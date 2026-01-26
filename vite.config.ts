@@ -22,8 +22,16 @@ export default defineConfig({
         "pwa-512x512.png",
         "maskable-icon-512x512.png",
       ],
+      devOptions: {
+        enabled: true,
+      },
       workbox: {
+        disableDevLogs: false,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        navigateFallback: "/",
+        navigateFallbackDenylist: [/^\/v1\//, /^\/docs/],
+        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
+        cleanupOutdatedCaches: true,
       },
       manifest: {
         name: "NEAR AI",
