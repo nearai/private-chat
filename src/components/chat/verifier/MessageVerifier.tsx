@@ -21,6 +21,7 @@ import { extractMessageContent } from "@/types/openai";
 import VerifySignatureDialog from "./VerifySignatureDialog";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useIsOnline } from "@/hooks/useIsOnline";
+import { checkIsImportedConversation } from "@/utils/conversation";
 
 interface MessageVerifierProps {
   conversation?: ConversationInfo;
@@ -53,9 +54,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   const isSelected = useMemo(() => {
     return selectedMessageIdForVerifier === message.chatCompletionId;
   }, [selectedMessageIdForVerifier, message.chatCompletionId]);
-  const isImportedConversation = useMemo(() => {
-    return !!conversation?.metadata?.imported_at;
-  }, [conversation?.metadata?.imported_at]);
+  const isImportedConversation = checkIsImportedConversation(conversation);
 
   const messageRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -310,11 +309,11 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
                   <p className="flex-1">
                     {isOnline
                       ? t("Signature data will show when verification completes.", {
-                          defaultValue: "Signature data will show when verification completes.",
-                        })
+                        defaultValue: "Signature data will show when verification completes.",
+                      })
                       : t("Offline. Signature data will sync when you're back online.", {
-                          defaultValue: "Offline. Signature data will sync when you're back online.",
-                        })}
+                        defaultValue: "Offline. Signature data will sync when you're back online.",
+                      })}
                   </p>
                 </div>
               )}

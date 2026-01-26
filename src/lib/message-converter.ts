@@ -9,16 +9,23 @@ export function convertImportedMessages(
   newMessages: ConversationItem[];
   idMapping?: Record<string, string>;
 } {
-  const importedAtStr = conversation.metadata?.imported_at;
-  if (!importedAtStr) return {
-    newMessages: messages,
-    idMapping: {},
-  };
+  let importedAtStr = conversation.metadata?.imported_at;
+  const cloneFromId = conversation.metadata?.cloned_from_id;
+  if (cloneFromId) {
+    importedAtStr = conversation.created_at.toString();
+  }
+
+  if (!importedAtStr) {
+    return {
+      newMessages: messages,
+      idMapping: {},
+    };
+  }
 
   const importedAt = dayjs(Number(importedAtStr));
   const result = messages.map(m => ({ ...m }));
   const importedIndices: number[] = [];
-  
+
   result.forEach((msg, index) => {
     const msgCreatedAt = dayjs(msg.created_at * 1000);
     if (Math.abs(msgCreatedAt.diff(importedAt, 'second')) < 10) {
