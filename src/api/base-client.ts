@@ -7,7 +7,7 @@ import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { isOfflineError, isOnline } from "@/lib/network";
 import { eventEmitter } from "@/lib/event";
-import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
+import { buildConversationEntry, useConversationStore, type ConversationStoreState } from "@/stores/useConversationStore";
 import type {
   ConversationInfo,
   ConversationModelOutput,
@@ -20,6 +20,7 @@ import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 import { isTauri } from "@/utils/desktop";
+import { generateMockAIResponseID } from "@/lib/utils/mock";
 
 type FetchImplementation = typeof fetch;
 
@@ -301,6 +302,39 @@ export class ApiClient {
       method: "POST",
       signal: abortController.signal,
     };
+    let tempStreamId = "";
+    const updateConversationData = useConversationStore.getState().updateConversation;
+    
+    function cleanupTempStreamId(draft: ConversationStoreState) {
+      if (!tempStreamId) return;
+      draft.conversation!.conversation.data = draft.conversation!.conversation.data?.filter(
+        (item) => item.id !== tempStreamId
+      );
+      tempStreamId = "";
+    }
+    function updateFailedMessage(msg: string) {
+      if (!tempStreamId) return;
+      updateConversationData((draft) => {
+        const tempStreamMsg = draft.conversation?.conversation.data?.find((item) => item.id === tempStreamId) as ConversationModelOutput;
+        if (tempStreamMsg) {
+          tempStreamMsg.status = "completed";
+          tempStreamMsg.content = [
+            {
+              type: "output_text",
+              text: msg,
+              annotations: [],
+            }
+          ]
+        }
+        const { history, allMessages } = buildConversationEntry(
+          draft.conversation!.conversation,
+          draft.conversation!.lastResponseId
+        );
+        draft.conversation!.history = history;
+        draft.conversation!.allMessages = allMessages;
+        return draft;
+      });
+    }
 
     if (body !== undefined) {
       if (body instanceof FormData) {
@@ -358,7 +392,6 @@ export class ApiClient {
         if (!options.queryClient) return;
         const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
           JSON.parse(event.data);
-        const updateConversationData = useConversationStore.getState().updateConversation;
         const model = (body as { model?: string })?.model || "";
 
         switch (data.type) {
@@ -371,6 +404,25 @@ export class ApiClient {
 
               if (tempUserMessage) {
                 tempUserMessage.response_id = data.response.id;
+                // mock ai msg
+                tempStreamId = generateMockAIResponseID(data.response.id);
+                const aiMessageItem: ConversationModelOutput = {
+                  id: tempStreamId,
+                  type: ConversationTypes.MESSAGE,
+                  response_id: data.response.id,
+                  next_response_ids: [],
+                  created_at: Date.now(),
+                  status: "pending",
+                  role: ConversationRoles.ASSISTANT,
+                  content: [],
+                  model,
+                };
+                draft.conversation!.conversation.data = [
+                  ...(draft.conversation!.conversation.data ?? []),
+                  aiMessageItem,
+                ];
+                draft.conversation!.conversation.last_id = data.response.id;
+
                 const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
                   draft.conversation!.conversation,
                   data.response.id
@@ -404,6 +456,7 @@ export class ApiClient {
 
           case "response.reasoning.delta":
             updateConversationData((draft) => {
+              cleanupTempStreamId(draft);
               const currentConversationData = draft.conversation?.conversation.data?.find(
                 (item) => item.id === data.item_id
               );
@@ -423,6 +476,7 @@ export class ApiClient {
             break;
           case "response.output_text.delta":
             updateConversationData((draft) => {
+              cleanupTempStreamId(draft);
               const currentConversationData = draft.conversation?.conversation.data?.find(
                 (item) => item.id === data.item_id
               );
@@ -458,6 +512,7 @@ export class ApiClient {
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
+              cleanupTempStreamId(draft);
               const currentConversationData = draft.conversation?.conversation.data?.find(
                 (item) => item.id === data.item.id
               );
@@ -518,9 +573,7 @@ export class ApiClient {
             break;
           case "response.output_item.added":
             updateConversationData((draft) => {
-              // const prevMessage = draft.conversation?.conversation.data?.find(
-              //   (item) => item.id === draft.conversation?.conversation.last_id
-              // );
+              cleanupTempStreamId(draft);
               switch (data.item.type) {
                 case "reasoning": {
                   draft.conversation!.conversation.last_id = data.item.id;
@@ -681,10 +734,13 @@ export class ApiClient {
           toast.success(`Response completed for ${currentChatIdFromLocation}`);
         }
       }
+      updateFailedMessage('Unable to generate response.');
     } catch (err) {
       console.error(err);
+      const errMsg = (err as any)?.detail || err || "An unknown error occurred";
+      updateFailedMessage(errMsg);
       // biome-ignore lint/suspicious/noExplicitAny: explanation
-      throw (err as any)?.detail || err || "An unknown error occurred";
+      throw errMsg;
     }
   }
   protected async put<T>(endpoint: string, body?: unknown, options: RequestInit = {}): Promise<T> {

@@ -18,3 +18,7 @@ export function wrapMockResponseID(
 ): string {
   return `${MOCK_MESSAGE_RESPONSE_ID_PREFIX}${index + 1}_${originalId}`;
 }
+
+export function generateMockAIResponseID(userRespId: string): string {
+  return `mock_ai_resp_${userRespId}`;
+}
