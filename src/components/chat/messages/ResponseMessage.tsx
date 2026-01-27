@@ -202,7 +202,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 {webSearchEnabled ? "Generating search query..." : "Generating response..."}
               </div>
             ) : messageContent ? (
-              <div className="markdown-content">
+              <div className="markdown-content break-all">
                 <MarkDown messageContent={messageContent} batchId={batch.responseId} />
               </div>
             ) : null}
