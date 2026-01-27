@@ -279,7 +279,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                   <div className="flex w-full justify-end pb-1">
                     <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">
                       {messageContent && (
-                        <div className="markdown-content">
+                        <div className="markdown-content wrap-break-word">
                           <MarkdownTokens tokens={tokens} id={`message-${message.id}`} />
                         </div>
                       )}
