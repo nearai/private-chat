@@ -237,14 +237,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {/* Verification Badge */}
           <div className="message-verification-badge ml-3 flex items-center">
             {verificationStatus === "failed" ? (
-              <button
-                onClick={handleVerificationBadgeClick}
-                className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"
-                title="Click to view verification details"
-              >
-                <XCircleIcon className="h-4 w-4 text-destructive-foreground" />
-                <span className="font-medium text-destructive-foreground text-xs">{t("Not Verified")}</span>
-              </button>
+              <CompactTooltip content={signatureError || t("Verification failed")} align="start">
+                <button
+                  onClick={handleVerificationBadgeClick}
+                  className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"
+                  title="Click to view verification details"
+                >
+                  <XCircleIcon className="h-4 w-4 text-destructive-foreground" />
+                  <span className="font-medium text-destructive-foreground text-xs">{t("Not Verified")}</span>
+                </button>
+              </CompactTooltip>
             ) : verificationStatus === "verifying" ? (
               <div className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5">
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
