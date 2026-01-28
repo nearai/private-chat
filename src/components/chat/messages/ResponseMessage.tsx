@@ -68,6 +68,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
   const signatureError = messagesSignaturesErrors[messageId];
+  // Extract short error message for tooltip (without addresses)
+  const shortError = useMemo(() => {
+    if (!signatureError) return null;
+    return signatureError.includes("Message signature address:")
+      ? signatureError.split("Message signature address:")[0].trim()
+      : signatureError;
+  }, [signatureError]);
   const isBatchCompleted = batch.status === MessageStatus.COMPLETED || batch.status === MessageStatus.OUTPUT;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
 
@@ -237,7 +244,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {/* Verification Badge */}
           <div className="message-verification-badge ml-3 flex items-center">
             {verificationStatus === "failed" ? (
-              <CompactTooltip content={signatureError || t("Verification failed")} align="start">
+              <CompactTooltip content={shortError || signatureError || t("Verification failed")} align="start">
                 <button
                   onClick={handleVerificationBadgeClick}
                   className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"

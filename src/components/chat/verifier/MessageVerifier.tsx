@@ -9,6 +9,7 @@ import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS } from "@/lib/consta
 import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
+import { useGatewayAttestationStore } from "@/stores/useGatewayAttestationStore";
 import {
   type ConversationInfo,
   type ConversationModelOutput,
@@ -45,6 +46,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   } = useMessagesSignaturesStore();
   const { selectedMessageIdForVerifier, shouldScrollToSignatureDetails, setShouldScrollToSignatureDetails } =
     useViewStore();
+  const { gatewayAttestation, fetchGatewayAttestation } = useGatewayAttestationStore();
   const signature = messagesSignatures[message.chatCompletionId];
   const signatureError = messagesSignaturesErrors[message.chatCompletionId];
   const hasSignatureData = Boolean(signature?.signature && signature?.signing_address && signature?.text);
@@ -68,6 +70,43 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     .map((item) => extractMessageContent(item.content, "output_text"))
     .join("\n");
 
+  // Shared verification logic helper
+  const verifyMessageSignature = useCallback(
+    (
+      sig: { signing_address: string; text: string; signature: string },
+      gatewayAttest: { signing_address?: string } | null,
+      messageId: string
+    ) => {
+      const isValid = verifySignature(sig.signing_address, sig.text, sig.signature);
+
+      // Also verify that signing address matches gateway attestation signing address
+      let addressMatches = true;
+      let addressMismatchError: string | null = null;
+      if (gatewayAttest?.signing_address) {
+        addressMatches = sig.signing_address.toLowerCase() === gatewayAttest.signing_address.toLowerCase();
+        // Only set error if signature is cryptographically valid but addresses don't match
+        if (!addressMatches && isValid) {
+          addressMismatchError = t("Signing address does not match gateway attestation signing address", {
+            defaultValue: `Signing address does not match gateway attestation signing address. Message signature address: ${sig.signing_address}, Gateway attestation address: ${gatewayAttest.signing_address}`,
+          });
+        }
+      }
+
+      const finalVerification = isValid && addressMatches;
+
+      // Set error message if address mismatch (only when signature is valid)
+      if (addressMismatchError) {
+        setMessageSignatureError(messageId, addressMismatchError);
+      } else if (finalVerification) {
+        // Clear any previous errors if verification passes completely
+        removeMessageSignatureError(messageId);
+      }
+
+      return finalVerification;
+    },
+    [t, setMessageSignatureError, removeMessageSignatureError]
+  );
+
   const fetchSignature = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token || !message.chatCompletionId) return;
@@ -86,6 +125,9 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     removeMessageSignatureError(message.chatCompletionId);
 
     try {
+      // Fetch gateway attestation if not already fetched (uses global cache)
+      const currentGatewayAttestation = await fetchGatewayAttestation();
+
       const model = message.content[0].model;
       const data = await nearAIClient.getMessageSignature(model || "gpt-3.5-turbo", message.chatCompletionId);
 
@@ -98,10 +140,13 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
       setMessageSignature(message.chatCompletionId, data);
 
       if (data.signature && data.signing_address && data.text) {
-        const isValid = verifySignature(data.signing_address, data.text, data.signature);
-        setIsVerified(isValid);
-
-        setMessageSignature(message.chatCompletionId, { ...data, verified: isValid });
+        const finalVerification = verifyMessageSignature(
+          { signing_address: data.signing_address, text: data.text, signature: data.signature },
+          currentGatewayAttestation,
+          message.chatCompletionId
+        );
+        setIsVerified(finalVerification);
+        setMessageSignature(message.chatCompletionId, { ...data, verified: finalVerification });
       }
     } catch (err) {
       console.error("Error fetching message signature:", err);
@@ -120,17 +165,30 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     removeMessageSignatureError,
     setMessageSignatureError,
     isOnline,
+    fetchGatewayAttestation,
+    t,
   ]);
 
   useEffect(() => {
-    if (hasSignatureData && signature) {
-      if (isVerified === null) {
-        const isValid = verifySignature(signature.signing_address, signature.text, signature.signature);
-        setIsVerified(isValid);
+    if (isOnline && !gatewayAttestation) {
+      fetchGatewayAttestation();
+    }
+  }, [isOnline, gatewayAttestation, fetchGatewayAttestation]);
 
-        if (signature.verified === undefined) {
-          setMessageSignature(message.chatCompletionId, { ...signature, verified: isValid });
-        }
+  useEffect(() => {
+    if (hasSignatureData && signature) {
+      // Always verify when we have signature data
+      // This will re-verify when gateway attestation becomes available
+      const finalVerification = verifyMessageSignature(
+        { signing_address: signature.signing_address, text: signature.text, signature: signature.signature },
+        gatewayAttestation,
+        message.chatCompletionId
+      );
+
+      // Only update if verification status changed or hasn't been set yet
+      if (isVerified !== finalVerification || signature.verified === undefined) {
+        setIsVerified(finalVerification);
+        setMessageSignature(message.chatCompletionId, { ...signature, verified: finalVerification });
       }
     } else if (!signature && !isLoading && !signatureError && isOnline) {
       fetchSignature();
@@ -145,6 +203,8 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     fetchSignature,
     setMessageSignature,
     isOnline,
+    gatewayAttestation,
+    verifyMessageSignature,
   ]);
 
   useEffect(() => {
@@ -217,11 +277,16 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
       );
     }
 
+    // Extract short error message for tooltip (without addresses)
+    const shortError = signatureError.includes("Message signature address:") 
+      ? signatureError.split("Message signature address:")[0].trim()
+      : signatureError;
+
     return (
       <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-destructive/5 p-3">
         <p
           className="wrap-break-word max-w-[150px] flex-1 text-destructive text-xs leading-[160%]"
-          title={signatureError}
+          title={shortError}
         >
           {signatureError}
         </p>
