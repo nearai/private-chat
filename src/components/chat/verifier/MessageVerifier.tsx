@@ -220,7 +220,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
     return (
       <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-destructive/5 p-3">
         <p
-          className="max-w-[150px] flex-1 truncate whitespace-nowrap text-destructive text-xs leading-[160%]"
+          className="wrap-break-word max-w-[150px] flex-1 text-destructive text-xs leading-[160%]"
           title={signatureError}
         >
           {signatureError}
