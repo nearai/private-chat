@@ -237,7 +237,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {/* Verification Badge */}
           <div className="message-verification-badge ml-3 flex items-center">
             {verificationStatus === "failed" ? (
-              <CompactTooltip content={signatureError} align="start">
+              <CompactTooltip content={signatureError || t("Verification failed")} align="start">
                 <button
                   onClick={handleVerificationBadgeClick}
                   className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"
