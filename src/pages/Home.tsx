@@ -60,7 +60,7 @@ const Home = ({
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
-  
+
   const conversationState = useConversationStore((state) => state.conversation);
   const conversationInitStatus = useConversationStore((state) => state.conversationInitStatus);
   const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
@@ -179,7 +179,7 @@ const Home = ({
       dataInitializedRef.current = false;
       prevDataLengthRef.current = 0;
     }
-    
+
     if (dataInitializedRef.current) return;
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationIsReady) return;
@@ -322,9 +322,37 @@ const Home = ({
     }) as typeof allMessages[string][];
   }, [history, batches, allMessages]);
 
+  const renderCopyConversationButton = () => {
+    if (!sharesData || sharesData.is_owner) return null;
+    return (
+      <div className="w-full rounded-b-xl border-border border-t bg-muted/30 p-2 sm:p-3 md:px-6">
+        <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-3">
+          <div className="flex flex-col text-center sm:gap-1 sm:text-left">
+            <p className="font-medium text-sm">Want to continue this conversation?</p>
+            <p className="text-muted-foreground text-xs">
+              Copy this conversation to your account and continue where it left off
+            </p>
+          </div>
+          <Button size="small"
+            onClick={handleCopyAndContinue}
+            disabled={cloneChat.isPending}
+            className="px-4!"
+          >
+            {cloneChat.isPending ? (
+              <Spinner className="size-4" />
+            ) : (
+              <DocumentDuplicateIcon className="mr-1 size-4" />
+            )}
+            Copy & Continue
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (!chatId) return;
-    
+
     const NEW_CHAT_KEY = "new";
     const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (isNewChat) {
@@ -335,7 +363,7 @@ const Home = ({
       });
       return;
     }
-    
+
     if (modelsInitialized) return;
     const newModels: string[] = [];
     const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
@@ -438,31 +466,9 @@ const Home = ({
           <p className="px-4 pb-4 text-muted-foreground text-xs">
             {t("AI can make mistakes. Verify information before relying on it.")}
           </p>
+          {renderCopyConversationButton()}
         </div>
-      ) : (
-        <div className="border-border border-t bg-muted/30 px-4 py-4">
-          <div className="mx-auto max-w-3xl">
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-              <div className="text-center sm:text-left">
-                <p className="font-medium text-sm">Want to continue this conversation?</p>
-                <p className="text-muted-foreground text-xs">
-                  Copy this conversation to your account and continue where it left off
-                </p>
-              </div>
-              <Button onClick={handleCopyAndContinue} disabled={cloneChat.isPending} className="rounded-xl px-6">
-                {cloneChat.isPending ? (
-                  <Spinner className="size-4" />
-                ) : (
-                  <>
-                    <DocumentDuplicateIcon className="mr-2 size-4" />
-                    Copy & Continue
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      ) : renderCopyConversationButton()}
     </div>
   );
 };

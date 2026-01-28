@@ -328,6 +328,7 @@
   "Direct Connections allow users to connect to their own OpenAI compatible API endpoints.": "",
   "Direct Connections settings updated": "",
   "Direct Tool Servers": "",
+  "Disable": "Disable",
   "Disabled": "",
   "Discover a function": "",
   "Discover a model": "",
@@ -1335,7 +1336,6 @@
   "Verification is not available for imported chats": "",
   "This file type is not supported. Please upload PDF or plain text files.": "",
   "AI can make mistakes. Verify information before relying on it.": "",
-
   "Share this conversation": "Share this conversation",
   "Conversation access": "Conversation access",
   "Shared with you": "Shared with you",
@@ -1351,12 +1351,10 @@
   "Failed to create link": "Failed to create link",
   "Access removed": "Access removed",
   "Failed to remove access": "Failed to remove access",
-
   "Link copied!": "Link copied!",
   "Failed to copy link": "Failed to copy link",
   "Copy link": "Copy link",
   "Share this conversation with the link": "Share this conversation with the link",
-
   "Please enter an email address": "Please enter an email address",
   "You can't share a conversation with yourself": "You can't share a conversation with yourself",
   "Invalid email: {{email}}": "Invalid email: {{email}}",
@@ -1366,7 +1364,6 @@
   "Read-only access": "Read-only access",
   "Can add messages": "Can add messages",
   "Send invite": "Send invite",
-
   "Advanced sharing options": "Advanced sharing options",
   "Share with group": "Share with group",
   "Reuse saved lists": "Reuse saved lists",
@@ -1378,13 +1375,17 @@
   "Anyone with a matching email address will have access": "Anyone with a matching email address will have access",
   "e.g. @company.com or %@company.com": "e.g. @company.com or %@company.com",
   "Grant organization access": "Grant organization access",
-
   "Public access enabled": "Public access enabled",
   "Make public": "Make public",
   "Anyone with the link can view without signing in": "Anyone with the link can view without signing in",
   "Allow anyone to view without signing in": "Allow anyone to view without signing in",
-
   "People with access": "People with access",
   "(you)": "(you)",
-  "Owner": "Owner"
+  "Owner": "Owner",
+  "Sharing...": "Sharing...",
+  "Please enter at least one recipient": "Please enter at least one recipient",
+  "Invalid {{kind}}: {{value}}": "Invalid {{kind}}: {{value}}",
+  "Insufficient balance (needs at least {{min}} NEAR)": "Insufficient balance (needs at least {{min}} NEAR)",
+  "Account not found": "Account not found",
+  "Insufficient balance": "Insufficient balance"
 }

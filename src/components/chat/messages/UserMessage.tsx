@@ -18,6 +18,7 @@ import { type ContentItem, extractFiles, extractMessageContent, getModelAndCreat
 import MarkdownTokens from "./MarkdownTokens";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
+import { checkIsImportedConversation } from "@/utils/conversation";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -49,20 +50,20 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const messageFiles = extractFiles(message?.content ?? []);
   const { model } = getModelAndCreatedTimestamp(batch, allMessages);
   const { data: conversationData } = useGetConversation(chatId);
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
+  const isImportedConversation = checkIsImportedConversation(conversationData);
 
   const messageIsImported = useMemo(() => {
-    if (!conversationImportedAt) return false;
+    if (!isImportedConversation) return false;
     if (!message?.response_id) return false;
     return message.response_id.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, message?.response_id]);
+  }, [isImportedConversation, message?.response_id]);
 
   const prevMessageIsImported = useMemo(() => {
     const prevResponseId = batch?.parentResponseId || undefined;
     if (!prevResponseId) return false;
-    if (!conversationImportedAt) return false;
+    if (!isImportedConversation) return false;
     return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, batch]);
+  }, [isImportedConversation, batch]);
 
   // Find the current index in siblings by comparing input content
   const currentSiblingIndex = useMemo(() => {

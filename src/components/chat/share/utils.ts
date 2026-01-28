@@ -45,9 +45,10 @@ export const getShareDisplayInfo = (
       };
     case "group": {
       const group = share.group_id ? groupsById.get(share.group_id) : null;
+      if (!group) return null;
       return {
-        name: group?.name || "Group",
-        subtitle: `${group?.members.length || 0} members`,
+        name: group.name,
+        subtitle: `${group.members.length || 0} members`,
         iconType: "group" as const,
       };
     }

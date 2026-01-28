@@ -4,6 +4,7 @@ import { type CombinedResponse, combineMessagesById, extractBatchFromHistory, fi
 import type { Conversation, ConversationItem } from "@/types";
 import { convertImportedMessages } from "@/lib/message-converter";
 import { DEFAULT_CONVERSATION_TITLE } from "@/lib/constants";
+import { checkIsImportedConversation } from "@/utils/conversation";
 
 export type ConversationDerivedState = {
   conversationId: string;
@@ -49,7 +50,7 @@ export const buildConversationEntry = (
   conversation: Conversation,
   preserveLastResponseId?: string | null
 ): ConversationDerivedState => {
-  const isImportedConversation = conversation.metadata?.initial_created_at !== undefined;
+  const isImportedConversation = checkIsImportedConversation(conversation);
   let importedMessagesIdMapping: Record<string, string> = {};
   let messages = conversation.data || [];
 
