@@ -69,15 +69,15 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
       const data = await nearAIClient.getModelAttestationReport(modelIsVerifiable ? model : '');
       const attestations = data.model_attestations ?? data.all_attestations;
       
-      if (attestations) {
+      if (attestations && attestations.length > 0) {
         const attestation = attestations[0];
-        if (modelIsVerifiable && !attestation) {
-          throw new Error("No attestation data found for this model");
-        }
         setModelNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
         setModelIntelQuote(attestation.intel_quote || null);
         setActiveTDXTab('model');
       } else {
+        if (modelIsVerifiable) {
+          throw new Error("No attestation data found for this model");
+        }
         setModelNvidiaPayload(null);
         setModelIntelQuote(null);
         setActiveTDXTab('gateway');
@@ -183,7 +183,6 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                 />
                 <button
                   onClick={() => {
-                    if (!modelNvidiaPayload) return;
                     handleCopy(modelNvidiaPayload.nonce, "nonce");
                   }}
                   className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
@@ -259,7 +258,6 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
           />
           <button
             onClick={() => {
-              if (!quote) return;
               handleCopy(quote, key);
             }}
             className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
