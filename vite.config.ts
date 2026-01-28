@@ -29,14 +29,22 @@ export default defineConfig({
         disableDevLogs: false,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         navigateFallback: "/",
-        navigateFallbackDenylist: [/^\/v1\//, /^\/docs/],
+        navigateFallbackDenylist: [
+          /^\/v1\//,
+          /^\/docs/,
+          /^\/health$/,
+          /^\/api-docs\/openapi\.json$/,
+        ],
         globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => {
               const isApi =
-                url.pathname.startsWith("/v1/") || url.pathname === "/docs";
+                url.pathname.startsWith("/v1/") ||
+                url.pathname === "/docs" ||
+                url.pathname === "/health" ||
+                url.pathname === "/api-docs/openapi.json";
               return (
                 !isApi &&
                 (url.pathname.endsWith(".html") ||
