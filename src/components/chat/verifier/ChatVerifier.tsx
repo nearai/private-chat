@@ -205,15 +205,13 @@ const ChatVerifier: React.FC = () => {
                 </>
               )}
 
-              {modelCounts.verifiable > 0 && (
-                <div className="flex flex-col items-start gap-3">
-                  <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
-                  <div className="flex items-end gap-4">
-                    <NvidiaLogo className="h-3" />
-                    <IntelLogo className="h-4" />
-                  </div>
+              <div className="flex flex-col items-start gap-3">
+                <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
+                <div className="flex items-end gap-4">
+                  { modelCounts.verifiable > 0 && <NvidiaLogo className="h-3" />}
+                  <IntelLogo className="h-4" />
                 </div>
-              )}
+              </div>
 
               <Button onClick={openModelVerifier} className="w-full" variant="secondary" size="small">
                 Show Verification Details
