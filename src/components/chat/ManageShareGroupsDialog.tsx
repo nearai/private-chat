@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn, generateId } from "@/lib";
+import { getNearBalance } from "@/hooks/useNearBalance";
 import type { ShareGroup, ShareRecipient } from "@/types";
 import {
   createRecipientInput,
@@ -50,6 +51,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
   const [editingGroup, setEditingGroup] = useState<ShareGroup | null>(null);
   const [name, setName] = useState("");
   const [members, setMembers] = useState<RecipientInputValue[]>([createRecipientInput()]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isSaving = createGroup.isPending || updateGroup.isPending;
   const isDeleting = deleteGroup.isPending;
@@ -77,8 +79,10 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
   }, [editingGroup]);
 
   const handleSubmit = async () => {
+    setErrors({});
+
     const payloadMembers = members
-      .map((member) => ({ kind: member.kind, value: member.value.trim() }))
+      .map((member) => ({ id: member.id, kind: member.kind, value: member.value.trim() }))
       .filter((member) => member.value.length > 0);
 
     const invalidMember = payloadMembers.find((member) => {
@@ -102,6 +106,30 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
       return;
     }
 
+    // Verify NEAR account balances (require > 0) and collect per-input errors
+    const nearMembers = payloadMembers.filter((m) => m.kind === "near_account");
+    if (nearMembers.length > 0) {
+      const newErrors: Record<string, string> = {};
+      let hasErrors = false;
+      for (const member of nearMembers) {
+        try {
+          const balance = await getNearBalance(member.value);
+          if (!balance) {
+            newErrors[member.id] = `Insufficient balance`;
+            hasErrors = true;
+          }
+        } catch (error) {
+          console.error("Failed to verify account:", error);
+          newErrors[member.id] = `Account not found`;
+          hasErrors = true;
+        }
+      }
+      if (hasErrors) {
+        setErrors(newErrors);
+        return;
+      }
+    }
+
     if (editingGroup) {
       await updateGroup.mutateAsync({
         groupId: editingGroup.id,
@@ -119,6 +147,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
     setEditingGroup(null);
     setName("");
     setMembers([createRecipientInput()]);
+    setErrors({});
   };
 
   const handleDeleteGroup = async (groupId: string) => {
@@ -210,7 +239,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
               </div>
               <div className="pt-2">
                 <p className="mb-2 ml-1 font-medium text-muted-foreground text-xs">Members</p>
-                <ShareRecipientInputs recipients={members} onChange={setMembers} allowMultiple />
+                <ShareRecipientInputs recipients={members} onChange={setMembers} allowMultiple errors={errors} />
               </div>
             </div>
             <DialogFooter className="mt-6 border-border/20 border-t pt-4">

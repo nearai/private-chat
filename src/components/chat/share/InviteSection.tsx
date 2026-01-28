@@ -18,7 +18,7 @@ import {
   type RecipientInputValue,
   ShareRecipientInputs,
 } from "../ShareRecipientInputs";
-import { getNearBalance, MIN_NEAR_BALANCE, toYoctoNear } from "@/hooks/useNearBalance";
+import { getNearBalance } from "@/hooks/useNearBalance";
 
 interface InviteSectionProps {
   recipients: RecipientInputValue[];
@@ -112,8 +112,8 @@ export const InviteSection = ({
       for (const recipient of nearRecipients) {
         try {
           const balance = await getNearBalance(recipient.value);
-          if (balance < toYoctoNear(MIN_NEAR_BALANCE)) {
-            newErrors[recipient.id] = t("Insufficient balance (needs at least {{min}} NEAR)", { min: MIN_NEAR_BALANCE });
+          if (!balance) {
+            newErrors[recipient.id] = t("Insufficient balance");
             hasErrors = true;
           }
         } catch (error) {
