@@ -27,9 +27,25 @@ import ModelVerifier from "./ModelVerifier";
 const ChatVerifier: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
-  const { selectedModels } = useChatStore();
+  const { selectedModels, models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
   const conversationImportedAt = conversationData?.metadata?.imported_at;
+
+  // Count verifiable and anonymized models
+  const modelCounts = useMemo(() => {
+    const verifiableModels = selectedModels.filter((modelId) => {
+      const modelInfo = models.find((m) => m.modelId === modelId);
+      return modelInfo?.metadata?.verifiable === true;
+    });
+    const anonymizedModels = selectedModels.filter((modelId) => {
+      const modelInfo = models.find((m) => m.modelId === modelId);
+      return modelInfo?.metadata?.verifiable !== true;
+    });
+    return {
+      verifiable: verifiableModels.length,
+      anonymized: anonymizedModels.length,
+    };
+  }, [selectedModels, models]);
 
   const {
     isRightSidebarOpen,
@@ -164,23 +180,40 @@ const ChatVerifier: React.FC = () => {
             renderError()
           ) : modelVerificationStatus?.isVerified ? (
             <>
-              {selectedModels.length > 0 && (
-                <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
-                  {selectedModels.length} Verified Models
-                </p>
+              {modelCounts.verifiable > 0 && (
+                <>
+                  <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
+                    {modelCounts.verifiable} Verified Model{modelCounts.verifiable > 1 ? "s" : ""}
+                  </p>
+
+                  <p className="font-normal text-sm leading-[140%] opacity-80">
+                    Verified models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
+                    messages.
+                  </p>
+                </>
               )}
 
-              <p className="font-normal text-sm leading-[140%] opacity-80">
-                All models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
-                messages.
-              </p>
-              <div className="flex flex-col items-start gap-3">
-                <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
-                <div className="flex items-end gap-4">
-                  <NvidiaLogo className="h-3" />
-                  <IntelLogo className="h-4" />
+              {modelCounts.anonymized > 0 && (
+                <>
+                  <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
+                    {modelCounts.anonymized} Anonymized Model{modelCounts.anonymized > 1 ? "s" : ""}
+                  </p>
+
+                  <p className="font-normal text-sm leading-[140%] opacity-80">
+                    Anonymized models keep your requests protected and store your messages privately in TEE (Trusted Execution Environment).
+                  </p>
+                </>
+              )}
+
+              {modelCounts.verifiable > 0 && (
+                <div className="flex flex-col items-start gap-3">
+                  <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
+                  <div className="flex items-end gap-4">
+                    <NvidiaLogo className="h-3" />
+                    <IntelLogo className="h-4" />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Button onClick={openModelVerifier} className="w-full" variant="secondary" size="small">
                 Show Verification Details

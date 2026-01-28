@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { type ModelAttestationReport, nearAIClient } from "@/api/nearai/client";
 import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
+import NearAICloudLogo from "@/assets/images/near-ai-cloud.svg?react";
 import IntelLogo from "@/assets/images/intel.svg?react";
 import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
@@ -56,6 +57,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
   const [activeVerificationTab, setActiveVerificationTab] = useState<'model' | 'gateway'>("model");
+  const activeTabRef = useRef<'model' | 'gateway'>("model");
+  const [modelIsVerifiable, setModelIsVerifiable] = useState<boolean>(false);
 
   const fetchAttestationReport = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -63,28 +66,34 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
     if (!model || !token) return;
 
     const modelInfo = models.find((m) => m.modelId === model);
-    const modelIsVerifiable = modelInfo?.metadata.verifiable
+    const isVerifiable = modelInfo?.metadata.verifiable ?? false;
+    setModelIsVerifiable(isVerifiable);
     setLoading(true);
     setError(null);
 
     try {
-      const data = await nearAIClient.getModelAttestationReport(modelIsVerifiable ? model : '');
+      const data = await nearAIClient.getModelAttestationReport(isVerifiable ? model : '');
       const attestations = data.model_attestations ?? data.all_attestations;
       
       if (attestations && attestations.length > 0) {
         const attestation = attestations[0];
         setModelNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
         setModelIntelQuote(attestation.intel_quote || null);
-        setActiveVerificationTab('model');
+        // Only set to model tab if not already on gateway tab (preserve user's tab choice)
+        if (activeTabRef.current !== 'gateway') {
+          setActiveVerificationTab('model');
+          activeTabRef.current = 'model';
+        }
       } else {
-        if (modelIsVerifiable) {
+        if (isVerifiable) {
           throw new Error("No attestation data found for this model");
         }
         setModelNvidiaPayload(null);
         setModelIntelQuote(null);
-        // If no model attestations, default to gateway tab if gateway attestation exists
-        if (data.cloud_api_gateway_attestation?.intel_quote) {
-          setActiveVerificationTab('gateway');
+        // Only set to model tab if not already on gateway tab (preserve user's tab choice)
+        if (activeTabRef.current !== 'gateway') {
+          setActiveVerificationTab('model');
+          activeTabRef.current = 'model';
         }
       }
       setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
@@ -374,6 +383,10 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }, [autoVerify, onStatusUpdate, verificationStatus]);
 
   useEffect(() => {
+    activeTabRef.current = activeVerificationTab;
+  }, [activeVerificationTab]);
+
+  useEffect(() => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     const isOpening = show && !prevShowRef.current;
 
@@ -387,22 +400,26 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
   const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
   const hasGatewayAttestations = attestationData && gatewayIntelQuote;
+  const showModelTab = true; // Always show model tab
+  const modelIsAnonymized = !modelIsVerifiable;
 
   return (
     <Dialog open={show} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-[540px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            {activeVerificationTab === "model" ? t("Model Verification") : t("Gateway Verification")}
+            {activeVerificationTab === "model" 
+              ? (modelIsVerifiable ? t("Model Verification") : t("Model Anonymization"))
+              : t("Gateway Verification")}
           </DialogTitle>
           <DialogDescription className="sr-only" />
         </DialogHeader>
 
         <div className="flex flex-col gap-8">
           {/* Tab Navigation */}
-          {(hasModelAttestations || hasGatewayAttestations) && (
+          {(showModelTab || hasGatewayAttestations) && (
             <div className="flex border-border border-b">
-              {hasModelAttestations && (
+              {showModelTab && (
                 <button
                   className={cn(
                     "px-4 py-2 font-medium text-sm transition-colors",
@@ -410,9 +427,12 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                       ? "border-primary border-b-2 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
-                  onClick={() => setActiveVerificationTab("model")}
+                  onClick={() => {
+                    setActiveVerificationTab("model");
+                    activeTabRef.current = "model";
+                  }}
                 >
-                  {t("Model Verification")}
+                  {modelIsVerifiable ? t("Model Verification") : t("Model Anonymization")}
                 </button>
               )}
               {hasGatewayAttestations && (
@@ -423,7 +443,10 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                       ? "border-primary border-b-2 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
-                  onClick={() => setActiveVerificationTab("gateway")}
+                  onClick={() => {
+                    setActiveVerificationTab("gateway");
+                    activeTabRef.current = "gateway";
+                  }}
                 >
                   {t("Gateway Verification")}
                 </button>
@@ -431,42 +454,56 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
             </div>
           )}
 
-          {/* Model Verification Tab Content */}
+          {/* Model Verification/Anonymization Tab Content */}
           {activeVerificationTab === "model" && (
             <>
               <div className="flex flex-col gap-2">
-                <p className="font-normal text-xs leading-[160%] opacity-60">{t("Verified Model")}</p>
+                <p className="font-normal text-xs leading-[160%] opacity-60">
+                  {hasModelAttestations ? t("Verified Model") : t("Anonymized Model")}
+                </p>
                 <div className="flex items-center gap-1">
                   <img src={modelIcon} alt="Model" className="size-5" />
                   <p className="leading-[normal]">{model}</p>
                 </div>
               </div>
-              <p className="font-normal text-sm leading-[140%] opacity-80">
-                The hardware attestations below confirm the authenticity of this model and the environment it runs in.
-                Expand any section to view the raw attestation data or verify it independently.
-              </p>
 
-              {loading && (
-                <div className="flex items-center justify-center py-8">
-                  <Spinner className="size-5" />
-                  <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
-                </div>
-              )}
+              {modelIsVerifiable && hasModelAttestations ? (
+                <>
+                  <p className="font-normal text-sm leading-[140%] opacity-80">
+                    The hardware attestations below confirm the authenticity of this model and the environment it runs in.
+                    Expand any section to view the raw attestation data or verify it independently.
+                  </p>
 
-              {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                  <div className="flex items-center">
-                    <XCircleIcon className="mr-2 h-5 w-5 text-destructive" />
-                    <span className="text-destructive">{error}</span>
-                  </div>
-                </div>
-              )}
+                  {loading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Spinner className="size-5" />
+                      <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
+                    </div>
+                  )}
 
-              {attestationData && (
-                <div className="space-y-4">
-                  {renderGPUSection()}
-                  {renderTDXSection()}
-                </div>
+                  {error && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                      <div className="flex items-center">
+                        <XCircleIcon className="mr-2 h-5 w-5 text-destructive" />
+                        <span className="text-destructive">{error}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {attestationData && (
+                    <div className="space-y-4">
+                      {renderGPUSection()}
+                      {renderTDXSection()}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="font-normal text-sm leading-[140%] opacity-80">
+                    The inference requests of the model are anonymized for all the users.
+                    Your conversations are stored privately in TEE (Trusted Execution Environment) and not accessible by anyone.
+                  </p>
+                </>
               )}
             </>
           )}
@@ -474,8 +511,15 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
           {/* Gateway Verification Tab Content */}
           {activeVerificationTab === "gateway" && (
             <>
+              <div className="flex flex-col gap-2">
+                <p className="font-normal text-xs leading-[160%] opacity-60">{t("Verified Gateway")}</p>
+                <div className="flex items-center gap-1">
+                  <NearAICloudLogo className="h-6" />
+                  <p className="leading-[normal]">NEAR AI Cloud Gateway</p>
+                </div>
+              </div>
               <p className="font-normal text-sm leading-[140%] opacity-80">
-                The hardware attestations below confirm the authenticity of the private LLM gateway environment.
+                The hardware attestations below confirm the authenticity of the NEAR AI Cloud private LLM gateway environment.
                 Expand any section to view the raw attestation data or verify it independently.
               </p>
 
@@ -505,10 +549,12 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
           {attestationData && (
             <div className="flex items-center gap-4">
-              <Button onClick={verifyAgain} disabled={loading} variant="secondary">
-                <ArrowPathIcon className="size-5" />
-                <span>{t("Verify Again")}</span>
-              </Button>
+              {(!modelIsAnonymized || activeVerificationTab === "gateway") && (
+                <Button onClick={verifyAgain} disabled={loading} variant="secondary">
+                  <ArrowPathIcon className="size-5" />
+                  <span>{t("Verify Again")}</span>
+                </Button>
+              )}
               <Button onClick={handleClose} className="flex-1">
                 {t("Close")}
               </Button>
