@@ -1,5 +1,6 @@
 import { CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import OpenAIIcon from "@/assets/icons/openai.svg";
 import {
   DropdownMenu,
@@ -22,8 +23,10 @@ interface ModelSelectorItemProps {
 }
 
 function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, showRemove }: ModelSelectorItemProps) {
+  const { t } = useTranslation("translation", { useSuspense: false });
   const selectedModelObj = value ? availableModels.find((m) => m.modelId === value) : null;
   const [open, setOpen] = useState(false);
+  const isVerifiable = selectedModelObj?.metadata?.verifiable ?? false;
 
   return (
     <div className="flex w-full max-w-fit">
@@ -41,7 +44,17 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
               {selectedModelObj ? (
                 <>
                   <img src={selectedModelObj.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
-                  {selectedModelObj.modelId}
+                  <span className="line-clamp-1">{selectedModelObj.modelId}</span>
+                  <span
+                    className={cn(
+                      "ml-1 rounded px-1 py-0.5 font-medium text-[10px] leading-tight",
+                      isVerifiable
+                        ? "bg-green-dark/10 text-green-dark"
+                        : "bg-blue-500/10 text-blue-600"
+                    )}
+                  >
+                    {isVerifiable ? t("Verified") : t("Anonymized")}
+                  </span>
                 </>
               ) : (
                 "Select a model"
@@ -56,6 +69,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
               ) : (
                 availableModels.map((model) => {
                   const isSelected = value === model.modelId;
+                  const modelIsVerifiable = model.metadata?.verifiable ?? false;
 
                   return (
                     <DropdownMenuItem
@@ -66,6 +80,16 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                       <div className="flex flex-1 items-center gap-2">
                         <img src={model.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
                         <div className="line-clamp-1">{model.modelId}</div>
+                        <span
+                          className={cn(
+                            "ml-1 rounded px-1 py-0.5 font-medium text-[10px] leading-tight",
+                            modelIsVerifiable
+                              ? "bg-green-dark/10 text-green-dark"
+                              : "bg-blue-500/10 text-blue-600"
+                          )}
+                        >
+                          {modelIsVerifiable ? t("Verified") : t("Anonymized")}
+                        </span>
                       </div>
                       <div className="flex size-6 shrink-0 items-center justify-center">
                         {isSelected && <CheckIcon className="size-4" />}

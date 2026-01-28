@@ -42,6 +42,8 @@ export const newTranslationKeys = {
   "Verifiable Messages": "",
   "Verified Model": "",
   "Anonymized Model": "",
+  "Verified": "",
+  "Anonymized": "",
   "Verified Gateway": "",
   "Verify Again": "",
   "Verify GPU attestation by yourself": "",

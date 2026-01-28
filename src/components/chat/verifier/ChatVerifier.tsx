@@ -195,7 +195,7 @@ const ChatVerifier: React.FC = () => {
 
               {modelCounts.anonymized > 0 && (
                 <>
-                  <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
+                  <p className="self-stretch font-medium text-blue-600 text-xs leading-[normal]">
                     {modelCounts.anonymized} Anonymized Model{modelCounts.anonymized > 1 ? "s" : ""}
                   </p>
 

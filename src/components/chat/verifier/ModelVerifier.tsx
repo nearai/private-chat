@@ -464,7 +464,12 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
           {activeVerificationTab === "model" && (
             <>
               <div className="flex flex-col gap-2">
-                <p className="font-normal text-xs leading-[160%] opacity-60">
+                <p
+                  className={cn(
+                    "font-normal text-xs leading-[160%] opacity-60",
+                    hasModelAttestations ? "text-green-dark" : "text-blue-600"
+                  )}
+                >
                   {hasModelAttestations ? t("Verified Model") : t("Anonymized Model")}
                 </p>
                 <div className="flex items-center gap-1">

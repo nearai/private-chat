@@ -1227,6 +1227,8 @@
   "Verified Model": "",
   "Anonymized Model": "",
   "Verified Gateway": "",
+  "Verified": "",
+  "Anonymized": "",
   "Verify Again": "",
   "Verify GPU attestation by yourself": "",
   "Verify TDX quote at TEE Explorer": "",
