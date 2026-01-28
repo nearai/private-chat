@@ -9,12 +9,14 @@ lerna-debug.log*
 
 node_modules
 dist
+dev-dist
 dist-ssr
 *.local
 
 # Editor directories and files
 .idea
 .DS_Store
+.vscode
 *.suo
 *.ntvs*
 *.njsproj
