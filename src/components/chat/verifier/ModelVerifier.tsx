@@ -43,8 +43,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const [error, setError] = useState<string | null>(null);
   const [attestationData, setAttestationData] = useState<ModelAttestationReport | null>(null);
   // biome-ignore lint/suspicious/noExplicitAny: explanation
-  const [nvidiaPayload, setNvidiaPayload] = useState<any | null>(null);
-  const [intelQuote, setIntelQuote] = useState<string | null>(null);
+  const [modelNvidiaPayload, setModelNvidiaPayload] = useState<any | null>(null);
+  const [modelIntelQuote, setModelIntelQuote] = useState<string | null>(null);
+  const [gatewayIntelQuote, setGatewayIntelQuote] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     gpu: false,
     tdx: false,
@@ -52,33 +53,44 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
   const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
+  const [activeTDXTab, setActiveTDXTab] = useState<'model' | 'gateway'>("model");
 
   const fetchAttestationReport = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     if (!model || !token) return;
 
+    const modelInfo = models.find((m) => m.modelId === model);
+    const modelIsVerifiable = modelInfo?.metadata.verifiable
     setLoading(true);
     setError(null);
 
     try {
-      const data = await nearAIClient.getModelAttestationReport(model);
+      const data = await nearAIClient.getModelAttestationReport(modelIsVerifiable ? model : '');
       const attestations = data.model_attestations ?? data.all_attestations;
-      const attestation = attestations[0];
-
-      if (!attestation) {
-        throw new Error("No attestation data found for this model");
+      
+      if (attestations) {
+        const attestation = attestations[0];
+        if (modelIsVerifiable && !attestation) {
+          throw new Error("No attestation data found for this model");
+        }
+        setModelNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
+        setModelIntelQuote(attestation.intel_quote || null);
+        setActiveTDXTab('model');
+      } else {
+        setModelNvidiaPayload(null);
+        setModelIntelQuote(null);
+        setActiveTDXTab('gateway');
       }
+      setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
       setAttestationData(data);
-      setNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
-      setIntelQuote(attestation.intel_quote || null);
     } catch (err) {
       console.error("Error fetching attestation report:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch attestation report");
     } finally {
       setLoading(false);
     }
-  }, [model]);
+  }, [model, models]);
 
   const verifyAgain = async () => {
     hasFetchedRef.current = false;
@@ -119,6 +131,216 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
     }),
     [loading, error, attestationData]
   );
+
+  const renderGPUSection = () => {
+    if (!attestationData || !modelNvidiaPayload) return null;
+    return (
+      <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
+        <button onClick={() => toggleSection("gpu")} className="flex w-full items-center gap-1">
+          <ChevronRightIcon
+            className={cn("size-4 transition-transform", {
+              "rotate-90": expandedSections.gpu,
+            })}
+          />
+          <span className="flex-1 text-left font-medium leading-[normal]">{t("GPU Attestation")}</span>
+          <NvidiaLogo className="h-5" />
+        </button>
+
+        {expandedSections.gpu && (
+          <>
+            <p className="font-normal text-sm leading-[140%] opacity-80">
+              NVIDIA’s Remote Attestation Service verifies that the GPU executing this model matches trusted
+              hardware specifications.
+            </p>
+            <div className="flex items-center gap-4">
+              <Button variant="secondary" asChild>
+                <a
+                  href="https://docs.nvidia.com/attestation/index.html#overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Documentation <ArrowUpRightIcon className="size-4" />
+                </a>
+              </Button>
+              <Button variant="secondary" asChild>
+                <a
+                  href="https://docs.api.nvidia.com/attestation/reference/attestmultigpu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Verify via NVIDIA API <ArrowUpRightIcon className="size-4" />
+                </a>
+              </Button>
+            </div>
+
+            <div>
+              <label className="font-normal text-xs leading-[160%] opacity-60">{t("Nonce")}:</label>
+              <div className="relative">
+                <textarea
+                  readOnly
+                  className="h-16 w-full resize-none rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
+                  value={modelNvidiaPayload?.nonce || ""}
+                />
+                <button
+                  onClick={() => {
+                    if (!modelNvidiaPayload) return;
+                    handleCopy(modelNvidiaPayload.nonce, "nonce");
+                  }}
+                  className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  title="Copy nonce"
+                >
+                  {checkedMap.nonce ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="font-normal text-xs leading-[160%] opacity-60">{t("Evidence List")}:</label>
+              <div className="relative">
+                <textarea
+                  readOnly
+                  className="h-32 w-full resize-none rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
+                  value={JSON.stringify(modelNvidiaPayload?.evidence_list || [], null, 2)}
+                />
+                <button
+                  onClick={() => {
+                    if (!modelNvidiaPayload) return;
+                    handleCopy(JSON.stringify(modelNvidiaPayload?.evidence_list || [], null, 2), "evidence_list");
+                  }}
+                  className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  title="Copy evidence list"
+                >
+                  {checkedMap.evidence_list ? (
+                    <CheckIcon className="size-4" />
+                  ) : (
+                    <ClipboardIcon className="size-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="font-normal text-xs leading-[160%] opacity-60">{t("Architecture")}:</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  readOnly
+                  value={modelNvidiaPayload?.arch || ""}
+                  className="w-full rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
+                />
+                <button
+                  onClick={() => {
+                    if (!modelNvidiaPayload) return;
+                    handleCopy(modelNvidiaPayload.arch, "arch");
+                  }}
+                  className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  title="Copy architecture"
+                >
+                  {checkedMap.arch ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-4" />}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  const renderTDXSectionItem = (quote: string | null, key: string = "intelQuote") => {
+    if (!quote) return null;
+    return (
+      <div>
+        <label className="font-normal text-xs leading-[160%] opacity-60">{t("Quote")}:</label>
+        <div className="relative w-full">
+          <textarea
+            readOnly
+            className="h-32 w-full resize-none rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
+            value={quote}
+          />
+          <button
+            onClick={() => {
+              if (!quote) return;
+              handleCopy(quote, key);
+            }}
+            className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+            title="Copy quote"
+          >
+            {checkedMap[key] ? (
+              <CheckIcon className="size-4" />
+            ) : (
+              <ClipboardIcon className="size-4" />
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const renderTDXSection = () => {
+    if (!attestationData) return null;
+    if (!modelIntelQuote && !gatewayIntelQuote) return null;
+  
+    return (
+      <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
+        <button onClick={() => toggleSection("tdx")} className="flex w-full items-center gap-1">
+          <ChevronRightIcon
+            className={cn("size-4 transition-transform", {
+              "rotate-90": expandedSections.tdx,
+            })}
+          />
+          <span className="flex-1 text-left font-medium leading-[normal]">{t("TDX Attestation")}</span>
+          <IntelLogo className="h-5" />
+        </button>
+        {expandedSections.tdx && (
+          <>
+            <p className="font-normal text-sm leading-[140%] opacity-80">
+              Intel TDX provides a hardware-isolated environment and issues cryptographically signed attestation
+              reports.
+            </p>
+            <div className="flex items-center gap-4">
+              <Button variant="secondary" asChild>
+                <a
+                  href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-trust-domain-extensions.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Documentation <ArrowUpRightIcon className="size-4" />
+                </a>
+              </Button>
+              <Button variant="secondary" asChild>
+                <a href="https://proof.t16z.com/" target="_blank" rel="noopener noreferrer">
+                  Verify via Intel TDX Explorer <ArrowUpRightIcon className="size-4" />
+                </a>
+              </Button>
+            </div>
+
+             <div className="flex flex-col">
+              <div className="mb-2 flex">
+                {modelIntelQuote && (
+                  <button
+                    className={cn("px-3 py-1 font-medium text-sm", activeTDXTab === "model" ? "border-primary border-b-2" : "text-muted-foreground")}
+                    onClick={() => setActiveTDXTab("model")}
+                  >
+                    Model
+                  </button>
+                )}
+                {gatewayIntelQuote && (
+                  <button
+                    className={cn("px-3 py-1 font-medium text-sm", activeTDXTab === "gateway" ? "border-primary border-b-2" : "text-muted-foreground")}
+                    onClick={() => setActiveTDXTab("gateway")}
+                  >
+                    Gateway
+                  </button>
+                )}
+              </div>
+              {activeTDXTab === "model" && renderTDXSectionItem(modelIntelQuote, "intelQuote")}
+              {activeTDXTab === "gateway" && renderTDXSectionItem(gatewayIntelQuote, "gatewayIntelQuote")}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (autoVerify && onStatusUpdate) {
@@ -177,183 +399,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
           {attestationData && (
             <div className="space-y-4">
-              <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
-                <button onClick={() => toggleSection("gpu")} className="flex w-full items-center gap-1">
-                  <ChevronRightIcon
-                    className={cn("size-4 transition-transform", {
-                      "rotate-90": expandedSections.gpu,
-                    })}
-                  />
-                  <span className="flex-1 text-left font-medium leading-[normal]">{t("GPU Attestation")}</span>
-                  <NvidiaLogo className="h-5" />
-                </button>
-
-                {expandedSections.gpu && (
-                  <>
-                    <p className="font-normal text-sm leading-[140%] opacity-80">
-                      NVIDIA’s Remote Attestation Service verifies that the GPU executing this model matches trusted
-                      hardware specifications.
-                    </p>
-                    <div className="flex items-center gap-4">
-                      <Button variant="secondary" asChild>
-                        <a
-                          href="https://docs.nvidia.com/attestation/index.html#overview"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Documentation <ArrowUpRightIcon className="size-4" />
-                        </a>
-                      </Button>
-                      <Button variant="secondary" asChild>
-                        <a
-                          href="https://docs.api.nvidia.com/attestation/reference/attestmultigpu"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Verify via NVIDIA API <ArrowUpRightIcon className="size-4" />
-                        </a>
-                      </Button>
-                    </div>
-
-                    {nvidiaPayload && (
-                      <div>
-                        <label className="font-normal text-xs leading-[160%] opacity-60">{t("Nonce")}:</label>
-                        <div className="relative">
-                          <textarea
-                            readOnly
-                            className="h-16 w-full resize-none rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
-                            value={nvidiaPayload?.nonce || ""}
-                          />
-                          <button
-                            onClick={() => {
-                              if (!nvidiaPayload) return;
-                              handleCopy(nvidiaPayload.nonce, "nonce");
-                            }}
-                            className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
-                            title="Copy nonce"
-                          >
-                            {checkedMap.nonce ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-4" />}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {nvidiaPayload && (
-                      <div>
-                        <label className="font-normal text-xs leading-[160%] opacity-60">{t("Evidence List")}:</label>
-                        <div className="relative">
-                          <textarea
-                            readOnly
-                            className="h-32 w-full resize-none rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
-                            value={JSON.stringify(nvidiaPayload?.evidence_list || [], null, 2)}
-                          />
-                          <button
-                            onClick={() => {
-                              if (!nvidiaPayload) return;
-                              handleCopy(JSON.stringify(nvidiaPayload?.evidence_list || [], null, 2), "evidence_list");
-                            }}
-                            className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
-                            title="Copy evidence list"
-                          >
-                            {checkedMap.evidence_list ? (
-                              <CheckIcon className="size-4" />
-                            ) : (
-                              <ClipboardIcon className="size-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="font-normal text-xs leading-[160%] opacity-60">{t("Architecture")}:</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          readOnly
-                          value={nvidiaPayload?.arch || ""}
-                          className="w-full rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
-                        />
-                        <button
-                          onClick={() => {
-                            if (!nvidiaPayload) return;
-                            handleCopy(nvidiaPayload.arch, "arch");
-                          }}
-                          className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
-                          title="Copy architecture"
-                        >
-                          {checkedMap.arch ? <CheckIcon className="size-4" /> : <ClipboardIcon className="size-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
-                <button onClick={() => toggleSection("tdx")} className="flex w-full items-center gap-1">
-                  <ChevronRightIcon
-                    className={cn("size-4 transition-transform", {
-                      "rotate-90": expandedSections.tdx,
-                    })}
-                  />
-                  <span className="flex-1 text-left font-medium leading-[normal]">{t("TDX Attestation")}</span>
-                  <IntelLogo className="h-5" />
-                </button>
-
-                {expandedSections.tdx && (
-                  <>
-                    <p className="font-normal text-sm leading-[140%] opacity-80">
-                      Intel TDX provides a hardware-isolated environment and issues cryptographically signed attestation
-                      reports.
-                    </p>
-                    <div className="flex items-center gap-4">
-                      <Button variant="secondary" asChild>
-                        <a
-                          href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-trust-domain-extensions.html"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Documentation <ArrowUpRightIcon className="size-4" />
-                        </a>
-                      </Button>
-                      <Button variant="secondary" asChild>
-                        <a href="https://proof.t16z.com/" target="_blank" rel="noopener noreferrer">
-                          Verify via Intel TDX Explorer <ArrowUpRightIcon className="size-4" />
-                        </a>
-                      </Button>
-                    </div>
-
-                    {/* Quote Section */}
-                    {intelQuote && (
-                      <div>
-                        <label className="font-normal text-xs leading-[160%] opacity-60">{t("Quote")}:</label>
-                        <div className="relative w-full">
-                          <textarea
-                            readOnly
-                            className="h-32 w-full resize-none rounded-lg border border-border pt-1.5 pr-8 pb-3 pl-3 font-normal text-sm leading-[140%] opacity-80"
-                            value={intelQuote}
-                          />
-                          <button
-                            onClick={() => {
-                              if (!intelQuote) return;
-                              handleCopy(intelQuote, "intelQuote");
-                            }}
-                            className="absolute top-2 right-2 p-1 text-muted-foreground transition-colors hover:text-foreground"
-                            title="Copy quote"
-                          >
-                            {checkedMap.intelQuote ? (
-                              <CheckIcon className="size-4" />
-                            ) : (
-                              <ClipboardIcon className="size-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              {renderGPUSection()}
+              {renderTDXSection()}
             </div>
           )}
 

@@ -12,8 +12,8 @@ class NearAIClient extends ApiClient {
     });
   }
 
-  async getModelAttestationReport(model: string): Promise<ModelAttestationReport> {
-    return this.get<ModelAttestationReport>(`/attestation/report?model=${encodeURIComponent(model)}`, {
+  async getModelAttestationReport(model?: string): Promise<ModelAttestationReport> {
+    return this.get<ModelAttestationReport>(model ? `/attestation/report?model=${encodeURIComponent(model)}` : "/attestation/report", {
       apiVersion: "v2",
     });
   }
@@ -45,9 +45,16 @@ export type ModelAttestation = {
   intel_quote: string;
 };
 
+export type GatewayAttestation = {
+  intel_quote: string;
+  request_nonce: string;
+}
+
 export type ModelAttestationReport = {
-  model_attestations: Array<ModelAttestation>;
+  model_attestations?: Array<ModelAttestation>;
   all_attestations?: Array<ModelAttestation>;
+  chat_api_gateway_attestation: GatewayAttestation;
+  cloud_api_gateway_attestation: GatewayAttestation;
 };
 
 export type MessageSignature = {
