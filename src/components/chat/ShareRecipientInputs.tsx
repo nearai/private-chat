@@ -10,7 +10,7 @@ export const isValidEmail = (email: string) => {
 
 export const isValidNearAccount = (account: string) => {
   if (account.length < 2 || account.length > 64) return false;
-  return /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/.test(account);
+  return /^([a-z\d]+(?:[-_][a-z\d]+)*\.)*([a-z\d]+(?:[-_][a-z\d]+)*)$/.test(account);
 };
 
 export type RecipientInputValue = {
