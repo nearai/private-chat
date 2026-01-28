@@ -1067,6 +1067,7 @@
   "Signature Details": "",
   "Signature Verification": "",
   "Signing Address": "",
+  "Signing address does not match gateway attestation signing address": "",
   "Sign in": "",
   "Sign in to {{WEBUI_NAME}}": "",
   "Sign in to {{WEBUI_NAME}} with LDAP": "",

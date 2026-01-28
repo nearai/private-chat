@@ -15,6 +15,7 @@ import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/index";
 import { useChatStore } from "@/stores/useChatStore";
+import { useGatewayAttestationStore } from "@/stores/useGatewayAttestationStore";
 import type { VerificationStatus } from "../types";
 
 interface ModelVerifierProps {
@@ -39,6 +40,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const { models } = useChatStore();
+  const { setGatewayAttestation } = useGatewayAttestationStore();
   const modelIcon = models.find((m) => m.modelId === model)?.metadata?.modelIcon;
 
   const [loading, setLoading] = useState(false);
@@ -98,13 +100,17 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
       }
       setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
       setAttestationData(data);
+      // Update global store with gateway attestation so MessageVerifier can reuse it
+      if (data.cloud_api_gateway_attestation) {
+        setGatewayAttestation(data.cloud_api_gateway_attestation);
+      }
     } catch (err) {
       console.error("Error fetching attestation report:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch attestation report");
     } finally {
       setLoading(false);
     }
-  }, [model, models]);
+  }, [model, models, setGatewayAttestation]);
 
   const verifyAgain = async () => {
     hasFetchedRef.current = false;

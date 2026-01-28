@@ -30,6 +30,7 @@ export const newTranslationKeys = {
   "Signature Details": "",
   "Signature Verification": "",
   "Signing Address": "",
+  "Signing address does not match gateway attestation signing address": "",
   "Sorry! The Message Signature Verification Failed": "",
   "TDX Attestation": "",
   "This automated verification tool lets you independently confirm that the model is running in the TEE (Trusted Execution Environment).":
