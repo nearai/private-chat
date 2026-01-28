@@ -3,11 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
-
+import { useUserData } from "@/api/users/queries/useUserData";
 import { useUserSettings } from "@/api/users/queries/useUserSettings";
-
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import {
@@ -22,7 +22,6 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
-import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { toast } from "sonner";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
@@ -36,6 +35,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const setConversationInitStatus = useConversationStore((state) => state.setConversationInitStatus);
   const setConversationStreamStatus = useConversationStore((state) => state.setConversationStreamStatus);
   const userSettings = useUserSettings();
+  const { data: userData } = useUserData();
   const remoteConfig = useRemoteConfig();
 
   // Push response used for adding new response to the end of the conversation
@@ -68,6 +68,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
           content: contentItems,
           model: model,
           previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
+          metadata: userData?.user
+            ? {
+                ...(userData.user.id && { author_id: userData.user.id }),
+                ...(userData.user.name && { author_name: userData.user.name }),
+              }
+            : undefined,
         };
 
         draft.conversation.conversation.data.push(userMessage);
@@ -103,7 +109,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       updateConversation(updatedConversation);
       return tempId;
     },
-    [selectedModels, updateConversation]
+    [selectedModels, updateConversation, userData]
   );
 
   const startStream = useCallback(
@@ -160,6 +166,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
           await streamPromise;
           markStreamComplete(conversationLocalId, tempMsgId);
           removeStream(conversationLocalId, tempMsgId);
+          // biome-ignore lint/suspicious/noExplicitAny: explanation
         } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);

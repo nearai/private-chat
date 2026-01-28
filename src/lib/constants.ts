@@ -7,6 +7,7 @@ export const LOCAL_STORAGE_KEYS = {
   AGREED_TERMS: "agreedTerms",
   WELCOME_PAGE_PROMPT: "welcomePagePrompt",
   IMPORT_GUIDE_BANNER_CLOSED: "importGuideBannerClosed",
+  REDIRECT_AFTER_LOGIN: "redirectAfterLogin",
 };
 
 export const OFFLINE_CACHE_KEYS = {

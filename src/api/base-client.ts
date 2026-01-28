@@ -5,8 +5,8 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { isOfflineError, isOnline } from "@/lib/network";
 import { eventEmitter } from "@/lib/event";
+import { isOfflineError, isOnline } from "@/lib/network";
 import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
 import type {
   ConversationInfo,
@@ -17,9 +17,9 @@ import type {
 } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
+import { isTauri } from "@/utils/desktop";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
-import { isTauri } from "@/utils/desktop";
 
 type FetchImplementation = typeof fetch;
 
@@ -114,6 +114,7 @@ export class ApiClient {
     options: RequestInit & {
       apiVersion?: "v1" | "v2";
       withoutHeaders?: boolean;
+      requiresAuth?: boolean;
       ignore401Error?: boolean;
     } = {}
   ): Promise<T> {
@@ -126,7 +127,9 @@ export class ApiClient {
             ...((options.headers as Record<string, string>) || {}),
           };
 
-      if (this.includeAuth) {
+      // Check if auth is required (default to this.includeAuth unless explicitly set to false)
+      const shouldIncludeAuth = options.requiresAuth !== false && this.includeAuth;
+      if (shouldIncludeAuth) {
         const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
         if (token) {
           headers.Authorization = `Bearer ${token}`;
@@ -246,11 +249,15 @@ export class ApiClient {
     }
   }
 
-  protected async get<T>(endpoint: string, options: RequestInit & { apiVersion?: "v1" | "v2" } = {}): Promise<T> {
+  protected async get<T>(
+    endpoint: string,
+    options: RequestInit & { apiVersion?: "v1" | "v2"; requiresAuth?: boolean } = {}
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: "GET",
       apiVersion: options.apiVersion || "v1",
+      requiresAuth: options.requiresAuth,
     });
   }
 
@@ -282,6 +289,26 @@ export class ApiClient {
       apiVersion: options.apiVersion || "v1",
       withoutHeaders: options.withoutHeaders || false,
       ignore401Error: options.ignore401Error || false,
+    });
+  }
+
+  protected async patch<T>(
+    endpoint: string,
+    body?: unknown,
+    options: RequestInit & { apiVersion?: "v1" | "v2" } = {}
+  ): Promise<T> {
+    const requestOptions: RequestInit = {
+      ...options,
+      method: "PATCH",
+    };
+
+    if (body !== undefined) {
+      requestOptions.body = body instanceof FormData ? body : JSON.stringify(body);
+    }
+
+    return this.request<T>(endpoint, {
+      ...requestOptions,
+      apiVersion: options.apiVersion || "v1",
     });
   }
 
@@ -344,7 +371,7 @@ export class ApiClient {
       }
 
       const reader = response.body.getReader();
-      
+
       // Notify reader is ready for cancellation
       if (options.onReaderReady) {
         options.onReaderReady(reader, abortController);
@@ -713,22 +740,5 @@ export class ApiClient {
       method: "DELETE",
       apiVersion: options.apiVersion || "v1",
     });
-  }
-
-  protected async patch<T>(endpoint: string, body?: unknown, options: RequestInit = {}): Promise<T> {
-    const requestOptions: RequestInit = {
-      ...options,
-      method: "PATCH",
-    };
-
-    if (body !== undefined) {
-      if (body instanceof FormData) {
-        requestOptions.body = body;
-      } else {
-        requestOptions.body = JSON.stringify(body);
-      }
-    }
-
-    return this.request<T>(endpoint, requestOptions);
   }
 }

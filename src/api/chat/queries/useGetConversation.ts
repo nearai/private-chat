@@ -4,7 +4,21 @@ import { chatClient } from "../client";
 import { offlineCache } from "@/lib/offlineCache";
 import type { Conversation } from "@/types";
 
-export const useGetConversation = (id: string | undefined) => {
+// Polling interval in milliseconds (5 seconds)
+const POLLING_INTERVAL = 5000;
+
+interface UseGetConversationOptions {
+  /** Enable polling for real-time updates (default: false) */
+  polling?: boolean;
+  /** Custom polling interval in milliseconds (default: 5000) */
+  pollingInterval?: number;
+}
+
+export const useGetConversation = (
+  id: string | undefined,
+  options: UseGetConversationOptions = {}
+) => {
+  const { polling = false, pollingInterval = POLLING_INTERVAL } = options;
   const cachedConversation = id ? offlineCache.getConversationDetail(id) : null;
 
   return useQuery({
@@ -35,5 +49,9 @@ export const useGetConversation = (id: string | undefined) => {
     enabled: !!id,
     networkMode: "offlineFirst",
     initialData: cachedConversation ?? undefined,
+    // Enable polling when the option is set and the document is visible
+    refetchInterval: polling ? pollingInterval : false,
+    // Only poll when the window is focused to save resources
+    refetchIntervalInBackground: false,
   });
 };

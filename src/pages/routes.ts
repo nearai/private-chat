@@ -12,6 +12,7 @@ export const ADMIN_ROUTES = {
 export const APP_ROUTES = {
   HOME: "/",
   CHAT: `/c/${CHAT_ID}`,
+  SHARED: "/shared",
   WELCOME: "/welcome",
   AUTH: "/auth/*",
   NEAR_LOGIN: "/near-login",

@@ -6,6 +6,8 @@ const MODELS_KEY = "models";
 const AUTH_KEY = "auth";
 const CHAT_KEY = "chat";
 const USERS_KEY = "users";
+const SHARE_KEY = "conversationShare";
+const SHARE_GROUP_KEY = "shareGroup";
 const CONVERSATION_KEY = "conversation";
 const CONVERSATIONS_KEY = "conversations";
 
@@ -65,5 +67,14 @@ export const queryKeys = {
     detail: (id: string) => [USERS_KEY, "detail", id],
     userData: [USERS_KEY, "userData"],
     meSettings: [USERS_KEY, "meSettings"],
+  },
+  share: {
+    byConversationId: (conversationId?: string) => [SHARE_KEY, conversationId ?? ""],
+  },
+  shareGroups: {
+    all: [SHARE_GROUP_KEY],
+  },
+  sharing: {
+    sharedWithMe: ["sharing", "sharedWithMe"],
   },
 } as const;
