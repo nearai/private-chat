@@ -27,6 +27,7 @@ interface ModelVerifierProps {
 interface ExpandedSections {
   gpu: boolean;
   tdx: boolean;
+  gatewayTdx: boolean;
 }
 
 interface CheckedMap {
@@ -49,11 +50,12 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     gpu: false,
     tdx: false,
+    gatewayTdx: false,
   });
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
   const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
-  const [activeTDXTab, setActiveTDXTab] = useState<'model' | 'gateway'>("model");
+  const [activeVerificationTab, setActiveVerificationTab] = useState<'model' | 'gateway'>("model");
 
   const fetchAttestationReport = useCallback(async () => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -73,14 +75,17 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
         const attestation = attestations[0];
         setModelNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
         setModelIntelQuote(attestation.intel_quote || null);
-        setActiveTDXTab('model');
+        setActiveVerificationTab('model');
       } else {
         if (modelIsVerifiable) {
           throw new Error("No attestation data found for this model");
         }
         setModelNvidiaPayload(null);
         setModelIntelQuote(null);
-        setActiveTDXTab('gateway');
+        // If no model attestations, default to gateway tab if gateway attestation exists
+        if (data.cloud_api_gateway_attestation?.intel_quote) {
+          setActiveVerificationTab('gateway');
+        }
       }
       setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
       setAttestationData(data);
@@ -100,11 +105,11 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
   const handleClose = () => {
     onClose();
-    setExpandedSections({ gpu: false, tdx: false });
+    setExpandedSections({ gpu: false, tdx: false, gatewayTdx: false });
     setCheckedMap({});
   };
 
-  const toggleSection = (section: "gpu" | "tdx") => {
+  const toggleSection = (section: "gpu" | "tdx" | "gatewayTdx") => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
@@ -276,7 +281,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
   const renderTDXSection = () => {
     if (!attestationData) return null;
-    if (!modelIntelQuote && !gatewayIntelQuote) return null;
+    if (!modelIntelQuote) return null;
   
     return (
       <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
@@ -311,29 +316,51 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                 </a>
               </Button>
             </div>
+            {renderTDXSectionItem(modelIntelQuote, "intelQuote")}
+          </>
+        )}
+      </div>
+    );
+  }
 
-             <div className="flex flex-col">
-              <div className="mb-2 flex">
-                {modelIntelQuote && (
-                  <button
-                    className={cn("px-3 py-1 font-medium text-sm", activeTDXTab === "model" ? "border-primary border-b-2" : "text-muted-foreground")}
-                    onClick={() => setActiveTDXTab("model")}
-                  >
-                    Model
-                  </button>
-                )}
-                {gatewayIntelQuote && (
-                  <button
-                    className={cn("px-3 py-1 font-medium text-sm", activeTDXTab === "gateway" ? "border-primary border-b-2" : "text-muted-foreground")}
-                    onClick={() => setActiveTDXTab("gateway")}
-                  >
-                    Gateway
-                  </button>
-                )}
-              </div>
-              {activeTDXTab === "model" && renderTDXSectionItem(modelIntelQuote, "intelQuote")}
-              {activeTDXTab === "gateway" && renderTDXSectionItem(gatewayIntelQuote, "gatewayIntelQuote")}
+  const renderGatewayTDXSection = () => {
+    if (!attestationData) return null;
+    if (!gatewayIntelQuote) return null;
+  
+    return (
+      <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
+        <button onClick={() => toggleSection("gatewayTdx")} className="flex w-full items-center gap-1">
+          <ChevronRightIcon
+            className={cn("size-4 transition-transform", {
+              "rotate-90": expandedSections.gatewayTdx,
+            })}
+          />
+          <span className="flex-1 text-left font-medium leading-[normal]">{t("TDX Attestation")}</span>
+          <IntelLogo className="h-5" />
+        </button>
+        {expandedSections.gatewayTdx && (
+          <>
+            <p className="font-normal text-sm leading-[140%] opacity-80">
+              Intel TDX provides a hardware-isolated environment and issues cryptographically signed attestation
+              reports.
+            </p>
+            <div className="flex items-center gap-4">
+              <Button variant="secondary" asChild>
+                <a
+                  href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-trust-domain-extensions.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Documentation <ArrowUpRightIcon className="size-4" />
+                </a>
+              </Button>
+              <Button variant="secondary" asChild>
+                <a href="https://proof.t16z.com/" target="_blank" rel="noopener noreferrer">
+                  Verify via Intel TDX Explorer <ArrowUpRightIcon className="size-4" />
+                </a>
+              </Button>
             </div>
+            {renderTDXSectionItem(gatewayIntelQuote, "gatewayIntelQuote")}
           </>
         )}
       </div>
@@ -358,48 +385,122 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
     }
   }, [show, autoVerify, fetchAttestationReport]);
 
+  const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
+  const hasGatewayAttestations = attestationData && gatewayIntelQuote;
+
   return (
     <Dialog open={show} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-[540px] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">{t("Model Verification")}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            {activeVerificationTab === "model" ? t("Model Verification") : t("Gateway Verification")}
+          </DialogTitle>
           <DialogDescription className="sr-only" />
         </DialogHeader>
 
         <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-2">
-            <p className="font-normal text-xs leading-[160%] opacity-60">{t("Verified Model")}</p>
-            <div className="flex items-center gap-1">
-              <img src={modelIcon} alt="Model" className="size-5" />
-              <p className="leading-[normal]">{model}</p>
-            </div>
-          </div>
-          <p className="font-normal text-sm leading-[140%] opacity-80">
-            The hardware attestations below confirm the authenticity of this model and the environment it runs in.
-            Expand any section to view the raw attestation data or verify it independently.
-          </p>
-
-          {loading && (
-            <div className="flex items-center justify-center py-8">
-              <Spinner className="size-5" />
-              <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
+          {/* Tab Navigation */}
+          {(hasModelAttestations || hasGatewayAttestations) && (
+            <div className="flex border-border border-b">
+              {hasModelAttestations && (
+                <button
+                  className={cn(
+                    "px-4 py-2 font-medium text-sm transition-colors",
+                    activeVerificationTab === "model"
+                      ? "border-primary border-b-2 text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveVerificationTab("model")}
+                >
+                  {t("Model Verification")}
+                </button>
+              )}
+              {hasGatewayAttestations && (
+                <button
+                  className={cn(
+                    "px-4 py-2 font-medium text-sm transition-colors",
+                    activeVerificationTab === "gateway"
+                      ? "border-primary border-b-2 text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveVerificationTab("gateway")}
+                >
+                  {t("Gateway Verification")}
+                </button>
+              )}
             </div>
           )}
 
-          {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-              <div className="flex items-center">
-                <XCircleIcon className="mr-2 h-5 w-5 text-destructive" />
-                <span className="text-destructive">{error}</span>
+          {/* Model Verification Tab Content */}
+          {activeVerificationTab === "model" && (
+            <>
+              <div className="flex flex-col gap-2">
+                <p className="font-normal text-xs leading-[160%] opacity-60">{t("Verified Model")}</p>
+                <div className="flex items-center gap-1">
+                  <img src={modelIcon} alt="Model" className="size-5" />
+                  <p className="leading-[normal]">{model}</p>
+                </div>
               </div>
-            </div>
+              <p className="font-normal text-sm leading-[140%] opacity-80">
+                The hardware attestations below confirm the authenticity of this model and the environment it runs in.
+                Expand any section to view the raw attestation data or verify it independently.
+              </p>
+
+              {loading && (
+                <div className="flex items-center justify-center py-8">
+                  <Spinner className="size-5" />
+                  <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                  <div className="flex items-center">
+                    <XCircleIcon className="mr-2 h-5 w-5 text-destructive" />
+                    <span className="text-destructive">{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {attestationData && (
+                <div className="space-y-4">
+                  {renderGPUSection()}
+                  {renderTDXSection()}
+                </div>
+              )}
+            </>
           )}
 
-          {attestationData && (
-            <div className="space-y-4">
-              {renderGPUSection()}
-              {renderTDXSection()}
-            </div>
+          {/* Gateway Verification Tab Content */}
+          {activeVerificationTab === "gateway" && (
+            <>
+              <p className="font-normal text-sm leading-[140%] opacity-80">
+                The hardware attestations below confirm the authenticity of the private LLM gateway environment.
+                Expand any section to view the raw attestation data or verify it independently.
+              </p>
+
+              {loading && (
+                <div className="flex items-center justify-center py-8">
+                  <Spinner className="size-5" />
+                  <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                  <div className="flex items-center">
+                    <XCircleIcon className="mr-2 h-5 w-5 text-destructive" />
+                    <span className="text-destructive">{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {attestationData && (
+                <div className="space-y-4">
+                  {renderGatewayTDXSection()}
+                </div>
+              )}
+            </>
           )}
 
           {attestationData && (

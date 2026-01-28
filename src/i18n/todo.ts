@@ -17,6 +17,7 @@ export const newTranslationKeys = {
     "",
   "Messages Verification": "",
   "Model Verification": "",
+  "Gateway Verification": "",
   "No signature data found for this message.": "",
   "No verifiable messages found for this chat.": "",
   Nonce: "",
