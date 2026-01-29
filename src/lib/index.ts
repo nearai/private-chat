@@ -327,7 +327,9 @@ export const analyzeSiblings = (
     if (!inputSiblingsMap[siblingContent]) {
       inputSiblingsMap[siblingContent] = [];
     }
-    inputSiblingsMap[siblingContent].push(siblingId);
+    if (!inputSiblingsMap[siblingContent].includes(siblingId)) {
+      inputSiblingsMap[siblingContent].push(siblingId);
+    }
   }
 
   // Determine if siblings are input variants or response variants
