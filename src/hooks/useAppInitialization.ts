@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { useConfig } from "@/api/config/queries";
 import { queryKeys } from "@/api/query-keys";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { initializeDesktopIntegrations } from "@/utils/desktop";
+import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
+import { initializeDesktopIntegrations, isTauri } from "@/utils/desktop";
 
 export const useAppInitialization = () => {
   const queryClient = useQueryClient();
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { loadSignatures } = useMessagesSignaturesStore();
 
   const { isLoading: isConfigLoading } = useConfig();
 
@@ -19,7 +21,7 @@ export const useAppInitialization = () => {
       setIsLoading(true);
 
       try {
-        await initializeDesktopIntegrations();
+        await Promise.all([initializeDesktopIntegrations(), loadSignatures()]);
 
         const hash = window.location.hash.substring(1);
         if (hash) {
@@ -31,6 +33,12 @@ export const useAppInitialization = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
           }
         }
+
+        console.log(
+          "App initialized",
+          isTauri(),
+          localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN),
+        );
 
         setIsInitialized(true);
       } catch (error) {

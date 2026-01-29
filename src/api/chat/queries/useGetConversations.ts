@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { queryKeys } from "@/api/query-keys";
 import type { ConversationInfo } from "@/types";
 import { chatClient } from "../client";
@@ -7,7 +8,23 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 export const useGetConversations = () => {
   const token = typeof window !== "undefined" ? localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN) : null;
-  const cachedConversations = offlineCache.getConversationList();
+  const [cacheState, setCacheState] = useState<{
+    data?: ConversationInfo[];
+    isLoading: boolean;
+  }>({
+    isLoading: !!token,
+  });
+
+  useEffect(() => {
+    if (!token) return;
+
+    offlineCache.getConversationList().then((data) => {
+      setCacheState({
+        data: data || undefined,
+        isLoading: false,
+      });
+    });
+  }, [token]);
 
   return useQuery({
     queryKey: queryKeys.conversation.all,
@@ -15,10 +32,10 @@ export const useGetConversations = () => {
       try {
         const conversations = await chatClient.getConversations();
         const normalized = conversations as unknown as ConversationInfo[];
-        offlineCache.saveConversationList(normalized);
+        await offlineCache.saveConversationList(normalized);
         return normalized;
       } catch (error) {
-        const cached = offlineCache.getConversationList();
+        const cached = await offlineCache.getConversationList();
         if (cached) {
           console.warn("Using offline conversation list cache due to error:", error);
           return cached;
@@ -26,10 +43,11 @@ export const useGetConversations = () => {
         throw error;
       }
     },
-    enabled: !!token,
+    enabled: !!token && !cacheState.isLoading,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     networkMode: "offlineFirst",
-    initialData: cachedConversations ?? undefined,
+    initialData: cacheState.data,
+    initialDataUpdatedAt: 0,
   });
 };

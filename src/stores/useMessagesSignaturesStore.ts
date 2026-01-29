@@ -14,13 +14,16 @@ interface MessagesSignaturesState {
   removeMessageSignature: (chatCompletionId: string) => void;
   removeMessageSignatureError: (chatCompletionId: string) => void;
   clearAllSignatures: () => void;
+  loadSignatures: () => Promise<void>;
 }
 
-const loadCachedSignatures = () => offlineCache.getMessageSignatures() ?? {};
-
 export const useMessagesSignaturesStore = create<MessagesSignaturesState>()((set) => ({
-  messagesSignatures: loadCachedSignatures(),
+  messagesSignatures: {},
   messagesSignaturesErrors: {},
+  loadSignatures: async () => {
+    const signatures = (await offlineCache.getMessageSignatures()) ?? {};
+    set({ messagesSignatures: signatures });
+  },
   setMessageSignature: (chatCompletionId: string, signature: MessageSignature) =>
     set((state) => {
       const updated = {
