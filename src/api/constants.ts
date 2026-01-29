@@ -30,3 +30,4 @@ export const TEMP_RESPONSE_ID = "temp-response-id";
 export const DEFAULT_MODEL = import.meta.env.VITE_DEFAULT_MODEL || "zai-org/GLM-4.6";
 export const MODEL_FOR_TITLE_GENERATION = import.meta.env.VITE_MODEL_FOR_TITLE_GENERATION || "Qwen/Qwen3-30B-A3B-Instruct-2507";
 export const NEAR_RPC_URL = import.meta.env.VITE_NEAR_RPC_URL || "https://free.rpc.fastnear.com";
+export const NEAR_AI_CLOUD_MODELS_URL = "https://cloud.near.ai/models";
