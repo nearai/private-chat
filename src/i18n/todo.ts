@@ -59,4 +59,5 @@ export const newTranslationKeys = {
   "View More": "",
   "View Verification Details": "",
   "Your chat is confidential.": "",
+  "Learn more about models capabilities": "",
 };
