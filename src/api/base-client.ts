@@ -393,13 +393,13 @@ export class ApiClient {
         const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
           JSON.parse(event.data);
         const model = (body as { model?: string })?.model || "";
-        const tempStreamId = (body as { tempStreamId?: string })?.tempStreamId || "";;
+        const tempStreamId = (body as { tempStreamId?: string })?.tempStreamId || "";
 
         switch (data.type) {
           case "response.created":
             updateConversationData((draft) => {
               let tempUserMessage: ConversationItem | undefined;
-              let temUserResponseId = "";
+              let tempUserResponseId = "";
               if (tempStreamId) {
                 tempUserMessage = draft.conversation?.conversation.data?.find(
                   (item) => item.response_id.startsWith(TEMP_RESPONSE_ID) && item.id === tempStreamId
@@ -411,7 +411,7 @@ export class ApiClient {
               }
 
               if (tempUserMessage) {
-                temUserResponseId = tempUserMessage.response_id;
+                tempUserResponseId = tempUserMessage.response_id;
                 tempUserMessage.response_id = data.response.id;
 
                 // mock ai msg
@@ -451,7 +451,7 @@ export class ApiClient {
                     lastResponseParent.nextResponseIds = [
                       ...lastResponseParent.nextResponseIds,
                       data.response.id,
-                    ].filter((id: string) => id !== temUserResponseId);
+                    ].filter((id: string) => id !== tempUserResponseId);
                   }
                   // Optimistically associate the originating user input message with the new response ID
 

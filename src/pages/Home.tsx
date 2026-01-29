@@ -114,7 +114,6 @@ const Home = ({
     const aiMsg = conversationData.data.filter((item) => item.type === 'message' && item.role === 'assistant');
     if (isNewChat) {
       if (aiMsg.length) {
-        console.log("New chat detected, initializing models");
         setConversationData(conversationData);
         setSearchParams((prev) => {
           prev.delete(NEW_CHAT_KEY);
@@ -122,7 +121,6 @@ const Home = ({
         });
       }
     } else {
-      console.log("Setting conversation data for chatId:", chatId);
       setConversationData(conversationData);
     }
 
