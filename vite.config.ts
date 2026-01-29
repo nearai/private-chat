@@ -23,7 +23,48 @@ export default defineConfig({
         "maskable-icon-512x512.png",
       ],
       workbox: {
+        disableDevLogs: false,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        navigateFallback: "/",
+        navigateFallbackDenylist: [
+          /^\/v1\//,
+          /^\/docs/,
+          /^\/health$/,
+          /^\/api-docs(\/|$)/,
+        ],
+        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) => {
+              const isApi =
+                url.pathname.startsWith("/v1/") ||
+                url.pathname.startsWith("/docs") ||
+                url.pathname.startsWith("/health") ||
+                url.pathname.startsWith("/api-docs");
+                return (
+                  sameOrigin &&
+                  !isApi &&
+                  (url.pathname.endsWith(".html") ||
+                    url.pathname.endsWith(".js") ||
+                    url.pathname.endsWith(".css") ||
+                    url.pathname.endsWith(".png") ||
+                    url.pathname.endsWith(".jpg"))
+                );
+            },
+            handler: "CacheFirst",
+            options: {
+              cacheName: "static-resources",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 86400,
+              },
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
+        ],
       },
       manifest: {
         name: "NEAR AI",

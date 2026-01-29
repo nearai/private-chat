@@ -773,6 +773,8 @@
   "Model Permissions": "",
   "Model updated successfully": "",
   "Model Verification": "",
+  "Model Anonymization": "",
+  "Gateway Verification": "",
   "Modelfile Content": "",
   "Models": "",
   "Models Access": "",
@@ -1065,6 +1067,7 @@
   "Signature Details": "",
   "Signature Verification": "",
   "Signing Address": "",
+  "Signing address does not match gateway attestation signing address": "",
   "Sign in": "",
   "Sign in to {{WEBUI_NAME}}": "",
   "Sign in to {{WEBUI_NAME}} with LDAP": "",
@@ -1222,6 +1225,10 @@
   "Upgrade to a licensed plan for enhanced capabilities, including custom theming and branding, and dedicated support.": "",
   "Verifiable Messages": "",
   "Verified Model": "",
+  "Anonymized Model": "",
+  "Verified Gateway": "",
+  "Verified": "",
+  "Anonymized": "",
   "Verify Again": "",
   "Verify GPU attestation by yourself": "",
   "Verify TDX quote at TEE Explorer": "",
@@ -1331,5 +1338,6 @@
   "Youtube Proxy URL": "",
   "Verification is not available for imported chats": "",
   "This file type is not supported. Please upload PDF or plain text files.": "",
-  "AI can make mistakes. Verify information before relying on it.": ""
+  "AI can make mistakes. Verify information before relying on it.": "",
+  "Verification failed": ""
 }
