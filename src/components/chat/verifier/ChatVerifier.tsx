@@ -267,6 +267,7 @@ const ChatVerifier: React.FC = () => {
       <ModelVerifier
         autoVerify={isRightSidebarOpen && !!selectedModels[0]}
         model={selectedModels[0] || ""}
+        selectedModels={selectedModels.length > 1 ? selectedModels : undefined}
         show={showModelVerifier}
         onClose={closeModelVerifier}
         onStatusUpdate={handleModelStatusUpdate}
