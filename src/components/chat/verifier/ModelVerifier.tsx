@@ -10,7 +10,7 @@ import IntelLogo from "@/assets/images/intel.svg?react";
 import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -80,6 +80,15 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   const [activeVerificationTab, setActiveVerificationTab] = useState<'model' | 'gateway'>("model");
   const activeTabRef = useRef<'model' | 'gateway'>("model");
   const [modelIsVerifiable, setModelIsVerifiable] = useState<boolean>(false);
+
+  // Extract state reset logic to avoid duplication (DRY principle)
+  const resetModelVerificationState = useCallback(() => {
+    setAttestationData(null);
+    setModelNvidiaPayload(null);
+    setModelIntelQuote(null);
+    setError(null);
+    // Gateway attestation is preserved - it's the same for all models
+  }, []);
 
   const loadAttestationData = useCallback((data: ModelAttestationReport, modelId: string) => {
     const modelInfo = models.find((m) => m.modelId === modelId);
@@ -467,14 +476,28 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     }
   }, [selectedModelId]);
 
+  // Use refs to track attestation state without causing effect re-runs
+  const attestationDataRef = useRef(attestationData);
+  const modelNvidiaPayloadRef = useRef(modelNvidiaPayload);
+  const modelIntelQuoteRef = useRef(modelIntelQuote);
+  const gatewayIntelQuoteRef = useRef(gatewayIntelQuote);
+  
+  useEffect(() => {
+    attestationDataRef.current = attestationData;
+    modelNvidiaPayloadRef.current = modelNvidiaPayload;
+    modelIntelQuoteRef.current = modelIntelQuote;
+    gatewayIntelQuoteRef.current = gatewayIntelQuote;
+  }, [attestationData, modelNvidiaPayload, modelIntelQuote, gatewayIntelQuote]);
+
   useEffect(() => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     const isOpening = show && !prevShowRef.current;
 
     if (token) {
       // Check if both attestations already exist and are for the current model
-      const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
-      const hasGatewayAttestations = attestationData && gatewayIntelQuote;
+      // Use refs to avoid adding state values to dependency array
+      const hasModelAttestations = attestationDataRef.current && (modelNvidiaPayloadRef.current || modelIntelQuoteRef.current);
+      const hasGatewayAttestations = attestationDataRef.current && gatewayIntelQuoteRef.current;
       const isForCurrentModel = fetchedModelRef.current === currentModel;
       const bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
 
@@ -488,7 +511,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     }
     
     prevShowRef.current = show;
-  }, [show, autoVerify, fetchAttestationReport, currentModel, attestationData, modelNvidiaPayload, modelIntelQuote, gatewayIntelQuote]);
+  }, [show, autoVerify, fetchAttestationReport, currentModel]);
 
   // Handle model selection change and trigger fetch
   useEffect(() => {
@@ -498,10 +521,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       if (token) {
         hasFetchedRef.current = true;
         // Reset state when model changes (but preserve gateway attestation)
-        setAttestationData(null);
-        setModelNvidiaPayload(null);
-        setModelIntelQuote(null);
-        setError(null);
+        resetModelVerificationState();
         // Restore gateway attestation from cache if available (gateway is same for all models)
         if (cachedGatewayAttestation?.intel_quote) {
           setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
@@ -510,7 +530,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
         fetchAttestationReport();
       }
     }
-  }, [currentModel, show, fetchAttestationReport, cachedGatewayAttestation]);
+  }, [currentModel, show, fetchAttestationReport, cachedGatewayAttestation, resetModelVerificationState]);
 
   // Gateway attestation is the same for all models, so check both current data and cached store
   const hasGatewayAttestations = (attestationData && gatewayIntelQuote) || cachedGatewayAttestation;
@@ -521,6 +541,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     <Dialog open={show} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-[540px] overflow-y-auto">
         <DialogHeader className="sr-only">
+          <DialogTitle className="sr-only">
+            {activeVerificationTab === "model" ? t("Model Verification") : t("Gateway Verification")}
+          </DialogTitle>
           <DialogDescription className="sr-only" />
         </DialogHeader>
 
@@ -574,7 +597,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
                   </p>
                   <Select value={selectedModelId} onValueChange={handleModelChange}>
                     <SelectTrigger className="h-auto w-auto max-w-[400px] border-none bg-transparent px-0 py-1 text-base hover:bg-transparent focus:bg-transparent focus:ring-0 data-[state=open]:bg-transparent [&>span:first-child]:hidden">
-                      <SelectValue>{currentModel}</SelectValue>
+                      <SelectValue />
                       <div className="flex min-w-0 flex-1 items-center gap-1">
                         {modelIcon && <img src={modelIcon} alt="Model" className="size-5 shrink-0" />}
                         <span className="flex-1 truncate text-left text-base leading-[normal]">{currentModel}</span>
