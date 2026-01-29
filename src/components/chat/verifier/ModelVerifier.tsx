@@ -489,11 +489,36 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     gatewayIntelQuoteRef.current = gatewayIntelQuote;
   }, [attestationData, modelNvidiaPayload, modelIntelQuote, gatewayIntelQuote]);
 
+  // Handle dialog opening, auto-verify, and model changes in a single consolidated effect
   useEffect(() => {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
-    const isOpening = show && !prevShowRef.current;
+    if (!show || !currentModel) {
+      prevShowRef.current = show;
+      return;
+    }
 
-    if (token) {
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    if (!token) {
+      prevShowRef.current = show;
+      return;
+    }
+
+    const isOpening = show && !prevShowRef.current;
+    const modelChanged = currentModel !== prevModelRef.current;
+
+    // If model changed, reset state and update ref
+    if (modelChanged) {
+      prevModelRef.current = currentModel;
+      resetModelVerificationState();
+      // Restore gateway attestation from cache if available (gateway is same for all models)
+      if (cachedGatewayAttestation?.intel_quote) {
+        setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
+      }
+    }
+
+    // Check if we need to fetch
+    const shouldFetch = isOpening || modelChanged || (autoVerify && !hasFetchedRef.current);
+    
+    if (shouldFetch) {
       // Check if both attestations already exist and are for the current model
       // Use refs to avoid adding state values to dependency array
       const hasModelAttestations = attestationDataRef.current && (modelNvidiaPayloadRef.current || modelIntelQuoteRef.current);
@@ -501,36 +526,15 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       const isForCurrentModel = fetchedModelRef.current === currentModel;
       const bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
 
-      if (isOpening || (autoVerify && !hasFetchedRef.current)) {
-        hasFetchedRef.current = true;
-        // Skip fetch if both attestations already exist for the current model
-        if (!bothAttestationsExist) {
-          fetchAttestationReport();
-        }
+      hasFetchedRef.current = true;
+      // Skip fetch if both attestations already exist for the current model
+      if (!bothAttestationsExist) {
+        fetchAttestationReport();
       }
     }
     
     prevShowRef.current = show;
-  }, [show, autoVerify, fetchAttestationReport, currentModel]);
-
-  // Handle model selection change and trigger fetch
-  useEffect(() => {
-    if (show && currentModel && currentModel !== prevModelRef.current) {
-      prevModelRef.current = currentModel;
-      const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
-      if (token) {
-        hasFetchedRef.current = true;
-        // Reset state when model changes (but preserve gateway attestation)
-        resetModelVerificationState();
-        // Restore gateway attestation from cache if available (gateway is same for all models)
-        if (cachedGatewayAttestation?.intel_quote) {
-          setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
-        }
-        // Trigger fetch for the new model
-        fetchAttestationReport();
-      }
-    }
-  }, [currentModel, show, fetchAttestationReport, cachedGatewayAttestation, resetModelVerificationState]);
+  }, [show, autoVerify, fetchAttestationReport, currentModel, cachedGatewayAttestation, resetModelVerificationState]);
 
   // Gateway attestation is the same for all models, so check both current data and cached store
   const hasGatewayAttestations = (attestationData && gatewayIntelQuote) || cachedGatewayAttestation;
