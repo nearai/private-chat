@@ -322,7 +322,6 @@ export class ApiClient {
             {
               type: "output_text",
               text: msg,
-              annotations: [],
             }
           ]
         }
@@ -414,7 +413,13 @@ export class ApiClient {
                   created_at: Date.now(),
                   status: "pending",
                   role: ConversationRoles.ASSISTANT,
-                  content: [],
+                  content: [
+                    {
+                      type: "output_text",
+                      text: "mockmock",
+                      annotations: [],
+                    }
+                  ],
                   model,
                 };
                 draft.conversation!.conversation.data = [
@@ -512,7 +517,6 @@ export class ApiClient {
             break;
           case "response.output_item.done":
             updateConversationData((draft) => {
-              cleanupTempStreamId(draft);
               const currentConversationData = draft.conversation?.conversation.data?.find(
                 (item) => item.id === data.item.id
               );
@@ -542,6 +546,7 @@ export class ApiClient {
                       });
                     }
                   }
+                  cleanupTempStreamId(draft);
                   break;
                 case "reasoning":
                   //INVESTIGATE
@@ -573,7 +578,7 @@ export class ApiClient {
             break;
           case "response.output_item.added":
             updateConversationData((draft) => {
-              cleanupTempStreamId(draft);
+              // cleanupTempStreamId(draft);
               switch (data.item.type) {
                 case "reasoning": {
                   draft.conversation!.conversation.last_id = data.item.id;
