@@ -58,6 +58,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
   const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
+  const fetchedModelRef = useRef<string | null>(null);
   const [activeVerificationTab, setActiveVerificationTab] = useState<'model' | 'gateway'>("model");
   const activeTabRef = useRef<'model' | 'gateway'>("model");
   const [modelIsVerifiable, setModelIsVerifiable] = useState<boolean>(false);
@@ -100,6 +101,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
       }
       setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
       setAttestationData(data);
+      fetchedModelRef.current = model;
       // Update global store with gateway attestation so MessageVerifier can reuse it
       if (data.cloud_api_gateway_attestation) {
         setGatewayAttestation(data.cloud_api_gateway_attestation);
@@ -392,17 +394,37 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
     activeTabRef.current = activeVerificationTab;
   }, [activeVerificationTab]);
 
+  // Reset fetch flag when model changes
+  useEffect(() => {
+    if (fetchedModelRef.current !== null && fetchedModelRef.current !== model) {
+      hasFetchedRef.current = false;
+    }
+  }, [model]);
+
   useEffect(() => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     const isOpening = show && !prevShowRef.current;
 
     if (token) {
+      // Check if both attestations already exist and are for the current model
+      const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
+      const hasGatewayAttestations = attestationData && gatewayIntelQuote;
+      const isForCurrentModel = fetchedModelRef.current === model;
+      const bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
+
       if (isOpening || (autoVerify && !hasFetchedRef.current)) {
-        hasFetchedRef.current = true;
-        fetchAttestationReport();
+        // Skip fetch if both attestations already exist for the current model
+        if (bothAttestationsExist) {
+          hasFetchedRef.current = true;
+        } else {
+          hasFetchedRef.current = true;
+          fetchAttestationReport();
+        }
       }
     }
-  }, [show, autoVerify, fetchAttestationReport]);
+    
+    prevShowRef.current = show;
+  }, [show, autoVerify, fetchAttestationReport, model, attestationData, modelNvidiaPayload, modelIntelQuote, gatewayIntelQuote]);
 
   const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
   const hasGatewayAttestations = attestationData && gatewayIntelQuote;
