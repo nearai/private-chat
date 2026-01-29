@@ -16,6 +16,7 @@ interface ModelAttestationState {
   isLoading: LoadingState;
   fetchModelAttestation: (modelId: string, isVerifiable: boolean, forceRefresh?: boolean) => Promise<ModelAttestationReport | null>;
   setModelAttestation: (modelId: string, attestation: ModelAttestationReport) => void;
+  clearLoadingState: (modelId: string, isVerifiable: boolean) => void;
 }
 
 // Use a consistent cache key for non-verifiable models since they all use the same API call
@@ -39,30 +40,42 @@ export const useModelAttestationStore = create<ModelAttestationState>()((set, ge
     // Check if already loading to prevent duplicate requests
     const { isLoading } = get();
     if (isLoading[cacheKey]) {
-      // Wait for the ongoing request to complete (with timeout to prevent memory leaks)
-      return new Promise<ModelAttestationReport | null>((resolve) => {
-        const maxWaitTime = 120000; // 120 seconds timeout
-        const startTime = Date.now();
-        const checkInterval = setInterval(() => {
-          const currentState = get();
-          const elapsedTime = Date.now() - startTime;
-          
-          // Check timeout to prevent infinite polling
-          if (elapsedTime >= maxWaitTime) {
-            clearInterval(checkInterval);
-            resolve(null);
-            return;
-          }
-          
-          if (!currentState.isLoading[cacheKey] && currentState.attestations[cacheKey]) {
-            clearInterval(checkInterval);
-            resolve(currentState.attestations[cacheKey]);
-          } else if (!currentState.isLoading[cacheKey]) {
-            clearInterval(checkInterval);
-            resolve(null);
-          }
-        }, 100);
-      });
+      // If forceRefresh is true, clear the stuck loading state and proceed
+      if (forceRefresh) {
+        set((state) => ({
+          isLoading: { ...state.isLoading, [cacheKey]: false },
+        }));
+        // Continue to fetch below
+      } else {
+        // Wait for the ongoing request to complete (with timeout to prevent memory leaks)
+        return new Promise<ModelAttestationReport | null>((resolve) => {
+          const maxWaitTime = 30000; // 30 seconds timeout
+          const startTime = Date.now();
+          const checkInterval = setInterval(() => {
+            const currentState = get();
+            const elapsedTime = Date.now() - startTime;
+            
+            // Check timeout to prevent infinite polling
+            if (elapsedTime >= maxWaitTime) {
+              clearInterval(checkInterval);
+              // Clear the stuck loading state
+              set((state) => ({
+                isLoading: { ...state.isLoading, [cacheKey]: false },
+              }));
+              resolve(null);
+              return;
+            }
+            
+            if (!currentState.isLoading[cacheKey] && currentState.attestations[cacheKey]) {
+              clearInterval(checkInterval);
+              resolve(currentState.attestations[cacheKey]);
+            } else if (!currentState.isLoading[cacheKey]) {
+              clearInterval(checkInterval);
+              resolve(null);
+            }
+          }, 100);
+        });
+      }
     }
 
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -75,19 +88,26 @@ export const useModelAttestationStore = create<ModelAttestationState>()((set, ge
     }));
 
     try {
-      const data = await nearAIClient.getModelAttestationReport(isVerifiable ? modelId : '');
+      const apiModelId = isVerifiable ? modelId : '';
+      const data = await nearAIClient.getModelAttestationReport(apiModelId);
       set((state) => ({
         attestations: { ...state.attestations, [cacheKey]: data },
         isLoading: { ...state.isLoading, [cacheKey]: false },
       }));
       return data;
     } catch (err) {
-      console.error(`Error fetching model attestation for ${modelId}:`, err);
+      console.error(`[useModelAttestationStore] Error fetching model attestation for ${modelId}:`, err);
       set((state) => ({
         isLoading: { ...state.isLoading, [cacheKey]: false },
       }));
       return null;
     }
+  },
+  clearLoadingState: (modelId: string, isVerifiable: boolean) => {
+    const cacheKey = isVerifiable ? modelId : ANONYMIZED_MODEL_CACHE_KEY;
+    set((state) => ({
+      isLoading: { ...state.isLoading, [cacheKey]: false },
+    }));
   },
   setModelAttestation: (modelId: string, attestation: ModelAttestationReport) => {
     // Note: This function is used to manually set attestation data.
