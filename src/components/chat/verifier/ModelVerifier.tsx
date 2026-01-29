@@ -464,23 +464,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   const handleModelChange = useCallback((newModelId: string) => {
     if (newModelId !== selectedModelId) {
       setSelectedModelId(newModelId);
-      hasFetchedRef.current = false;
-      // Reset state when model changes (but preserve gateway attestation)
-      setAttestationData(null);
-      setModelNvidiaPayload(null);
-      setModelIntelQuote(null);
-      setError(null);
-      // Keep gatewayIntelQuote - gateway attestation is the same for all models
-      // It will be restored from cachedGatewayAttestation or set when new data loads
     }
   }, [selectedModelId]);
-
-  // Reset fetch flag when model changes
-  useEffect(() => {
-    if (fetchedModelRef.current !== null && fetchedModelRef.current !== currentModel) {
-      hasFetchedRef.current = false;
-    }
-  }, [currentModel]);
 
   useEffect(() => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -494,11 +479,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       const bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
 
       if (isOpening || (autoVerify && !hasFetchedRef.current)) {
+        hasFetchedRef.current = true;
         // Skip fetch if both attestations already exist for the current model
-        if (bothAttestationsExist) {
-          hasFetchedRef.current = true;
-        } else {
-          hasFetchedRef.current = true;
+        if (!bothAttestationsExist) {
           fetchAttestationReport();
         }
       }
@@ -513,7 +496,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       prevModelRef.current = currentModel;
       const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
       if (token) {
-        hasFetchedRef.current = false;
+        hasFetchedRef.current = true;
         // Reset state when model changes (but preserve gateway attestation)
         setAttestationData(null);
         setModelNvidiaPayload(null);
