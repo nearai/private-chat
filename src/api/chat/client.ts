@@ -356,6 +356,7 @@ class ChatClient extends ApiClient {
     tools,
     include,
     previous_response_id,
+    tempStreamId,
     onReaderReady,
     onResponseCreated,
   }: StartStreamProps & {
@@ -377,6 +378,7 @@ class ChatClient extends ApiClient {
         instructions: systemPrompt,
         signing_algo: DEFAULT_SIGNING_ALGO,
         previous_response_id,
+        tempStreamId,
       },
       { apiVersion: "v2", queryClient, onReaderReady, onResponseCreated }
     );

@@ -207,7 +207,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [messageContent, message]);
 
   if (!message) return null;
-  const isTempMsg = message.response_id === TEMP_RESPONSE_ID;
+  const isTempMsg = (message.response_id || '').startsWith(TEMP_RESPONSE_ID);
 
   return (
     <div

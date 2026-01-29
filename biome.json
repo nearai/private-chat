@@ -24,7 +24,7 @@
     "enabled": true,
     "includes": ["**", "!/public/**"],
     "rules": {
-      "recommended": true,
+      "recommended": true,      
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "error",
@@ -32,6 +32,7 @@
         "useUniqueElementIds": "off"
       },
       "suspicious": {
+        "noExplicitAny": "off",
         "noConsole": {
           "options": {
             "allow": [

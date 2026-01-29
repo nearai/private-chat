@@ -562,6 +562,7 @@ export interface StartStreamProps {
   tools?: Tool[];
   include?: string[];
   previous_response_id?: string;
+  tempStreamId?: string;
 }
 
 export interface ChatStartStreamOptions {

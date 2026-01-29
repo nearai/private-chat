@@ -22,6 +22,8 @@ import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import type { ChatStartStreamOptions } from "@/types";
 import { useTranslation } from "react-i18next";
 
+const NEW_CHAT_KEY = "new";
+
 const Home = ({
   startStream,
   stopStream,
@@ -60,7 +62,9 @@ const Home = ({
     return conversationStreamStatus.get(chatId) === "streaming";
   }, [chatId, conversationIsReady, conversationStreamStatus]);
 
-  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(conversationIsReady ? chatId : undefined);
+  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(
+    conversationIsReady && !currentStreamIsActive ? chatId : undefined
+  );
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
@@ -97,6 +101,7 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId || !conversationData) return;
+    const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (conversationState?.conversationId !== chatId) {
       dataInitializedRef.current = false;
     }
@@ -105,20 +110,36 @@ const Home = ({
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationIsReady) return;
     if (!conversationData.data?.length) return;
-    // console.log("Initializing conversation data in store for chatId:", chatId);
-    setConversationData(conversationData);
-    if (conversationData.data.length >= 2) {
+    
+    const aiMsg = conversationData.data.filter((item) => item.type === 'message' && item.role === 'assistant');
+    if (isNewChat) {
+      if (aiMsg.length) {
+        console.log("New chat detected, initializing models");
+        setConversationData(conversationData);
+        setSearchParams((prev) => {
+          prev.delete(NEW_CHAT_KEY);
+          return prev;
+        });
+      }
+    } else {
+      console.log("Setting conversation data for chatId:", chatId);
+      setConversationData(conversationData);
+    }
+
+    if (aiMsg.length) {
       dataInitializedRef.current = true;
     }
     setModelsInitialized(false);
   }, [
     chatId,
+    searchParams,
     conversationState?.conversationId,
     isConversationsLoading,
     currentStreamIsActive,
     conversationIsReady,
     conversationData,
     setConversationData,
+    setSearchParams
   ]);
 
   const isMessageCompleted = useMemo(() => {
@@ -127,7 +148,6 @@ const Home = ({
   }, [conversationData?.data]);
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
-
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
@@ -233,15 +253,9 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId) return;
-    
-    const NEW_CHAT_KEY = "new";
     const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (isNewChat) {
       setModelsInitialized(true);
-      setSearchParams((prev) => {
-        prev.delete(NEW_CHAT_KEY);
-        return prev;
-      });
       return;
     }
     
@@ -283,7 +297,7 @@ const Home = ({
     setSearchParams,
   ]);
 
-  const isLoading = isConversationsLoading || !conversationIsReady;
+  const isLoading = !conversationIsReady;
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />

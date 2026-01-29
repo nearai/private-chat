@@ -10,6 +10,7 @@ import { eventEmitter } from "@/lib/event";
 import { buildConversationEntry, useConversationStore, type ConversationStoreState } from "@/stores/useConversationStore";
 import type {
   ConversationInfo,
+  ConversationItem,
   ConversationModelOutput,
   ConversationReasoning,
   ConversationWebSearchCall,
@@ -20,7 +21,7 @@ import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 import { isTauri } from "@/utils/desktop";
-import { generateMockAIResponseID } from "@/lib/utils/mock";
+import { generateMockAIResponse, generateMockAIResponseID } from "@/lib/utils/mock";
 
 type FetchImplementation = typeof fetch;
 
@@ -302,20 +303,20 @@ export class ApiClient {
       method: "POST",
       signal: abortController.signal,
     };
-    let tempStreamId = "";
+    let tempStreamResponseId = "";
     const updateConversationData = useConversationStore.getState().updateConversation;
     
     function cleanupTempStreamId(draft: ConversationStoreState) {
-      if (!tempStreamId) return;
+      if (!tempStreamResponseId) return;
       draft.conversation!.conversation.data = draft.conversation!.conversation.data?.filter(
-        (item) => item.id !== tempStreamId
+        (item) => item.id !== tempStreamResponseId
       );
-      tempStreamId = "";
+      tempStreamResponseId = "";
     }
     function updateFailedMessage(msg: string) {
-      if (!tempStreamId) return;
+      if (!tempStreamResponseId) return;
       updateConversationData((draft) => {
-        const tempStreamMsg = draft.conversation?.conversation.data?.find((item) => item.id === tempStreamId) as ConversationModelOutput;
+        const tempStreamMsg = draft.conversation?.conversation.data?.find((item) => item.id === tempStreamResponseId) as ConversationModelOutput;
         if (tempStreamMsg) {
           tempStreamMsg.status = "completed";
           tempStreamMsg.content = [
@@ -392,40 +393,44 @@ export class ApiClient {
         const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
           JSON.parse(event.data);
         const model = (body as { model?: string })?.model || "";
+        const tempStreamId = (body as { tempStreamId?: string })?.tempStreamId || "";;
 
         switch (data.type) {
           case "response.created":
             options.onResponseCreated?.();
             updateConversationData((draft) => {
-              const tempUserMessage = draft.conversation?.conversation.data?.find(
-                (item) => item.response_id === TEMP_RESPONSE_ID
-              );
+              let tempUserMessage: ConversationItem | undefined;
+              let temUserResponseId = "";
+              if (tempStreamId) {
+                tempUserMessage = draft.conversation?.conversation.data?.find(
+                  (item) => item.response_id.startsWith(TEMP_RESPONSE_ID) && item.id === tempStreamId
+                );
+              } else {
+                tempUserMessage = draft.conversation?.conversation.data?.find(
+                  (item) => item.response_id.startsWith(TEMP_RESPONSE_ID)
+                );
+              }
 
               if (tempUserMessage) {
+                temUserResponseId = tempUserMessage.response_id;
                 tempUserMessage.response_id = data.response.id;
+
                 // mock ai msg
-                tempStreamId = generateMockAIResponseID(data.response.id);
-                const aiMessageItem: ConversationModelOutput = {
-                  id: tempStreamId,
-                  type: ConversationTypes.MESSAGE,
-                  response_id: data.response.id,
-                  next_response_ids: [],
-                  created_at: Date.now(),
-                  status: "pending",
-                  role: ConversationRoles.ASSISTANT,
-                  content: [
-                    {
-                      type: "output_text",
-                      text: "Generating response...",
-                      annotations: [],
-                    }
-                  ],
-                  model,
-                };
-                draft.conversation!.conversation.data = [
-                  ...(draft.conversation!.conversation.data ?? []),
-                  aiMessageItem,
-                ];
+                let aiMessageItem = draft.conversation!.conversation.data?.find(
+                  (item) => item.id === generateMockAIResponseID(tempUserMessage.id)
+                )
+                if (!aiMessageItem) {
+                  aiMessageItem = generateMockAIResponse(data.response.id, data.response.id, model);
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    aiMessageItem,
+                  ];
+                } else {
+                  aiMessageItem.id = generateMockAIResponseID(data.response.id);
+                  aiMessageItem.response_id = data.response.id;
+                }
+                tempStreamResponseId = aiMessageItem.id;
+                aiMessageItem.previous_response_id = tempUserMessage.previous_response_id;
                 draft.conversation!.conversation.last_id = data.response.id;
 
                 const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
@@ -446,7 +451,7 @@ export class ApiClient {
                     lastResponseParent.nextResponseIds = [
                       ...lastResponseParent.nextResponseIds,
                       data.response.id,
-                    ].filter((id: string) => id !== TEMP_RESPONSE_ID);
+                    ].filter((id: string) => id !== temUserResponseId);
                   }
                   // Optimistically associate the originating user input message with the new response ID
 
@@ -461,7 +466,6 @@ export class ApiClient {
 
           case "response.reasoning.delta":
             updateConversationData((draft) => {
-              cleanupTempStreamId(draft);
               const currentConversationData = draft.conversation?.conversation.data?.find(
                 (item) => item.id === data.item_id
               );
@@ -481,7 +485,6 @@ export class ApiClient {
             break;
           case "response.output_text.delta":
             updateConversationData((draft) => {
-              cleanupTempStreamId(draft);
               const currentConversationData = draft.conversation?.conversation.data?.find(
                 (item) => item.id === data.item_id
               );
@@ -502,6 +505,10 @@ export class ApiClient {
                   if (firstItem.type === "output_text") {
                     firstItem.text = (firstItem.text || "") + data.delta;
                   }
+                }
+
+                if (data.delta) {
+                  cleanupTempStreamId(draft);
                 }
               }
               const { history, allMessages } = buildConversationEntry(
@@ -578,7 +585,6 @@ export class ApiClient {
             break;
           case "response.output_item.added":
             updateConversationData((draft) => {
-              // cleanupTempStreamId(draft);
               switch (data.item.type) {
                 case "reasoning": {
                   draft.conversation!.conversation.last_id = data.item.id;
