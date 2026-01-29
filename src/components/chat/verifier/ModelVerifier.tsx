@@ -600,20 +600,22 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     }
 
     // Check if we need to fetch
-    // For autoVerify mode: only fetch when model prop changes (not on initial mount with default model)
-    // This prevents fetching the default model (GLM-4.7) when the actual selected model is different
-    const shouldFetchForAutoVerify = autoVerify && modelPropChanged;
+    // For autoVerify mode: fetch when model prop changes OR when we haven't fetched for current model yet
+    // This ensures we fetch for the default model when sidebar opens, but prevents duplicate fetches
+    const shouldFetchForAutoVerify = autoVerify && (modelPropChanged || fetchedModelRef.current !== actualModel);
     const shouldFetch = isOpening || modelPropChanged || modelChanged || shouldFetchForAutoVerify;
     
-    if (shouldFetch) {
+    // Always check cache when autoVerify is true (even if model prop hasn't changed)
+    // This ensures we load cached data for the default model when sidebar opens
+    const shouldCheckCache = isOpening || modelPropChanged || modelChanged || (autoVerify && model);
+    
+    if (shouldFetch || (autoVerify && model)) {
       // Check if both attestations already exist and are for the actual model
-      // Always check cache directly when dialog opens, model changed, or autoVerify needs to check
-      const shouldCheckCache = isOpening || modelPropChanged || modelChanged || shouldFetchForAutoVerify;
       
       let bothAttestationsExist = false;
       if (shouldCheckCache) {
-        // For autoVerify mode when model prop changed, use model prop directly; otherwise use actualModel
-        const modelToCheck = (shouldFetchForAutoVerify || modelPropChanged) && model ? model : actualModel;
+        // For autoVerify mode, always use model prop directly; otherwise use actualModel
+        const modelToCheck = (autoVerify && model) ? model : actualModel;
         
         // When dialog opens or model changes, check cache for the current model
         const modelInfo = models.find((m) => m.modelId === modelToCheck);
@@ -646,26 +648,34 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
         bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
       }
 
-      hasFetchedRef.current = true;
       // Skip fetch if both attestations already exist for the current model
       if (!bothAttestationsExist) {
-        // When model prop changed (including in autoVerify mode), use model prop directly
-        // Otherwise use actualModel which correctly handles dropdown selections
-        const modelToFetch = (shouldFetchForAutoVerify || modelPropChanged) && model ? model : actualModel;
+        // When autoVerify is true, use model prop directly; otherwise use actualModel
+        const modelToFetch = (autoVerify && model) ? model : actualModel;
         
         // If model prop changed, sync selectedModelId to match
         if (modelPropChanged && model) {
           setSelectedModelId(model);
         }
         
-        setLoading(true); // Set loading before fetching
-        // Pass modelToFetch as override if it differs from currentModel (which shouldn't happen now, but safe)
-        fetchAttestationReport(false, modelToFetch !== currentModel ? modelToFetch : undefined).catch((err) => {
-          console.error("[ModelVerifier] fetchAttestationReport failed:", err);
+        // Fetch if shouldFetch is true OR if autoVerify is true and we don't have data for this model
+        // This ensures we fetch for the default model when sidebar opens, even if model prop hasn't changed
+        const needsFetch = shouldFetch || (autoVerify && model && !bothAttestationsExist);
+        if (needsFetch) {
+          hasFetchedRef.current = true;
+          setLoading(true); // Set loading before fetching
+          // Pass modelToFetch as override if it differs from currentModel (which shouldn't happen now, but safe)
+          fetchAttestationReport(false, modelToFetch !== currentModel ? modelToFetch : undefined).catch((err) => {
+            console.error("[ModelVerifier] fetchAttestationReport failed:", err);
+            setLoading(false);
+          });
+        } else {
+          // If we shouldn't fetch, ensure loading is false
           setLoading(false);
-        });
+        }
       } else {
         // If attestations already exist, ensure loading is false
+        hasFetchedRef.current = true;
         setLoading(false);
       }
     } else {
