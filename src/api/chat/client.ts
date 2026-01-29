@@ -12,11 +12,13 @@ import type {
   ChatInfo,
   Conversation,
   ConversationInfo,
+  ConversationItem,
   ConversationItemsResponse,
   StartStreamProps,
   Tag,
 } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
+import type { ConversationStoreState } from "@/stores/useConversationStore";
 
 export interface UploadError {
   error: {
@@ -358,10 +360,10 @@ class ChatClient extends ApiClient {
     previous_response_id,
     tempStreamId,
     onReaderReady,
-    onResponseCreated,
+    onUserResponseCreated,
   }: StartStreamProps & {
     onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
-    onResponseCreated?: () => void;
+    onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void
   }) {
     const input = Array.isArray(content)
       ? [{ role, content }]
@@ -380,7 +382,7 @@ class ChatClient extends ApiClient {
         previous_response_id,
         tempStreamId,
       },
-      { apiVersion: "v2", queryClient, onReaderReady, onResponseCreated }
+      { apiVersion: "v2", queryClient, onReaderReady, onUserResponseCreated }
     );
   }
 

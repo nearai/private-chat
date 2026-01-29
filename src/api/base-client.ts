@@ -294,7 +294,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       queryClient?: QueryClient;
       onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
-      onResponseCreated?: () => void;
+      onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void;
     } = {}
   ): Promise<void> {
     const abortController = new AbortController();
@@ -397,7 +397,6 @@ export class ApiClient {
 
         switch (data.type) {
           case "response.created":
-            options.onResponseCreated?.();
             updateConversationData((draft) => {
               let tempUserMessage: ConversationItem | undefined;
               let temUserResponseId = "";
@@ -432,6 +431,7 @@ export class ApiClient {
                 tempStreamResponseId = aiMessageItem.id;
                 aiMessageItem.previous_response_id = tempUserMessage.previous_response_id;
                 draft.conversation!.conversation.last_id = data.response.id;
+                options.onUserResponseCreated?.(draft, tempUserMessage);
 
                 const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
                   draft.conversation!.conversation,
