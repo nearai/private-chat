@@ -2,7 +2,7 @@ import { ArrowUpRightIcon } from "@heroicons/react/24/solid";
 import { CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import OpenAIIcon from "@/assets/icons/openai.svg";
+import NearAIIcon from "@/assets/images/near-icon.svg";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +46,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
             >
               {selectedModelObj ? (
                 <>
-                  <img src={selectedModelObj.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
+                  <img src={selectedModelObj.metadata?.modelIcon ?? NearAIIcon} alt="Model" className="size-5" />
                   <span className="line-clamp-1">{selectedModelObj.modelId}</span>
                   <span
                     className={cn(
@@ -82,7 +82,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                         className={cn("cursor-pointer", isSelected && "pointer-events-none")}
                       >
                         <div className="flex flex-1 items-center gap-2">
-                          <img src={model.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
+                          <img src={model.metadata?.modelIcon ?? NearAIIcon} alt="Model" className="size-5" />
                           <div className="line-clamp-1">{model.modelId}</div>
                           <span
                             className={cn(
