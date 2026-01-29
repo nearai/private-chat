@@ -10,7 +10,7 @@ import IntelLogo from "@/assets/images/intel.svg?react";
 import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader } from "@/components/ui/dialog";
 import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/index";
@@ -434,23 +434,18 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   return (
     <Dialog open={show} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-[540px] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            {activeVerificationTab === "model" 
-              ? (modelIsVerifiable ? t("Model Verification") : t("Model Anonymization"))
-              : t("Gateway Verification")}
-          </DialogTitle>
+        <DialogHeader className="sr-only">
           <DialogDescription className="sr-only" />
         </DialogHeader>
 
-        <div className="flex flex-col gap-8">
-          {/* Tab Navigation */}
+        <div className="-mt-4 flex flex-col gap-8">
+          {/* Tab Navigation - in same row as close button */}
           {(showModelTab || hasGatewayAttestations) && (
-            <div className="flex border-border border-b">
+            <div className="-mx-4 flex border-border border-b px-4 pt-4 pr-12">
               {showModelTab && (
                 <button
                   className={cn(
-                    "px-4 py-2 font-medium text-sm transition-colors",
+                    "px-4 py-2 font-medium text-base transition-colors",
                     activeVerificationTab === "model"
                       ? "border-primary border-b-2 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -460,13 +455,13 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                     activeTabRef.current = "model";
                   }}
                 >
-                  {modelIsVerifiable ? t("Model Verification") : t("Model Anonymization")}
+                  {t("Model Verification")}
                 </button>
               )}
               {hasGatewayAttestations && (
                 <button
                   className={cn(
-                    "px-4 py-2 font-medium text-sm transition-colors",
+                    "px-4 py-2 font-medium text-base transition-colors",
                     activeVerificationTab === "gateway"
                       ? "border-primary border-b-2 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -482,18 +477,30 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
             </div>
           )}
 
+          {/* Tag */}
+          {activeVerificationTab === "model" ? (
+            <div className="flex flex-col gap-2">
+              <p className="font-normal text-xs leading-[160%] opacity-60">
+                {modelIsVerifiable && hasModelAttestations ? t("Private Model") : t("Anonymized Model")}
+              </p>
+              <div className="flex items-center gap-1">
+                <img src={modelIcon} alt="Model" className="size-5" />
+                <p className="leading-[normal]">{model}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="font-normal text-xs leading-[160%] opacity-60">{t("Private Gateway")}</p>
+              <div className="flex items-center gap-1">
+                <NearAICloudLogo className="h-6" />
+                <p className="leading-[normal]">NEAR AI Cloud Gateway</p>
+              </div>
+            </div>
+          )}
+
           {/* Model Verification/Anonymization Tab Content */}
           {activeVerificationTab === "model" && (
             <>
-              <div className="flex flex-col gap-2">
-                <p className="font-normal text-xs leading-[160%] opacity-60">
-                  {hasModelAttestations ? t("Verified Model") : t("Anonymized Model")}
-                </p>
-                <div className="flex items-center gap-1">
-                  <img src={modelIcon} alt="Model" className="size-5" />
-                  <p className="leading-[normal]">{model}</p>
-                </div>
-              </div>
 
               {modelIsVerifiable && hasModelAttestations ? (
                 <>
@@ -528,8 +535,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
               ) : (
                 <>
                   <p className="font-normal text-sm leading-[140%] opacity-80">
-                    The inference requests of the model are anonymized for all the users.
-                    Your conversations are stored privately in TEE (Trusted Execution Environment) and not accessible by anyone.
+                    The inference requests of the model are anonymized for all the users and cannot be traced back to any individual identity.
+                    Your conversations are stored privately in TEE (Trusted Execution Environment) and not accessible by anyone. See Gateway Verification for more details.
                   </p>
                 </>
               )}
@@ -539,15 +546,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
           {/* Gateway Verification Tab Content */}
           {activeVerificationTab === "gateway" && (
             <>
-              <div className="flex flex-col gap-2">
-                <p className="font-normal text-xs leading-[160%] opacity-60">{t("Verified Gateway")}</p>
-                <div className="flex items-center gap-1">
-                  <NearAICloudLogo className="h-6" />
-                  <p className="leading-[normal]">NEAR AI Cloud Gateway</p>
-                </div>
-              </div>
               <p className="font-normal text-sm leading-[140%] opacity-80">
-                The hardware attestations below confirm the authenticity of the NEAR AI Cloud private LLM gateway environment.
+                The hardware attestations below confirm the authenticity of the NEAR AI Cloud private LLM gateway environment where your conversations are privately and securely stored.
                 Expand any section to view the raw attestation data or verify it independently.
               </p>
 
