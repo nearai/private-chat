@@ -43,6 +43,7 @@ export const newTranslationKeys = {
   "Verified Model": "",
   "Anonymized Model": "",
   "Verified": "",
+  "Private": "",
   "Anonymized": "",
   "Verified Gateway": "",
   "Verify Again": "",

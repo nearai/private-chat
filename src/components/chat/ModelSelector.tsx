@@ -53,7 +53,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                         : "bg-blue-500/10 text-blue-600"
                     )}
                   >
-                    {isVerifiable ? t("Verified") : t("Anonymized")}
+                    {isVerifiable ? t("Private") : t("Anonymized")}
                   </span>
                 </>
               ) : (
@@ -88,7 +88,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                               : "bg-blue-500/10 text-blue-600"
                           )}
                         >
-                          {modelIsVerifiable ? t("Verified") : t("Anonymized")}
+                          {modelIsVerifiable ? t("Private") : t("Anonymized")}
                         </span>
                       </div>
                       <div className="flex size-6 shrink-0 items-center justify-center">
