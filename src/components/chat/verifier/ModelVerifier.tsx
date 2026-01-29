@@ -118,7 +118,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     }
   }, [models, setGatewayAttestation]);
 
-  const fetchAttestationReport = useCallback(async () => {
+  const fetchAttestationReport = useCallback(async (forceRefresh: boolean = false) => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     if (!currentModel || !token) return;
@@ -130,16 +130,18 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     setError(null);
 
     try {
-      // Check cache first
-      const cachedData = cachedAttestations[currentModel];
-      if (cachedData) {
-        loadAttestationData(cachedData, currentModel);
-        setLoading(false);
-        return;
+      // Check cache first (unless forcing refresh)
+      if (!forceRefresh) {
+        const cachedData = cachedAttestations[currentModel];
+        if (cachedData) {
+          loadAttestationData(cachedData, currentModel);
+          setLoading(false);
+          return;
+        }
       }
 
-      // Fetch from API and cache
-      const data = await fetchModelAttestation(currentModel, isVerifiable);
+      // Fetch from API and cache (with forceRefresh flag to bypass store cache)
+      const data = await fetchModelAttestation(currentModel, isVerifiable, forceRefresh);
       if (data) {
         loadAttestationData(data, currentModel);
       } else {
@@ -166,7 +168,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
 
   const verifyAgain = async () => {
     hasFetchedRef.current = false;
-    await fetchAttestationReport();
+    await fetchAttestationReport(true); // Force refresh, bypass cache
     setCheckedMap({});
   };
 

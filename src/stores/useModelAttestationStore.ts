@@ -14,18 +14,20 @@ interface LoadingState {
 interface ModelAttestationState {
   attestations: ModelAttestationCache;
   isLoading: LoadingState;
-  fetchModelAttestation: (modelId: string, isVerifiable: boolean) => Promise<ModelAttestationReport | null>;
+  fetchModelAttestation: (modelId: string, isVerifiable: boolean, forceRefresh?: boolean) => Promise<ModelAttestationReport | null>;
   setModelAttestation: (modelId: string, attestation: ModelAttestationReport) => void;
 }
 
 export const useModelAttestationStore = create<ModelAttestationState>()((set, get) => ({
   attestations: {},
   isLoading: {},
-  fetchModelAttestation: async (modelId: string, isVerifiable: boolean) => {
-    // Return cached attestation if available
-    const { attestations } = get();
-    if (attestations[modelId]) {
-      return attestations[modelId];
+  fetchModelAttestation: async (modelId: string, isVerifiable: boolean, forceRefresh: boolean = false) => {
+    // Return cached attestation if available (unless forcing refresh)
+    if (!forceRefresh) {
+      const { attestations } = get();
+      if (attestations[modelId]) {
+        return attestations[modelId];
+      }
     }
 
     // Check if already loading to prevent duplicate requests
