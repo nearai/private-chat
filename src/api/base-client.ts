@@ -416,7 +416,7 @@ export class ApiClient {
                   content: [
                     {
                       type: "output_text",
-                      text: "mockmock",
+                      text: "Generating response...",
                       annotations: [],
                     }
                   ],

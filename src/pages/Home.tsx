@@ -105,8 +105,9 @@ const Home = ({
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationIsReady) return;
     if (!conversationData.data?.length) return;
+    // console.log("Initializing conversation data in store for chatId:", chatId);
     setConversationData(conversationData);
-    if (conversationData.data.length > 2) {
+    if (conversationData.data.length >= 2) {
       dataInitializedRef.current = true;
     }
     setModelsInitialized(false);
