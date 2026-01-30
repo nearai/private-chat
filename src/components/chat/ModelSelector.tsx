@@ -180,7 +180,8 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  const disabledAdd = selectedModels.length >= models.length || selectedModels.length >= 3;
+  const MAX_SELECTED_MODELS = 3;
+  const disabledAdd = selectedModels.length >= models.length || selectedModels.length >= MAX_SELECTED_MODELS;
 
   return (
     <div className="flex w-full flex-col items-start">
