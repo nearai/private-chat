@@ -114,8 +114,14 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
   const verifyAgain = async () => {
     hasFetchedRef.current = false;
-    await fetchAttestationReport();
+    setLoading(true);
+    setError(null);
+    setExpandedSections({ gpu: false, tdx: false, gatewayTdx: false });
+    setAttestationData(null);
+    setModelNvidiaPayload(null);
+    setModelIntelQuote(null);
     setCheckedMap({});
+    await fetchAttestationReport();
   };
 
   const handleClose = () => {
@@ -405,8 +411,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }, [show, autoVerify, fetchAttestationReport]);
 
   const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
-  const hasGatewayAttestations = attestationData && gatewayIntelQuote;
-  const showModelTab = true; // Always show model tab
+  const hasGatewayAttestations = !!gatewayIntelQuote;
   const modelIsAnonymized = !modelIsVerifiable;
 
   return (
@@ -423,52 +428,47 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
 
         <div className="flex flex-col gap-8">
           {/* Tab Navigation */}
-          {(showModelTab || hasGatewayAttestations) && (
-            <div className="flex border-border border-b">
-              {showModelTab && (
-                <button
-                  className={cn(
-                    "px-4 py-2 font-medium text-sm transition-colors",
-                    activeVerificationTab === "model"
-                      ? "border-primary border-b-2 text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => {
-                    setActiveVerificationTab("model");
-                    activeTabRef.current = "model";
-                  }}
-                >
-                  {modelIsVerifiable ? t("Model Verification") : t("Model Anonymization")}
-                </button>
-              )}
-              {hasGatewayAttestations && (
-                <button
-                  className={cn(
-                    "px-4 py-2 font-medium text-sm transition-colors",
-                    activeVerificationTab === "gateway"
-                      ? "border-primary border-b-2 text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => {
-                    setActiveVerificationTab("gateway");
-                    activeTabRef.current = "gateway";
-                  }}
-                >
-                  {t("Gateway Verification")}
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex border-border border-b">
+            {(
+              <button
+                className={cn(
+                  "px-4 py-2 font-medium text-sm transition-colors",
+                  activeVerificationTab === "model"
+                    ? "border-primary border-b-2 text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => {
+                  setActiveVerificationTab("model");
+                  activeTabRef.current = "model";
+                }}
+              >
+                {modelIsVerifiable ? t("Model Verification") : t("Model Anonymization")}
+              </button>
+            )}
+            {hasGatewayAttestations && (
+              <button
+                className={cn(
+                  "px-4 py-2 font-medium text-sm transition-colors",
+                  activeVerificationTab === "gateway"
+                    ? "border-primary border-b-2 text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => {
+                  setActiveVerificationTab("gateway");
+                  activeTabRef.current = "gateway";
+                }}
+              >
+                {t("Gateway Verification")}
+              </button>
+            )}
+          </div>
 
           {/* Model Verification/Anonymization Tab Content */}
           {activeVerificationTab === "model" && (
             <>
               <div className="flex flex-col gap-2">
                 <p
-                  className={cn(
-                    "font-normal text-xs leading-[160%] opacity-60",
-                    hasModelAttestations ? "text-green-dark" : "text-blue-600"
-                  )}
+                  className="font-normal text-xs leading-[160%] opacity-60"
                 >
                   {hasModelAttestations ? t("Verified Model") : t("Anonymized Model")}
                 </p>
@@ -514,6 +514,12 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                     The inference requests of the model are anonymized for all the users.
                     Your conversations are stored privately in TEE (Trusted Execution Environment) and not accessible by anyone.
                   </p>
+                  {loading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Spinner className="size-5" />
+                      <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
+                    </div>
+                  )}
                 </>
               )}
             </>
@@ -558,19 +564,17 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
             </>
           )}
 
-          {attestationData && (
-            <div className="flex items-center gap-4">
-              {(!modelIsAnonymized || activeVerificationTab === "gateway") && (
-                <Button onClick={verifyAgain} disabled={loading} variant="secondary">
-                  <ArrowPathIcon className="size-5" />
-                  <span>{t("Verify Again")}</span>
-                </Button>
-              )}
-              <Button onClick={handleClose} className="flex-1">
-                {t("Close")}
+          <div className="flex items-center gap-4">
+            {(!modelIsAnonymized || activeVerificationTab === "gateway") && (
+              <Button onClick={verifyAgain} disabled={loading} variant="secondary">
+                <ArrowPathIcon className="size-5" />
+                <span>{t("Verify Again")}</span>
               </Button>
-            </div>
-          )}
+            )}
+            <Button onClick={handleClose} className="flex-1">
+              {t("Close")}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
