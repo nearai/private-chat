@@ -308,7 +308,8 @@ export class ApiClient {
     
     function cleanupTempStreamId(draft: ConversationStoreState) {
       if (!tempStreamResponseId) return;
-      draft.conversation!.conversation.data = draft.conversation!.conversation.data?.filter(
+      if (!draft.conversation) return;
+      draft.conversation.conversation.data = draft.conversation!.conversation.data?.filter(
         (item) => item.id !== tempStreamResponseId
       );
       tempStreamResponseId = "";
@@ -323,6 +324,7 @@ export class ApiClient {
             {
               type: "output_text",
               text: msg,
+              annotations: [],
             }
           ]
         }
@@ -749,7 +751,7 @@ export class ApiClient {
     } catch (err) {
       console.error(err);
       const errMsg = (err as any)?.detail || err || "An unknown error occurred";
-      updateFailedMessage(errMsg);
+      updateFailedMessage(typeof errMsg === "string" ? errMsg : String(errMsg));
       // biome-ignore lint/suspicious/noExplicitAny: explanation
       throw errMsg;
     }
