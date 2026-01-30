@@ -134,7 +134,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
       webSearchEnabled,
       conversationId: chatId,
       previous_response_id: parentResponseId,
-      currentModels,
+      currentModels: Array.from(new Set(currentModels)),
       initiator: "edit_message",
     });
     setEdit(false);
@@ -207,7 +207,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [messageContent, message]);
 
   if (!message) return null;
-  const isTempMsg = message.response_id === TEMP_RESPONSE_ID;
+  const isTempMsg = (message.response_id || '').startsWith(TEMP_RESPONSE_ID);
 
   return (
     <div

@@ -7,9 +7,10 @@ import { MessageStatus } from "@/lib";
 import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { isOfflineError, isOnline } from "@/lib/network";
 import { eventEmitter } from "@/lib/event";
-import { buildConversationEntry, useConversationStore } from "@/stores/useConversationStore";
+import { buildConversationEntry, useConversationStore, type ConversationStoreState } from "@/stores/useConversationStore";
 import type {
   ConversationInfo,
+  ConversationItem,
   ConversationModelOutput,
   ConversationReasoning,
   ConversationWebSearchCall,
@@ -20,6 +21,7 @@ import type { ContentItem } from "@/types/openai";
 import { CHAT_API_BASE_URL, DEPRECATED_API_BASE_URL, TEMP_RESPONSE_ID } from "./constants";
 import { queryKeys } from "./query-keys";
 import { isTauri } from "@/utils/desktop";
+import { generateMockAIResponse, generateMockAIResponseID } from "@/lib/utils/mock";
 
 type FetchImplementation = typeof fetch;
 
@@ -292,7 +294,7 @@ export class ApiClient {
       apiVersion?: "v1" | "v2";
       queryClient?: QueryClient;
       onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
-      onResponseCreated?: () => void;
+      onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void;
     } = {}
   ): Promise<void> {
     const abortController = new AbortController();
@@ -301,6 +303,40 @@ export class ApiClient {
       method: "POST",
       signal: abortController.signal,
     };
+    let tempStreamResponseId = "";
+    const updateConversationData = useConversationStore.getState().updateConversation;
+    
+    function cleanupTempStreamId(draft: ConversationStoreState) {
+      if (!tempStreamResponseId) return;
+      if (!draft.conversation) return;
+      draft.conversation.conversation.data = draft.conversation!.conversation.data?.filter(
+        (item) => item.id !== tempStreamResponseId
+      );
+      tempStreamResponseId = "";
+    }
+    function updateFailedMessage(msg: string) {
+      if (!tempStreamResponseId) return;
+      updateConversationData((draft) => {
+        const tempStreamMsg = draft.conversation?.conversation.data?.find((item) => item.id === tempStreamResponseId) as ConversationModelOutput;
+        if (tempStreamMsg) {
+          tempStreamMsg.status = "completed";
+          tempStreamMsg.content = [
+            {
+              type: "output_text",
+              text: msg,
+              annotations: [],
+            }
+          ]
+        }
+        const { history, allMessages } = buildConversationEntry(
+          draft.conversation!.conversation,
+          draft.conversation!.lastResponseId
+        );
+        draft.conversation!.history = history;
+        draft.conversation!.allMessages = allMessages;
+        return draft;
+      });
+    }
 
     if (body !== undefined) {
       if (body instanceof FormData) {
@@ -358,19 +394,47 @@ export class ApiClient {
         if (!options.queryClient) return;
         const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
           JSON.parse(event.data);
-        const updateConversationData = useConversationStore.getState().updateConversation;
         const model = (body as { model?: string })?.model || "";
+        const tempStreamId = (body as { tempStreamId?: string })?.tempStreamId || "";
 
         switch (data.type) {
           case "response.created":
-            options.onResponseCreated?.();
             updateConversationData((draft) => {
-              const tempUserMessage = draft.conversation?.conversation.data?.find(
-                (item) => item.response_id === TEMP_RESPONSE_ID
-              );
+              let tempUserMessage: ConversationItem | undefined;
+              let tempUserResponseId = "";
+              if (tempStreamId) {
+                tempUserMessage = draft.conversation?.conversation.data?.find(
+                  (item) => item.response_id.startsWith(TEMP_RESPONSE_ID) && item.id === tempStreamId
+                );
+              } else {
+                tempUserMessage = draft.conversation?.conversation.data?.find(
+                  (item) => item.response_id.startsWith(TEMP_RESPONSE_ID)
+                );
+              }
 
               if (tempUserMessage) {
+                tempUserResponseId = tempUserMessage.response_id;
                 tempUserMessage.response_id = data.response.id;
+
+                // mock ai msg
+                let aiMessageItem = draft.conversation!.conversation.data?.find(
+                  (item) => item.id === generateMockAIResponseID(tempUserMessage.id)
+                );
+                if (!aiMessageItem) {
+                  aiMessageItem = generateMockAIResponse(data.response.id, data.response.id, model);
+                  draft.conversation!.conversation.data = [
+                    ...(draft.conversation!.conversation.data ?? []),
+                    aiMessageItem,
+                  ];
+                } else {
+                  aiMessageItem.id = generateMockAIResponseID(data.response.id);
+                  aiMessageItem.response_id = data.response.id;
+                }
+                tempStreamResponseId = aiMessageItem.id;
+                aiMessageItem.previous_response_id = tempUserMessage.previous_response_id;
+                draft.conversation!.conversation.last_id = data.response.id;
+                options.onUserResponseCreated?.(draft, tempUserMessage);
+
                 const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
                   draft.conversation!.conversation,
                   data.response.id
@@ -389,7 +453,7 @@ export class ApiClient {
                     lastResponseParent.nextResponseIds = [
                       ...lastResponseParent.nextResponseIds,
                       data.response.id,
-                    ].filter((id: string) => id !== TEMP_RESPONSE_ID);
+                    ].filter((id: string) => id !== tempUserResponseId);
                   }
                   // Optimistically associate the originating user input message with the new response ID
 
@@ -444,6 +508,10 @@ export class ApiClient {
                     firstItem.text = (firstItem.text || "") + data.delta;
                   }
                 }
+
+                if (data.delta) {
+                  cleanupTempStreamId(draft);
+                }
               }
               const { history, allMessages } = buildConversationEntry(
                 draft.conversation!.conversation,
@@ -487,6 +555,7 @@ export class ApiClient {
                       });
                     }
                   }
+                  cleanupTempStreamId(draft);
                   break;
                 case "reasoning":
                   //INVESTIGATE
@@ -518,9 +587,6 @@ export class ApiClient {
             break;
           case "response.output_item.added":
             updateConversationData((draft) => {
-              // const prevMessage = draft.conversation?.conversation.data?.find(
-              //   (item) => item.id === draft.conversation?.conversation.last_id
-              // );
               switch (data.item.type) {
                 case "reasoning": {
                   draft.conversation!.conversation.last_id = data.item.id;
@@ -681,10 +747,13 @@ export class ApiClient {
           toast.success(`Response completed for ${currentChatIdFromLocation}`);
         }
       }
+      updateFailedMessage('Unable to generate response.');
     } catch (err) {
       console.error(err);
+      const errMsg = (err as any)?.detail || err || "An unknown error occurred";
+      updateFailedMessage(typeof errMsg === "string" ? errMsg : String(errMsg));
       // biome-ignore lint/suspicious/noExplicitAny: explanation
-      throw (err as any)?.detail || err || "An unknown error occurred";
+      throw errMsg;
     }
   }
   protected async put<T>(endpoint: string, body?: unknown, options: RequestInit = {}): Promise<T> {
