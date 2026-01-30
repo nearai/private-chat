@@ -134,7 +134,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
       webSearchEnabled,
       conversationId: chatId,
       previous_response_id: parentResponseId,
-      currentModels,
+      currentModels: Array.from(new Set(currentModels)),
       initiator: "edit_message",
     });
     setEdit(false);

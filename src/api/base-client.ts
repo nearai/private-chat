@@ -417,7 +417,7 @@ export class ApiClient {
                 // mock ai msg
                 let aiMessageItem = draft.conversation!.conversation.data?.find(
                   (item) => item.id === generateMockAIResponseID(tempUserMessage.id)
-                )
+                );
                 if (!aiMessageItem) {
                   aiMessageItem = generateMockAIResponse(data.response.id, data.response.id, model);
                   draft.conversation!.conversation.data = [
