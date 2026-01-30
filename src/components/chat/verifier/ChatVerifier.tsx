@@ -183,7 +183,7 @@ const ChatVerifier: React.FC = () => {
               {modelCounts.verifiable > 0 && (
                 <>
                   <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
-                    {modelCounts.verifiable} Verified Model{modelCounts.verifiable > 1 ? "s" : ""}
+                    {modelCounts.verifiable} Private Model{modelCounts.verifiable > 1 ? "s" : ""}
                   </p>
 
                   <p className="font-normal text-sm leading-[140%] opacity-80">
@@ -267,6 +267,7 @@ const ChatVerifier: React.FC = () => {
       <ModelVerifier
         autoVerify={isRightSidebarOpen && !!selectedModels[0]}
         model={selectedModels[0] || ""}
+        selectedModels={selectedModels.length > 1 ? selectedModels : undefined}
         show={showModelVerifier}
         onClose={closeModelVerifier}
         onStatusUpdate={handleModelStatusUpdate}

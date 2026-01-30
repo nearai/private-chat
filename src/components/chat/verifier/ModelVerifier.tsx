@@ -3,7 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { type ModelAttestationReport, nearAIClient } from "@/api/nearai/client";
+import type { ModelAttestationReport } from "@/api/nearai/client";
 import ClipboardIcon from "@/assets/icons/clipboard.svg?react";
 import NearAICloudLogo from "@/assets/images/near-ai-cloud.svg?react";
 import IntelLogo from "@/assets/images/intel.svg?react";
@@ -11,15 +11,24 @@ import NvidiaLogo from "@/assets/images/nvidia.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/index";
 import { useChatStore } from "@/stores/useChatStore";
 import { useGatewayAttestationStore } from "@/stores/useGatewayAttestationStore";
+import { useModelAttestationStore } from "@/stores/useModelAttestationStore";
 import type { VerificationStatus } from "../types";
 
 interface ModelVerifierProps {
   model: string;
+  selectedModels?: string[];
   show: boolean;
   autoVerify?: boolean;
   onClose: () => void;
@@ -36,17 +45,25 @@ interface CheckedMap {
   [key: string]: boolean;
 }
 
-const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify = false, onClose, onStatusUpdate }) => {
+const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, show, autoVerify = false, onClose, onStatusUpdate }) => {
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const { models } = useChatStore();
-  const { setGatewayAttestation } = useGatewayAttestationStore();
-  const modelIcon = models.find((m) => m.modelId === model)?.metadata?.modelIcon;
+  const { gatewayAttestation: cachedGatewayAttestation, setGatewayAttestation } = useGatewayAttestationStore();
+  const { attestations: cachedAttestations, fetchModelAttestation, clearLoadingState } = useModelAttestationStore();
+  
+  // Use selectedModels if provided, otherwise fall back to single model
+  const availableModels = selectedModels && selectedModels.length > 0 ? selectedModels : [model];
+  const [selectedModelId, setSelectedModelId] = useState<string>(model);
+  const currentModel = selectedModelId;
+  const modelInfo = models.find((m) => m.modelId === currentModel);
+  const modelIcon = modelInfo?.metadata?.modelIcon;
+  const isCurrentModelVerifiable = modelInfo?.metadata?.verifiable ?? false;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attestationData, setAttestationData] = useState<ModelAttestationReport | null>(null);
-  // biome-ignore lint/suspicious/noExplicitAny: explanation
+  // biome-ignore lint/suspicious/noExplicitAny: NVIDIA attestation payload shape is from API
   const [modelNvidiaPayload, setModelNvidiaPayload] = useState<any | null>(null);
   const [modelIntelQuote, setModelIntelQuote] = useState<string | null>(null);
   const [gatewayIntelQuote, setGatewayIntelQuote] = useState<string | null>(null);
@@ -58,63 +75,118 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
   const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
+  const [fetchedModelId, setFetchedModelId] = useState<string | null>(null);
+  const prevModelRef = useRef<string | null>(null);
+  const prevModelPropRef = useRef<string | null>(null);
+  const fetchTriggeredByDropdownRef = useRef(false);
   const [activeVerificationTab, setActiveVerificationTab] = useState<'model' | 'gateway'>("model");
   const activeTabRef = useRef<'model' | 'gateway'>("model");
   const [modelIsVerifiable, setModelIsVerifiable] = useState<boolean>(false);
 
-  const fetchAttestationReport = useCallback(async () => {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+  const resetModelVerificationState = useCallback(() => {
+    setAttestationData(null);
+    setModelNvidiaPayload(null);
+    setModelIntelQuote(null);
+    setError(null);
+    setLoading(false);
+  }, []);
 
-    if (!model || !token) return;
-
-    const modelInfo = models.find((m) => m.modelId === model);
+  const loadAttestationData = useCallback((data: ModelAttestationReport, modelId: string) => {
+    const modelInfo = models.find((m) => m.modelId === modelId);
     const isVerifiable = modelInfo?.metadata.verifiable ?? false;
     setModelIsVerifiable(isVerifiable);
+    
+    const attestations = data.model_attestations ?? data.all_attestations;
+    
+    if (attestations && attestations.length > 0) {
+      const attestation = attestations[0];
+      setModelNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
+      setModelIntelQuote(attestation.intel_quote || null);
+      // Only set to model tab if not already on gateway tab (preserve user's tab choice)
+      if (activeTabRef.current !== 'gateway') {
+        setActiveVerificationTab('model');
+        activeTabRef.current = 'model';
+      }
+    } else {
+      if (isVerifiable) {
+        setError("No attestation data found for this model");
+      }
+      setModelNvidiaPayload(null);
+      setModelIntelQuote(null);
+      // Only set to model tab if not already on gateway tab (preserve user's tab choice)
+      if (activeTabRef.current !== 'gateway') {
+        setActiveVerificationTab('model');
+        activeTabRef.current = 'model';
+      }
+    }
+    setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
+    setAttestationData(data);
+    setFetchedModelId(modelId);
+    // Update global store with gateway attestation so MessageVerifier can reuse it
+    if (data.cloud_api_gateway_attestation) {
+      setGatewayAttestation(data.cloud_api_gateway_attestation);
+    }
+  }, [models, setGatewayAttestation]);
+
+  const fetchAttestationReport = useCallback(async (forceRefresh: boolean = false, modelOverride?: string) => {
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    
+    const modelToFetch = modelOverride ?? currentModel;
+
+    if (!modelToFetch || !token) {
+      setLoading(false);
+      return;
+    }
+
+    const modelInfo = models.find((m) => m.modelId === modelToFetch);
+    const isVerifiable = modelInfo?.metadata.verifiable ?? false;
+    
+    const cacheKey = isVerifiable ? modelToFetch : '__ANONYMIZED_MODEL__';
+    
     setLoading(true);
     setError(null);
 
     try {
-      const data = await nearAIClient.getModelAttestationReport(isVerifiable ? model : '');
-      const attestations = data.model_attestations ?? data.all_attestations;
-      
-      if (attestations && attestations.length > 0) {
-        const attestation = attestations[0];
-        setModelNvidiaPayload(JSON.parse(attestation.nvidia_payload || "{}"));
-        setModelIntelQuote(attestation.intel_quote || null);
-        // Only set to model tab if not already on gateway tab (preserve user's tab choice)
-        if (activeTabRef.current !== 'gateway') {
-          setActiveVerificationTab('model');
-          activeTabRef.current = 'model';
-        }
-      } else {
-        if (isVerifiable) {
-          throw new Error("No attestation data found for this model");
-        }
-        setModelNvidiaPayload(null);
-        setModelIntelQuote(null);
-        // Only set to model tab if not already on gateway tab (preserve user's tab choice)
-        if (activeTabRef.current !== 'gateway') {
-          setActiveVerificationTab('model');
-          activeTabRef.current = 'model';
+      if (!forceRefresh) {
+        const cachedData = cachedAttestations[cacheKey];
+        if (cachedData) {
+          loadAttestationData(cachedData, modelToFetch);
+          setLoading(false);
+          return;
         }
       }
-      setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
-      setAttestationData(data);
-      // Update global store with gateway attestation so MessageVerifier can reuse it
-      if (data.cloud_api_gateway_attestation) {
-        setGatewayAttestation(data.cloud_api_gateway_attestation);
+
+      const fetchPromise = fetchModelAttestation(modelToFetch, isVerifiable, forceRefresh);
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), 30000);
+      });
+      
+      const data = await Promise.race([fetchPromise, timeoutPromise]);
+      if (data) {
+        loadAttestationData(data, modelToFetch);
+      } else {
+        // Only set error for verifiable models - non-verifiable models don't have attestation data
+        if (isVerifiable) {
+          setError("Failed to fetch attestation report");
+        } else {
+          // For non-verifiable models, just load gateway attestation if available from cache
+          if (cachedGatewayAttestation?.intel_quote) {
+            setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
+          }
+        }
       }
     } catch (err) {
-      console.error("Error fetching attestation report:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch attestation report");
+      if (isVerifiable) {
+        setError(err instanceof Error ? err.message : "Failed to fetch attestation report");
+      }
     } finally {
       setLoading(false);
     }
-  }, [model, models, setGatewayAttestation]);
+  }, [currentModel, models, cachedAttestations, fetchModelAttestation, loadAttestationData, cachedGatewayAttestation]);
 
   const verifyAgain = async () => {
     hasFetchedRef.current = false;
-    await fetchAttestationReport();
+    await fetchAttestationReport(true); // Force refresh, bypass cache
     setCheckedMap({});
   };
 
@@ -153,7 +225,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   );
 
   const renderGPUSection = () => {
-    if (!attestationData || !modelNvidiaPayload) return null;
+    if (!attestationData || !modelNvidiaPayload || fetchedModelId !== currentModel) return null;
     return (
       <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
         <button onClick={() => toggleSection("gpu")} className="flex w-full items-center gap-1">
@@ -295,7 +367,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }
 
   const renderTDXSection = () => {
-    if (!attestationData) return null;
+    if (!attestationData || fetchedModelId !== currentModel) return null;
     if (!modelIntelQuote) return null;
   
     return (
@@ -339,8 +411,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }
 
   const renderGatewayTDXSection = () => {
-    if (!attestationData) return null;
-    if (!gatewayIntelQuote) return null;
+    // Use gatewayIntelQuote from state, or fall back to cached gateway attestation
+    const quoteToUse = gatewayIntelQuote || cachedGatewayAttestation?.intel_quote;
+    if (!quoteToUse) return null;
   
     return (
       <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
@@ -375,7 +448,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                 </a>
               </Button>
             </div>
-            {renderTDXSectionItem(gatewayIntelQuote, "gatewayIntelQuote")}
+            {renderTDXSectionItem(quoteToUse, "gatewayIntelQuote")}
           </>
         )}
       </div>
@@ -393,42 +466,186 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
   }, [activeVerificationTab]);
 
   useEffect(() => {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
-    const isOpening = show && !prevShowRef.current;
+    if (prevModelRef.current === null && selectedModelId) {
+      prevModelRef.current = selectedModelId;
+    }
+  }, [selectedModelId]);
 
-    if (token) {
-      if (isOpening || (autoVerify && !hasFetchedRef.current)) {
-        hasFetchedRef.current = true;
-        fetchAttestationReport();
+  useEffect(() => {
+    const isOpening = show && !prevShowRef.current;
+    const modelPropChanged = model && model !== prevModelPropRef.current;
+    // Update if dialog is opening OR if model prop changed (for autoVerify in sidebar)
+    if ((isOpening || modelPropChanged) && model) {
+      if (selectedModelId && selectedModelId !== model && prevModelRef.current !== selectedModelId) {
+        prevModelRef.current = selectedModelId;
+      }
+      setSelectedModelId(model);
+      prevModelPropRef.current = model;
+      if (cachedGatewayAttestation?.intel_quote) {
+        setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
       }
     }
-  }, [show, autoVerify, fetchAttestationReport]);
+  }, [model, show, cachedGatewayAttestation, selectedModelId]);
 
-  const hasModelAttestations = attestationData && (modelNvidiaPayload || modelIntelQuote);
-  const hasGatewayAttestations = attestationData && gatewayIntelQuote;
+  const handleModelChange = useCallback(
+    (newModelId: string) => {
+      if (newModelId === selectedModelId) return;
+      prevModelRef.current = selectedModelId;
+      fetchTriggeredByDropdownRef.current = true;
+      setSelectedModelId(newModelId);
+      resetModelVerificationState();
+      setFetchedModelId(null);
+      setLoading(true);
+      fetchAttestationReport(false, newModelId).catch(() => setLoading(false));
+    },
+    [selectedModelId, resetModelVerificationState, fetchAttestationReport]
+  );
+
+  const attestationDataRef = useRef(attestationData);
+  const modelNvidiaPayloadRef = useRef(modelNvidiaPayload);
+  const modelIntelQuoteRef = useRef(modelIntelQuote);
+  const gatewayIntelQuoteRef = useRef(gatewayIntelQuote);
+  
+  useEffect(() => {
+    attestationDataRef.current = attestationData;
+    modelNvidiaPayloadRef.current = modelNvidiaPayload;
+    modelIntelQuoteRef.current = modelIntelQuote;
+    gatewayIntelQuoteRef.current = gatewayIntelQuote;
+  }, [attestationData, modelNvidiaPayload, modelIntelQuote, gatewayIntelQuote]);
+
+  useEffect(() => {
+    // If dialog is not shown and autoVerify is false, reset loading and return
+    if (!show && !autoVerify) {
+      setLoading(false);
+      prevShowRef.current = show;
+      return;
+    }
+    
+    if (!currentModel) {
+      setLoading(false);
+      prevShowRef.current = show;
+      return;
+    }
+
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    if (!token) {
+      setLoading(false);
+      prevShowRef.current = show;
+      return;
+    }
+
+    const isOpening = show && !prevShowRef.current;
+    const modelPropChanged = Boolean(model && model !== prevModelPropRef.current);
+    const modelChanged = currentModel !== prevModelRef.current && !modelPropChanged;
+    const actualModel = modelPropChanged ? model : currentModel;
+    if (isOpening) {
+      hasFetchedRef.current = false;
+      const modelInfo = models.find((m) => m.modelId === actualModel);
+      const isVerifiable = modelInfo?.metadata?.verifiable ?? false;
+      clearLoadingState(actualModel, isVerifiable);
+    }
+
+    if (modelPropChanged || modelChanged) {
+      if (modelChanged && fetchTriggeredByDropdownRef.current) {
+        fetchTriggeredByDropdownRef.current = false;
+        prevModelRef.current = actualModel;
+        prevShowRef.current = show;
+        return;
+      }
+      hasFetchedRef.current = false;
+      prevModelRef.current = actualModel;
+      if (modelPropChanged) prevModelPropRef.current = model;
+      resetModelVerificationState();
+      setFetchedModelId(null);
+      if (cachedGatewayAttestation?.intel_quote) {
+        setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
+      }
+      attestationDataRef.current = null;
+      modelNvidiaPayloadRef.current = null;
+      modelIntelQuoteRef.current = null;
+    }
+
+    const shouldFetchForAutoVerify = autoVerify && (modelPropChanged || fetchedModelId !== actualModel);
+    const shouldFetch = isOpening || modelPropChanged || modelChanged || shouldFetchForAutoVerify;
+    const shouldCheckCache = isOpening || modelPropChanged || modelChanged || (autoVerify && model);
+
+    if (shouldFetch || (autoVerify && model)) {
+      let bothAttestationsExist = false;
+      if (shouldCheckCache) {
+        const modelInfo = models.find((m) => m.modelId === currentModel);
+        const isVerifiable = modelInfo?.metadata?.verifiable ?? false;
+        const cacheKey = isVerifiable ? currentModel : '__ANONYMIZED_MODEL__';
+        const cachedData = cachedAttestations[cacheKey];
+        
+        const hasModelAttestations = !!(cachedData && (cachedData.model_attestations?.[0]?.nvidia_payload || cachedData.model_attestations?.[0]?.intel_quote || cachedData.all_attestations?.[0]?.nvidia_payload || cachedData.all_attestations?.[0]?.intel_quote));
+        const hasGatewayAttestations = !!(cachedData && cachedData.cloud_api_gateway_attestation?.intel_quote);
+        bothAttestationsExist = hasModelAttestations && hasGatewayAttestations;
+        if (bothAttestationsExist && cachedData) {
+          setLoading(false);
+          loadAttestationData(cachedData, currentModel);
+          if (modelPropChanged) setSelectedModelId(model);
+          hasFetchedRef.current = true;
+          prevShowRef.current = show;
+          return;
+        }
+      } else {
+        const hasModelAttestations = attestationDataRef.current && (modelNvidiaPayloadRef.current || modelIntelQuoteRef.current);
+        const hasGatewayAttestations = attestationDataRef.current && gatewayIntelQuoteRef.current;
+        const isForCurrentModel = fetchedModelId === currentModel;
+        bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
+      }
+
+      if (!bothAttestationsExist) {
+        const modelToFetch = (autoVerify && model) ? model : actualModel;
+        if (modelPropChanged && model) setSelectedModelId(model);
+
+        const needsFetch =
+          shouldFetch ||
+          (autoVerify && model && fetchedModelId !== modelToFetch) ||
+          (modelChanged && !bothAttestationsExist);
+
+        if (needsFetch) {
+          hasFetchedRef.current = true;
+          setLoading(true);
+          const override = modelToFetch !== currentModel ? modelToFetch : undefined;
+          fetchAttestationReport(false, override).catch(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      } else {
+        hasFetchedRef.current = true;
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+    
+    prevShowRef.current = show;
+  }, [show, autoVerify, fetchAttestationReport, currentModel, selectedModelId, model, cachedGatewayAttestation, resetModelVerificationState, clearLoadingState, models, cachedAttestations, loadAttestationData]);
+
+  // Gateway attestation is the same for all models, so check both current data and cached store
+  const hasGatewayAttestations = (attestationData && gatewayIntelQuote) || cachedGatewayAttestation;
   const showModelTab = true; // Always show model tab
   const modelIsAnonymized = !modelIsVerifiable;
 
   return (
     <Dialog open={show} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-[540px] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            {activeVerificationTab === "model" 
-              ? (modelIsVerifiable ? t("Model Verification") : t("Model Anonymization"))
-              : t("Gateway Verification")}
+        <DialogHeader className="sr-only">
+          <DialogTitle className="sr-only">
+            {activeVerificationTab === "model" ? t("Model Verification") : t("Gateway Verification")}
           </DialogTitle>
           <DialogDescription className="sr-only" />
         </DialogHeader>
 
-        <div className="flex flex-col gap-8">
-          {/* Tab Navigation */}
+        <div className="-mt-4 flex flex-col gap-8">
+          {/* Tab Navigation - in same row as close button */}
           {(showModelTab || hasGatewayAttestations) && (
-            <div className="flex border-border border-b">
+            <div className="-mx-4 flex border-border border-b px-4 pt-4 pr-12">
               {showModelTab && (
                 <button
                   className={cn(
-                    "px-4 py-2 font-medium text-sm transition-colors",
+                    "px-4 py-2 font-medium text-base transition-colors",
                     activeVerificationTab === "model"
                       ? "border-primary border-b-2 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -438,13 +655,13 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                     activeTabRef.current = "model";
                   }}
                 >
-                  {modelIsVerifiable ? t("Model Verification") : t("Model Anonymization")}
+                  {t("Model Verification")}
                 </button>
               )}
               {hasGatewayAttestations && (
                 <button
                   className={cn(
-                    "px-4 py-2 font-medium text-sm transition-colors",
+                    "px-4 py-2 font-medium text-base transition-colors",
                     activeVerificationTab === "gateway"
                       ? "border-primary border-b-2 text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -460,25 +677,77 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
             </div>
           )}
 
+          {/* Model Verification Tab Content */}
+          {activeVerificationTab === "model" ? (
+            <>
+              {/* Model Tag/Selector - merged into single element */}
+              {availableModels.length > 1 ? (
+                <div className="flex flex-col gap-2">
+                  <p className="font-normal text-xs leading-[160%] opacity-60">
+                    {isCurrentModelVerifiable ? t("Private Model") : t("Anonymized Model")}
+                  </p>
+                  <Select value={selectedModelId} onValueChange={handleModelChange}>
+                    <SelectTrigger className="h-auto w-auto max-w-[400px] border-none bg-transparent px-0 py-1 text-base hover:bg-transparent focus:bg-transparent focus:ring-0 data-[state=open]:bg-transparent [&>span:first-child]:hidden">
+                      <SelectValue />
+                      <div className="flex min-w-0 flex-1 items-center gap-1">
+                        {modelIcon && <img src={modelIcon} alt="Model" className="size-5 shrink-0" />}
+                        <span className="flex-1 truncate text-left text-base leading-[normal]">{currentModel}</span>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableModels.map((modelId) => {
+                        const mInfo = models.find((m) => m.modelId === modelId);
+                        const isVerifiable = mInfo?.metadata?.verifiable ?? false;
+                        return (
+                          <SelectItem key={modelId} value={modelId}>
+                            <div className="flex items-center gap-2">
+                              {mInfo?.metadata?.modelIcon && (
+                                <img src={mInfo.metadata.modelIcon} alt="Model" className="size-4" />
+                              )}
+                              <span>{modelId}</span>
+                              {isVerifiable && (
+                                <span className="rounded bg-green-dark/10 px-1 py-0.5 text-[10px] text-green-dark leading-tight">
+                                  {t("Private")}
+                                </span>
+                              )}
+                              {!isVerifiable && (
+                                <span className="rounded bg-blue-500/10 px-1 py-0.5 text-[10px] text-blue-600 leading-tight">
+                                  {t("Anonymized")}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p className="font-normal text-xs leading-[160%] opacity-60">
+                    {isCurrentModelVerifiable ? t("Private Model") : t("Anonymized Model")}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {modelIcon && <img src={modelIcon} alt="Model" className="size-5" />}
+                    <p className="leading-[normal]">{currentModel}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="font-normal text-xs leading-[160%] opacity-60">{t("Private Gateway")}</p>
+              <div className="flex items-center gap-1">
+                <NearAICloudLogo className="h-6" />
+                <p className="leading-[normal]">NEAR AI Cloud Gateway</p>
+              </div>
+            </div>
+          )}
+
           {/* Model Verification/Anonymization Tab Content */}
           {activeVerificationTab === "model" && (
             <>
-              <div className="flex flex-col gap-2">
-                <p
-                  className={cn(
-                    "font-normal text-xs leading-[160%] opacity-60",
-                    hasModelAttestations ? "text-green-dark" : "text-blue-600"
-                  )}
-                >
-                  {hasModelAttestations ? t("Verified Model") : t("Anonymized Model")}
-                </p>
-                <div className="flex items-center gap-1">
-                  <img src={modelIcon} alt="Model" className="size-5" />
-                  <p className="leading-[normal]">{model}</p>
-                </div>
-              </div>
-
-              {modelIsVerifiable && hasModelAttestations ? (
+              {isCurrentModelVerifiable ? (
                 <>
                   <p className="font-normal text-sm leading-[140%] opacity-80">
                     The hardware attestations below confirm the authenticity of this model and the environment it runs in.
@@ -501,7 +770,14 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                     </div>
                   )}
 
-                  {attestationData && (
+                  {!loading && !error && !attestationData && (
+                    <div className="flex items-center justify-center py-8">
+                      <Spinner className="size-5" />
+                      <span className="ml-3 text-sm">{t("Verifying attestation...")}</span>
+                    </div>
+                  )}
+
+                  {attestationData && fetchedModelId === currentModel && (
                     <div className="space-y-4">
                       {renderGPUSection()}
                       {renderTDXSection()}
@@ -511,8 +787,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
               ) : (
                 <>
                   <p className="font-normal text-sm leading-[140%] opacity-80">
-                    The inference requests of the model are anonymized for all the users.
-                    Your conversations are stored privately in TEE (Trusted Execution Environment) and not accessible by anyone.
+                    The inference requests of the model are anonymized for all the users and cannot be traced back to any individual identity.
+                    Your conversations are stored privately in TEE (Trusted Execution Environment) and not accessible by anyone. See Gateway Verification for more details.
                   </p>
                 </>
               )}
@@ -522,15 +798,8 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
           {/* Gateway Verification Tab Content */}
           {activeVerificationTab === "gateway" && (
             <>
-              <div className="flex flex-col gap-2">
-                <p className="font-normal text-xs leading-[160%] opacity-60">{t("Verified Gateway")}</p>
-                <div className="flex items-center gap-1">
-                  <NearAICloudLogo className="h-6" />
-                  <p className="leading-[normal]">NEAR AI Cloud Gateway</p>
-                </div>
-              </div>
               <p className="font-normal text-sm leading-[140%] opacity-80">
-                The hardware attestations below confirm the authenticity of the NEAR AI Cloud private LLM gateway environment.
+                The hardware attestations below confirm the authenticity of the NEAR AI Cloud private LLM gateway environment where your conversations are privately and securely stored.
                 Expand any section to view the raw attestation data or verify it independently.
               </p>
 
@@ -550,7 +819,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
                 </div>
               )}
 
-              {attestationData && (
+              {(attestationData || cachedGatewayAttestation) && (
                 <div className="space-y-4">
                   {renderGatewayTDXSection()}
                 </div>
@@ -558,19 +827,17 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, show, autoVerify =
             </>
           )}
 
-          {attestationData && (
-            <div className="flex items-center gap-4">
-              {(!modelIsAnonymized || activeVerificationTab === "gateway") && (
-                <Button onClick={verifyAgain} disabled={loading} variant="secondary">
-                  <ArrowPathIcon className="size-5" />
-                  <span>{t("Verify Again")}</span>
-                </Button>
-              )}
-              <Button onClick={handleClose} className="flex-1">
-                {t("Close")}
+          <div className="flex items-center gap-4">
+            {attestationData && (!modelIsAnonymized || activeVerificationTab === "gateway") && (
+              <Button onClick={verifyAgain} disabled={loading} variant="secondary">
+                <ArrowPathIcon className="size-5" />
+                <span>{t("Verify Again")}</span>
               </Button>
-            </div>
-          )}
+            )}
+            <Button onClick={handleClose} className="flex-1">
+              {t("Close")}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -42,9 +42,12 @@ export const newTranslationKeys = {
   "Verifiable Messages": "",
   "Verified Model": "",
   "Anonymized Model": "",
+  "Private Model": "",
   "Verified": "",
+  "Private": "",
   "Anonymized": "",
   "Verified Gateway": "",
+  "Private Gateway": "",
   "Verify Again": "",
   "Verify GPU attestation by yourself": "",
   "Verify TDX quote at TEE Explorer": "",
@@ -58,4 +61,5 @@ export const newTranslationKeys = {
   "View More": "",
   "View Verification Details": "",
   "Your chat is confidential.": "",
+  "Learn more about models capabilities": "",
 };

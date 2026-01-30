@@ -1,13 +1,16 @@
+import { ArrowUpRightIcon } from "@heroicons/react/24/solid";
 import { CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import OpenAIIcon from "@/assets/icons/openai.svg";
+import NearAIIcon from "@/assets/images/near-icon.svg";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NEAR_AI_CLOUD_MODELS_URL } from "@/api/constants";
 import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ModelV1 } from "@/types";
@@ -43,7 +46,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
             >
               {selectedModelObj ? (
                 <>
-                  <img src={selectedModelObj.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
+                  <img src={selectedModelObj.metadata?.modelIcon ?? NearAIIcon} alt="Model" className="size-5" />
                   <span className="line-clamp-1">{selectedModelObj.modelId}</span>
                   <span
                     className={cn(
@@ -53,7 +56,7 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
                         : "bg-blue-500/10 text-blue-600"
                     )}
                   >
-                    {isVerifiable ? t("Verified") : t("Anonymized")}
+                    {isVerifiable ? t("Private") : t("Anonymized")}
                   </span>
                 </>
               ) : (
@@ -62,43 +65,55 @@ function ModelSelectorItem({ value, index, availableModels, onChange, onRemove, 
               <ChevronDown className="h-5 w-5 opacity-60" strokeWidth={2.5} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-64" align="start">
-            <>
-              {availableModels.length === 0 ? (
-                <DropdownMenuItem className="block text-sm">No results found</DropdownMenuItem>
-              ) : (
-                availableModels.map((model) => {
-                  const isSelected = value === model.modelId;
-                  const modelIsVerifiable = model.metadata?.verifiable ?? false;
+          <DropdownMenuContent className="flex max-h-64 flex-col p-0" align="start">
+            <div className="max-h-64 overflow-y-auto">
+              <>
+                {availableModels.length === 0 ? (
+                  <DropdownMenuItem className="block text-sm">No results found</DropdownMenuItem>
+                ) : (
+                  availableModels.map((model) => {
+                    const isSelected = value === model.modelId;
+                    const modelIsVerifiable = model.metadata?.verifiable ?? false;
 
-                  return (
-                    <DropdownMenuItem
-                      key={model.modelId}
-                      onClick={() => onChange(index, model.modelId)}
-                      className={cn("cursor-pointer", isSelected && "pointer-events-none")}
-                    >
-                      <div className="flex flex-1 items-center gap-2">
-                        <img src={model.metadata?.modelIcon ?? OpenAIIcon} alt="Model" className="size-5" />
-                        <div className="line-clamp-1">{model.modelId}</div>
-                        <span
-                          className={cn(
-                            "ml-1 rounded px-1 py-0.5 font-medium text-[10px] leading-tight",
-                            modelIsVerifiable
-                              ? "bg-green-dark/10 text-green-dark"
-                              : "bg-blue-500/10 text-blue-600"
-                          )}
-                        >
-                          {modelIsVerifiable ? t("Verified") : t("Anonymized")}
-                        </span>
-                      </div>
-                      <div className="flex size-6 shrink-0 items-center justify-center">
-                        {isSelected && <CheckIcon className="size-4" />}
-                      </div>
-                    </DropdownMenuItem>
-                  );
-                })
-              )}
-            </>
+                    return (
+                      <DropdownMenuItem
+                        key={model.modelId}
+                        onClick={() => onChange(index, model.modelId)}
+                        className={cn("cursor-pointer", isSelected && "pointer-events-none")}
+                      >
+                        <div className="flex flex-1 items-center gap-2">
+                          <img src={model.metadata?.modelIcon ?? NearAIIcon} alt="Model" className="size-5" />
+                          <div className="line-clamp-1">{model.modelId}</div>
+                          <span
+                            className={cn(
+                              "ml-1 rounded px-1 py-0.5 font-medium text-[10px] leading-tight",
+                              modelIsVerifiable
+                                ? "bg-green-dark/10 text-green-dark"
+                                : "bg-blue-500/10 text-blue-600"
+                            )}
+                          >
+                            {modelIsVerifiable ? t("Private") : t("Anonymized")}
+                          </span>
+                        </div>
+                        <div className="flex size-6 shrink-0 items-center justify-center">
+                          {isSelected && <CheckIcon className="size-4" />}
+                        </div>
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
+              </>
+            </div>
+            <DropdownMenuSeparator className="shrink-0" />
+            <a
+              href={NEAR_AI_CLOUD_MODELS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex shrink-0 items-center gap-1 px-3 pt-1 pb-2 text-muted-foreground text-xs transition-colors hover:text-foreground"
+            >
+              {t("Learn more about models capabilities")}
+              <ArrowUpRightIcon className="size-3" />
+            </a>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
