@@ -165,7 +165,8 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  const disabledAdd = selectedModels.length >= models.length || selectedModels.length >= 3;
+  // TODO: Temporary disabled add model button before we fix the `previous_response_id` issue for multiple models in cloud-api.
+  const disabledAdd = true; // selectedModels.length >= models.length || selectedModels.length >= 3;
 
   return (
     <div className="flex w-full flex-col items-start">
