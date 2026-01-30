@@ -28,6 +28,7 @@ interface UserMessageProps {
   siblings?: string[];
   /** Only show author name if conversation is shared */
   isSharedConversation?: boolean;
+  readOnly: boolean;
 }
 
 const UserMessage: React.FC<UserMessageProps> = ({
@@ -37,6 +38,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   regenerateResponse,
   siblings,
   isSharedConversation,
+  readOnly,
 }) => {
   const { settings } = useSettingsStore();
   const { setLastResponseId } = useConversationStore();
@@ -355,7 +357,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </>
                     )}
 
-                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && (
+                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && !readOnly && (
                       <Button
                         variant="ghost"
                         size="icon"

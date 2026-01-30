@@ -370,7 +370,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
               </Button>
             </>
           )}
-          {!readOnly && isMessageCompleted && (
+          {isMessageCompleted && (
             <>
               <Button
                 size="icon"
@@ -397,7 +397,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && !readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"
