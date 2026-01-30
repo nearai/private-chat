@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib";
 import { useChatStore } from "@/stores/useChatStore";
 import type { ModelV1 } from "@/types";
-// import { Button } from "../ui/button";
+import { Button } from "../ui/button";
 
 interface ModelSelectorItemProps {
   value: string;
@@ -140,16 +140,16 @@ export default function ModelSelector() {
     setSelectedModels(newModels);
   };
 
-  // const handleAddModel = () => {
-  //   if (selectedModels.length < models.length) {
-  //     const nextModelId = models
-  //       .map((model) => model.modelId)
-  //       .find((modelId) => !selectedModels.includes(modelId));
-  //     if (nextModelId) {
-  //       setSelectedModels([...selectedModels, nextModelId]);
-  //     }
-  //   }
-  // };
+  const handleAddModel = () => {
+    if (selectedModels.length < models.length) {
+      const nextModelId = models
+        .map((model) => model.modelId)
+        .find((modelId) => !selectedModels.includes(modelId));
+      if (nextModelId) {
+        setSelectedModels([...selectedModels, nextModelId]);
+      }
+    }
+  };
 
   const handleRemoveModel = (index: number) => {
     if (selectedModels.length > 1) {
@@ -165,7 +165,7 @@ export default function ModelSelector() {
     return models.filter((modelId) => !otherSelectedModels.includes(modelId.modelId));
   };
 
-  // const disabledAdd = selectedModels.length >= models.length || selectedModels.length >= 3;
+  const disabledAdd = true; // selectedModels.length >= models.length || selectedModels.length >= 3;
 
   return (
     <div className="flex w-full flex-col items-start">
@@ -179,7 +179,7 @@ export default function ModelSelector() {
             onRemove={handleRemoveModel}
             showRemove={selectedModelIdx > 0}
           />
-          {/* {selectedModelIdx === 0 && !disabledAdd && (
+          {selectedModelIdx === 0 && !disabledAdd && (
             <Button
               variant="ghost"
               size="icon"
@@ -201,7 +201,7 @@ export default function ModelSelector() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
               </svg>
             </Button>
-          )} */}
+          )}
         </div>
       ))}
     </div>
