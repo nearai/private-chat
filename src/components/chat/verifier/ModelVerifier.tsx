@@ -63,7 +63,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attestationData, setAttestationData] = useState<ModelAttestationReport | null>(null);
-  // biome-ignore lint/suspicious/noExplicitAny: explanation
+  // biome-ignore lint/suspicious/noExplicitAny: NVIDIA attestation payload shape is from API
   const [modelNvidiaPayload, setModelNvidiaPayload] = useState<any | null>(null);
   const [modelIntelQuote, setModelIntelQuote] = useState<string | null>(null);
   const [gatewayIntelQuote, setGatewayIntelQuote] = useState<string | null>(null);
@@ -73,24 +73,22 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     gatewayTdx: false,
   });
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
-  // Track which models have been fetched (model-specific to prevent duplicate fetches)
-  const hasFetchedRef = useRef<boolean>(false);
+  const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
   const fetchedModelRef = useRef<string | null>(null);
   const prevModelRef = useRef<string | null>(null);
   const prevModelPropRef = useRef<string | null>(null);
+  const fetchTriggeredByDropdownRef = useRef(false);
   const [activeVerificationTab, setActiveVerificationTab] = useState<'model' | 'gateway'>("model");
   const activeTabRef = useRef<'model' | 'gateway'>("model");
   const [modelIsVerifiable, setModelIsVerifiable] = useState<boolean>(false);
 
-  // Extract state reset logic to avoid duplication (DRY principle)
   const resetModelVerificationState = useCallback(() => {
     setAttestationData(null);
     setModelNvidiaPayload(null);
     setModelIntelQuote(null);
     setError(null);
-    setLoading(false); // Reset loading state when resetting
-    // Gateway attestation is preserved - it's the same for all models
+    setLoading(false);
   }, []);
 
   const loadAttestationData = useCallback((data: ModelAttestationReport, modelId: string) => {
@@ -133,8 +131,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   const fetchAttestationReport = useCallback(async (forceRefresh: boolean = false, modelOverride?: string) => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     
-    // Use modelOverride if provided (for when model prop differs from selectedModelId), otherwise use currentModel
-    const modelToFetch = modelOverride || currentModel;
+    const modelToFetch = modelOverride ?? currentModel;
 
     if (!modelToFetch || !token) {
       setLoading(false);
@@ -144,14 +141,12 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     const modelInfo = models.find((m) => m.modelId === modelToFetch);
     const isVerifiable = modelInfo?.metadata.verifiable ?? false;
     
-    // Use the same cache key logic as the store
     const cacheKey = isVerifiable ? modelToFetch : '__ANONYMIZED_MODEL__';
     
     setLoading(true);
     setError(null);
 
     try {
-      // Check cache first (unless forcing refresh) - use the correct cache key
       if (!forceRefresh) {
         const cachedData = cachedAttestations[cacheKey];
         if (cachedData) {
@@ -161,14 +156,9 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
         }
       }
 
-      // Fetch from API and cache (with forceRefresh flag to bypass store cache)
-      // Add timeout to prevent hanging forever
       const fetchPromise = fetchModelAttestation(modelToFetch, isVerifiable, forceRefresh);
       const timeoutPromise = new Promise<null>((resolve) => {
-        setTimeout(() => {
-          console.error("[ModelVerifier] Fetch timeout after 35 seconds");
-          resolve(null);
-        }, 35000); // 35 seconds timeout
+        setTimeout(() => resolve(null), 30000);
       });
       
       const data = await Promise.race([fetchPromise, timeoutPromise]);
@@ -186,8 +176,6 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
         }
       }
     } catch (err) {
-      console.error("[ModelVerifier] Error fetching attestation report:", err);
-      // Only set error for verifiable models - non-verifiable models don't need attestation
       if (isVerifiable) {
         setError(err instanceof Error ? err.message : "Failed to fetch attestation report");
       }
@@ -477,48 +465,41 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     activeTabRef.current = activeVerificationTab;
   }, [activeVerificationTab]);
 
-  // Initialize and keep prevModelRef in sync with selectedModelId (when not changed by user)
   useEffect(() => {
-    // Initialize if null
     if (prevModelRef.current === null && selectedModelId) {
       prevModelRef.current = selectedModelId;
-      return;
     }
-    // Don't update if it's already set - let handleModelChange or the main effect handle updates
   }, [selectedModelId]);
 
-  // Update selected model when prop changes (when dialog opens OR when model prop changes for autoVerify)
   useEffect(() => {
     const isOpening = show && !prevShowRef.current;
     const modelPropChanged = model && model !== prevModelPropRef.current;
     // Update if dialog is opening OR if model prop changed (for autoVerify in sidebar)
     if ((isOpening || modelPropChanged) && model) {
-      // Update prevModelRef before changing selectedModelId to ensure change detection works
       if (selectedModelId && selectedModelId !== model && prevModelRef.current !== selectedModelId) {
         prevModelRef.current = selectedModelId;
       }
       setSelectedModelId(model);
-      prevModelPropRef.current = model; // Track model prop changes
-      // Restore gateway attestation from cache if available (gateway is same for all models)
+      prevModelPropRef.current = model;
       if (cachedGatewayAttestation?.intel_quote) {
         setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
       }
     }
   }, [model, show, cachedGatewayAttestation, selectedModelId]);
 
-  // Handle model selection change from dropdown
-  const handleModelChange = useCallback((newModelId: string) => {
-    if (newModelId !== selectedModelId) {
-      // CRITICAL: Update prevModelRef to the CURRENT selectedModelId BEFORE updating state
-      // This ensures the main effect will detect modelChanged = true when it runs
-      // Store the current value so the effect can compare old vs new
-      const oldModelId = selectedModelId;
-      prevModelRef.current = oldModelId;
+  const handleModelChange = useCallback(
+    (newModelId: string) => {
+      if (newModelId === selectedModelId) return;
+      prevModelRef.current = selectedModelId;
+      fetchTriggeredByDropdownRef.current = true;
       setSelectedModelId(newModelId);
-    }
-  }, [selectedModelId]);
+      resetModelVerificationState();
+      setLoading(true);
+      fetchAttestationReport(false, newModelId).catch(() => setLoading(false));
+    },
+    [selectedModelId, resetModelVerificationState, fetchAttestationReport]
+  );
 
-  // Use refs to track attestation state without causing effect re-runs
   const attestationDataRef = useRef(attestationData);
   const modelNvidiaPayloadRef = useRef(modelNvidiaPayload);
   const modelIntelQuoteRef = useRef(modelIntelQuote);
@@ -531,7 +512,6 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     gatewayIntelQuoteRef.current = gatewayIntelQuote;
   }, [attestationData, modelNvidiaPayload, modelIntelQuote, gatewayIntelQuote]);
 
-  // Handle dialog opening, auto-verify, and model changes in a single consolidated effect
   useEffect(() => {
     // If dialog is not shown and autoVerify is false, reset loading and return
     if (!show && !autoVerify) {
@@ -554,70 +534,43 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     }
 
     const isOpening = show && !prevShowRef.current;
-    // Check if model prop changed (more reliable than checking selectedModelId which updates async)
-    const modelPropChanged = model && model !== prevModelPropRef.current;
-    // Also check if selectedModelId changed (for when user selects from dropdown)
-    // IMPORTANT: Compare currentModel with prevModelRef BEFORE we update prevModelRef
+    const modelPropChanged = Boolean(model && model !== prevModelPropRef.current);
     const modelChanged = currentModel !== prevModelRef.current && !modelPropChanged;
-    
-    // Determine which model we should actually use
-    // If model prop changed, use model prop (it's the source of truth from parent)
-    // If modelChanged (user selected from dropdown), use currentModel (the new selectedModelId)
-    // Otherwise, use currentModel as default
     const actualModel = modelPropChanged ? model : currentModel;
-    
-
-    // Reset hasFetchedRef when dialog opens to allow fresh fetch
     if (isOpening) {
       hasFetchedRef.current = false;
-      // Clear any stuck loading states in the store
       const modelInfo = models.find((m) => m.modelId === actualModel);
       const isVerifiable = modelInfo?.metadata?.verifiable ?? false;
       clearLoadingState(actualModel, isVerifiable);
-      // Don't set loading to true yet - check cache first
     }
 
-    // If model changed (prop or selectedModelId), reset state and update refs
     if (modelPropChanged || modelChanged) {
-      // Reset hasFetchedRef to allow fresh fetch for the new model
-      hasFetchedRef.current = false;
-      // Use the actual model (from prop if different, otherwise from selectedModelId)
-      prevModelRef.current = actualModel;
-      // Update prevModelPropRef if model prop changed
-      if (modelPropChanged) {
-        prevModelPropRef.current = model;
+      if (modelChanged && fetchTriggeredByDropdownRef.current) {
+        fetchTriggeredByDropdownRef.current = false;
+        prevModelRef.current = actualModel;
+        prevShowRef.current = show;
+        return;
       }
+      hasFetchedRef.current = false;
+      prevModelRef.current = actualModel;
+      if (modelPropChanged) prevModelPropRef.current = model;
       resetModelVerificationState();
-      // Restore gateway attestation from cache if available (gateway is same for all models)
       if (cachedGatewayAttestation?.intel_quote) {
         setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
       }
-      // After reset, update refs immediately so they reflect the cleared state
       attestationDataRef.current = null;
       modelNvidiaPayloadRef.current = null;
       modelIntelQuoteRef.current = null;
-      // Gateway attestation is preserved, so keep gatewayIntelQuoteRef.current as is
     }
 
-    // Check if we need to fetch
-    // For autoVerify mode: fetch when model prop changes OR when we haven't fetched for current model yet
-    // This ensures we fetch for the default model when sidebar opens, but prevents duplicate fetches
     const shouldFetchForAutoVerify = autoVerify && (modelPropChanged || fetchedModelRef.current !== actualModel);
     const shouldFetch = isOpening || modelPropChanged || modelChanged || shouldFetchForAutoVerify;
-    
-    // Always check cache when autoVerify is true (even if model prop hasn't changed)
-    // This ensures we load cached data for the default model when sidebar opens
     const shouldCheckCache = isOpening || modelPropChanged || modelChanged || (autoVerify && model);
-    
+
     if (shouldFetch || (autoVerify && model)) {
-      // Check if both attestations already exist and are for the actual model
-      
       let bothAttestationsExist = false;
       if (shouldCheckCache) {
-        // For autoVerify mode, always use model prop directly; otherwise use actualModel
         const modelToCheck = (autoVerify && model) ? model : actualModel;
-        
-        // When dialog opens or model changes, check cache for the current model
         const modelInfo = models.find((m) => m.modelId === modelToCheck);
         const isVerifiable = modelInfo?.metadata?.verifiable ?? false;
         const cacheKey = isVerifiable ? modelToCheck : '__ANONYMIZED_MODEL__';
@@ -626,60 +579,44 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
         const hasModelAttestations = !!(cachedData && (cachedData.model_attestations?.[0]?.nvidia_payload || cachedData.model_attestations?.[0]?.intel_quote || cachedData.all_attestations?.[0]?.nvidia_payload || cachedData.all_attestations?.[0]?.intel_quote));
         const hasGatewayAttestations = !!(cachedData && cachedData.cloud_api_gateway_attestation?.intel_quote);
         bothAttestationsExist = hasModelAttestations && hasGatewayAttestations;
-        
-        // If cache exists, load it immediately and skip fetch
         if (bothAttestationsExist && cachedData) {
-          setLoading(false); // Clear loading FIRST before loading data
+          setLoading(false);
           loadAttestationData(cachedData, modelToCheck);
           fetchedModelRef.current = modelToCheck;
-          // If model prop changed, also update selectedModelId to match
-          if (modelPropChanged) {
-            setSelectedModelId(model);
-          }
+          if (modelPropChanged) setSelectedModelId(model);
           hasFetchedRef.current = true;
-          prevShowRef.current = show; // Update ref before returning
-          return; // Early return to skip fetch
+          prevShowRef.current = show;
+          return;
         }
       } else {
-        // Use refs for non-opening/non-model-change scenarios (e.g., autoVerify in sidebar with same model)
         const hasModelAttestations = attestationDataRef.current && (modelNvidiaPayloadRef.current || modelIntelQuoteRef.current);
         const hasGatewayAttestations = attestationDataRef.current && gatewayIntelQuoteRef.current;
         const isForCurrentModel = fetchedModelRef.current === currentModel;
         bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
       }
 
-      // Skip fetch if both attestations already exist for the current model
       if (!bothAttestationsExist) {
-        // When autoVerify is true, use model prop directly; otherwise use actualModel
         const modelToFetch = (autoVerify && model) ? model : actualModel;
-        
-        // If model prop changed, sync selectedModelId to match
-        if (modelPropChanged && model) {
-          setSelectedModelId(model);
-        }
-        
-        // Fetch if shouldFetch is true OR if autoVerify is true and we don't have data for this model
-        // This ensures we fetch for the default model when sidebar opens, even if model prop hasn't changed
-        const needsFetch = shouldFetch || (autoVerify && model && !bothAttestationsExist);
+        if (modelPropChanged && model) setSelectedModelId(model);
+
+        const needsFetch =
+          shouldFetch ||
+          (autoVerify && model && fetchedModelRef.current !== modelToFetch) ||
+          (modelChanged && !bothAttestationsExist);
+
         if (needsFetch) {
           hasFetchedRef.current = true;
-          setLoading(true); // Set loading before fetching
-          // Pass modelToFetch as override if it differs from currentModel (which shouldn't happen now, but safe)
-          fetchAttestationReport(false, modelToFetch !== currentModel ? modelToFetch : undefined).catch((err) => {
-            console.error("[ModelVerifier] fetchAttestationReport failed:", err);
-            setLoading(false);
-          });
+          setLoading(true);
+          const override = modelToFetch !== currentModel ? modelToFetch : undefined;
+          fetchAttestationReport(false, override).catch(() => setLoading(false));
         } else {
-          // If we shouldn't fetch, ensure loading is false
           setLoading(false);
         }
       } else {
-        // If attestations already exist, ensure loading is false
         hasFetchedRef.current = true;
         setLoading(false);
       }
     } else {
-      // If we shouldn't fetch, ensure loading is false
       setLoading(false);
     }
     
