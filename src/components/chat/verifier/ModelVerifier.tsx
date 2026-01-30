@@ -75,7 +75,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
   const hasFetchedRef = useRef(false);
   const prevShowRef = useRef(show);
-  const fetchedModelRef = useRef<string | null>(null);
+  const [fetchedModelId, setFetchedModelId] = useState<string | null>(null);
   const prevModelRef = useRef<string | null>(null);
   const prevModelPropRef = useRef<string | null>(null);
   const fetchTriggeredByDropdownRef = useRef(false);
@@ -121,7 +121,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
     }
     setGatewayIntelQuote(data.cloud_api_gateway_attestation?.intel_quote || null);
     setAttestationData(data);
-    fetchedModelRef.current = modelId;
+    setFetchedModelId(modelId);
     // Update global store with gateway attestation so MessageVerifier can reuse it
     if (data.cloud_api_gateway_attestation) {
       setGatewayAttestation(data.cloud_api_gateway_attestation);
@@ -225,7 +225,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   );
 
   const renderGPUSection = () => {
-    if (!attestationData || !modelNvidiaPayload) return null;
+    if (!attestationData || !modelNvidiaPayload || fetchedModelId !== currentModel) return null;
     return (
       <div className="flex flex-col gap-6 rounded-xl bg-secondary/10 px-3 py-3.5">
         <button onClick={() => toggleSection("gpu")} className="flex w-full items-center gap-1">
@@ -367,7 +367,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   }
 
   const renderTDXSection = () => {
-    if (!attestationData) return null;
+    if (!attestationData || fetchedModelId !== currentModel) return null;
     if (!modelIntelQuote) return null;
   
     return (
@@ -494,6 +494,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       fetchTriggeredByDropdownRef.current = true;
       setSelectedModelId(newModelId);
       resetModelVerificationState();
+      setFetchedModelId(null);
       setLoading(true);
       fetchAttestationReport(false, newModelId).catch(() => setLoading(false));
     },
@@ -555,6 +556,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       prevModelRef.current = actualModel;
       if (modelPropChanged) prevModelPropRef.current = model;
       resetModelVerificationState();
+      setFetchedModelId(null);
       if (cachedGatewayAttestation?.intel_quote) {
         setGatewayIntelQuote(cachedGatewayAttestation.intel_quote);
       }
@@ -563,17 +565,16 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       modelIntelQuoteRef.current = null;
     }
 
-    const shouldFetchForAutoVerify = autoVerify && (modelPropChanged || fetchedModelRef.current !== actualModel);
+    const shouldFetchForAutoVerify = autoVerify && (modelPropChanged || fetchedModelId !== actualModel);
     const shouldFetch = isOpening || modelPropChanged || modelChanged || shouldFetchForAutoVerify;
     const shouldCheckCache = isOpening || modelPropChanged || modelChanged || (autoVerify && model);
 
     if (shouldFetch || (autoVerify && model)) {
       let bothAttestationsExist = false;
       if (shouldCheckCache) {
-        const modelToCheck = (autoVerify && model) ? model : actualModel;
-        const modelInfo = models.find((m) => m.modelId === modelToCheck);
+        const modelInfo = models.find((m) => m.modelId === currentModel);
         const isVerifiable = modelInfo?.metadata?.verifiable ?? false;
-        const cacheKey = isVerifiable ? modelToCheck : '__ANONYMIZED_MODEL__';
+        const cacheKey = isVerifiable ? currentModel : '__ANONYMIZED_MODEL__';
         const cachedData = cachedAttestations[cacheKey];
         
         const hasModelAttestations = !!(cachedData && (cachedData.model_attestations?.[0]?.nvidia_payload || cachedData.model_attestations?.[0]?.intel_quote || cachedData.all_attestations?.[0]?.nvidia_payload || cachedData.all_attestations?.[0]?.intel_quote));
@@ -581,8 +582,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
         bothAttestationsExist = hasModelAttestations && hasGatewayAttestations;
         if (bothAttestationsExist && cachedData) {
           setLoading(false);
-          loadAttestationData(cachedData, modelToCheck);
-          fetchedModelRef.current = modelToCheck;
+          loadAttestationData(cachedData, currentModel);
           if (modelPropChanged) setSelectedModelId(model);
           hasFetchedRef.current = true;
           prevShowRef.current = show;
@@ -591,7 +591,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       } else {
         const hasModelAttestations = attestationDataRef.current && (modelNvidiaPayloadRef.current || modelIntelQuoteRef.current);
         const hasGatewayAttestations = attestationDataRef.current && gatewayIntelQuoteRef.current;
-        const isForCurrentModel = fetchedModelRef.current === currentModel;
+        const isForCurrentModel = fetchedModelId === currentModel;
         bothAttestationsExist = hasModelAttestations && hasGatewayAttestations && isForCurrentModel;
       }
 
@@ -601,7 +601,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
 
         const needsFetch =
           shouldFetch ||
-          (autoVerify && model && fetchedModelRef.current !== modelToFetch) ||
+          (autoVerify && model && fetchedModelId !== modelToFetch) ||
           (modelChanged && !bothAttestationsExist);
 
         if (needsFetch) {
@@ -777,7 +777,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
                     </div>
                   )}
 
-                  {attestationData && (
+                  {attestationData && fetchedModelId === currentModel && (
                     <div className="space-y-4">
                       {renderGPUSection()}
                       {renderTDXSection()}
