@@ -46,8 +46,13 @@ export const decodeString = (str: string) => {
   }
 };
 
+/** Threshold below which a timestamp is treated as seconds (not ms). ~Sep 2001. */
+const SECONDS_THRESHOLD = 1e12;
+
 export const formatDate = (inputDate: number) => {
-  const date = dayjs(inputDate);
+  // Accept either Unix seconds or milliseconds (e.g. API uses seconds, Date.now() uses ms)
+  const ms = inputDate < SECONDS_THRESHOLD ? inputDate * 1000 : inputDate;
+  const date = dayjs(ms);
 
   if (date.isToday()) {
     return `Today at ${date.format("LT")}`;
