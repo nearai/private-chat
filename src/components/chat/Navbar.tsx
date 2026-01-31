@@ -1,4 +1,4 @@
-import { GlobeAltIcon, ShareIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, ShareIcon, SignalIcon, SignalSlashIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
@@ -6,12 +6,23 @@ import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { useViewStore } from "@/stores/useViewStore";
+import type { ConnectionState } from "@/lib/websocket";
 import { Button } from "../ui/button";
 import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
 import ShareConversationDialog from "./ShareConversationDialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
-export default function Navbar() {
+interface NavbarProps {
+  isSharedConversation?: boolean;
+  connectionState?: ConnectionState;
+}
+
+export default function Navbar({ isSharedConversation, connectionState }: NavbarProps) {
   const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
@@ -80,6 +91,28 @@ export default function Navbar() {
             </div>
 
             <div className="flex h-fit items-center gap-2">
+              {isSharedConversation && connectionState && connectionState !== "disconnected" && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center">
+                      {connectionState === "connected" ? (
+                        <SignalIcon className="size-4 text-green-500" />
+                      ) : connectionState === "connecting" ? (
+                        <SignalIcon className="size-4 animate-pulse text-yellow-500" />
+                      ) : (
+                        <SignalSlashIcon className="size-4 text-red-500" />
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {connectionState === "connected"
+                      ? "Real-time sync active"
+                      : connectionState === "connecting"
+                        ? "Reconnecting..."
+                        : "Connection lost"}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {chatId && (
                 <div className="relative">
                   <Button

@@ -14,6 +14,7 @@ import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessa
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
+import { OfflineBanner } from "@/components/chat/OfflineBanner";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import Spinner from "@/components/common/Spinner";
@@ -108,7 +109,7 @@ const Home = ({
 
   // WebSocket connection for real-time updates in shared conversations
   // Only connects when the conversation is shared
-  const { typingUsers } = useConversationWebSocket({
+  const { typingUsers, connectionState } = useConversationWebSocket({
     conversationId: chatId ?? null,
     isSharedConversation,
     currentUserId,
@@ -547,7 +548,7 @@ const Home = ({
     const ErrorIcon = errorInfo.icon;
     return (
       <div className="flex h-full flex-col" id="chat-container">
-        <Navbar />
+        <Navbar isSharedConversation={isSharedConversation} connectionState={connectionState} />
         <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10">
@@ -570,7 +571,8 @@ const Home = ({
   }
   return (
     <div className="flex h-full flex-col" id="chat-container">
-      <Navbar />
+      <Navbar isSharedConversation={isSharedConversation} connectionState={connectionState} />
+      <OfflineBanner connectionState={connectionState} isSharedConversation={isSharedConversation} />
 
       {isLoading && <LoadingScreen />}
 
@@ -613,6 +615,11 @@ const Home = ({
       ) : (
         <div className="border-border border-t bg-muted/30 px-4 py-4">
           <div className="mx-auto max-w-3xl">
+            {ownerName && (
+              <p className="mb-2 text-center text-muted-foreground text-xs sm:text-left">
+                Shared by {ownerName}
+              </p>
+            )}
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
               <div className="text-center sm:text-left">
                 <p className="font-medium text-sm">Want to continue this conversation?</p>

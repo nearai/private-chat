@@ -41,6 +41,8 @@ export interface ConversationWebSocketOptions {
   maxReconnectAttempts?: number;
   /** Base reconnection delay in ms (default: 1000) */
   reconnectDelay?: number;
+  /** Called to refresh the auth token before reconnecting (e.g. after 401) */
+  onTokenRefresh?: () => Promise<string | null>;
 }
 
 /**
@@ -75,6 +77,7 @@ export class ConversationWebSocket {
       onStateChange: options.onStateChange ?? (() => {}),
       maxReconnectAttempts: options.maxReconnectAttempts ?? 5,
       reconnectDelay: options.reconnectDelay ?? 1000,
+      onTokenRefresh: options.onTokenRefresh ?? (() => Promise.resolve(null)),
     };
   }
 
@@ -171,7 +174,14 @@ export class ConversationWebSocket {
 
         if (!this.intentionalClose && this.conversationId) {
           this.options.onStateChange("disconnected");
-          this.scheduleReconnect();
+
+          // Auth failure - try refreshing token before reconnecting
+          const isAuthError = event.code === 4401 || event.code === 1008 || event.code === 4403;
+          if (isAuthError) {
+            this.handleAuthFailure();
+          } else {
+            this.scheduleReconnect();
+          }
         }
       };
     } catch (e) {
@@ -209,6 +219,27 @@ export class ConversationWebSocket {
     this.reconnectTimeout = setTimeout(() => {
       this.doConnect();
     }, delay);
+  }
+
+  private async handleAuthFailure(): Promise<void> {
+    console.debug("WebSocket: Auth failure detected, attempting token refresh");
+
+    try {
+      const newToken = await this.options.onTokenRefresh();
+      if (newToken) {
+        // Token refreshed, reconnect immediately with reset attempts
+        this.reconnectAttempts = 0;
+        this.doConnect();
+      } else {
+        // Token refresh failed or returned null, fall back to normal reconnect
+        // which will pick up the latest token from localStorage
+        console.warn("WebSocket: Token refresh returned null, falling back to reconnect");
+        this.scheduleReconnect();
+      }
+    } catch (e) {
+      console.warn("WebSocket: Token refresh failed:", e);
+      this.scheduleReconnect();
+    }
   }
 
   private startPingInterval(): void {

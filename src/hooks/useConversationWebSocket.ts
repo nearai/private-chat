@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ConversationWebSocket,
@@ -181,23 +182,7 @@ export function useConversationWebSocket({
           // - Object with data array: { data: [{item1}, {item2}] }
           // - Object with items array: { items: [{item1}, {item2}] }
           console.debug("WebSocket new_items received:", message.items);
-          let items: unknown[];
-          if (Array.isArray(message.items)) {
-            items = message.items;
-          } else if (message.items && typeof message.items === "object") {
-            // Try to extract array from common wrapper properties
-            const wrapped = message.items as Record<string, unknown>;
-            if (Array.isArray(wrapped.data)) {
-              items = wrapped.data;
-            } else if (Array.isArray(wrapped.items)) {
-              items = wrapped.items;
-            } else {
-              // Single item object - wrap in array
-              items = [message.items];
-            }
-          } else {
-            items = [];
-          }
+          const items: unknown[] = Array.isArray(message.items) ? message.items : [];
 
           if (items.length > 0) {
             handleNewItems(items as ConversationItem[]);
@@ -208,8 +193,27 @@ export function useConversationWebSocket({
         }
 
         case "response_created":
-          // AI response completed - invalidate query to fetch new data
+          // AI response completed - mark any pending items as completed, then invalidate for full sync
           console.log("WebSocket response_created received:", message.conversation_id, message.response_id);
+
+          if (message.response_id) {
+            updateConversation((state) => {
+              if (!state.conversation) return state;
+
+              // Mark all pending items with this response_id as completed
+              const data = state.conversation.conversation.data;
+              if (data) {
+                for (const item of data) {
+                  if (item.response_id === message.response_id && item.status === "pending") {
+                    item.status = "completed";
+                  }
+                }
+              }
+
+              return state;
+            });
+          }
+
           if (message.conversation_id) {
             console.log("Invalidating query for conversation:", message.conversation_id);
             queryClient.invalidateQueries({
@@ -228,7 +232,7 @@ export function useConversationWebSocket({
           break;
       }
     },
-    [handleTypingIndicator, handleNewItems, queryClient]
+    [handleTypingIndicator, handleNewItems, queryClient, updateConversation]
   );
 
   // Manage WebSocket connection
@@ -271,15 +275,30 @@ export function useConversationWebSocket({
     };
   }, []);
 
-  // Clear all typing timeouts when conversation changes or unmounts
+  // Clear all typing indicators when conversation changes
+  const prevConversationIdRef = useRef(conversationId);
   useEffect(() => {
-    const currentTypingUsers = typingUsers;
-    return () => {
-      currentTypingUsers.forEach((user) => {
-        clearTimeout(user.timeout);
+    if (prevConversationIdRef.current !== conversationId) {
+      prevConversationIdRef.current = conversationId;
+      setTypingUsers((prev) => {
+        for (const user of prev.values()) {
+          clearTimeout(user.timeout);
+        }
+        return new Map();
       });
+    }
+  });
+
+  // Cleanup all typing timeouts on unmount
+  const typingUsersRef = useRef(typingUsers);
+  typingUsersRef.current = typingUsers;
+  useEffect(() => {
+    return () => {
+      for (const user of typingUsersRef.current.values()) {
+        clearTimeout(user.timeout);
+      }
     };
-  }, [typingUsers]);
+  }, []);
 
   // Convert typingUsers map to array of names for the component
   const typingUserNames = Array.from(typingUsers.values()).map((u) => u.name);
