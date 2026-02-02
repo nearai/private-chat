@@ -5,6 +5,7 @@ import { useViewStore } from "@/stores/useViewStore";
 import type { ChatStartStreamOptions, ConversationItem } from "@/types";
 import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
+import { useChatStore } from "@/stores/useChatStore";
 
 interface MultiResponseMessagesProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -27,6 +28,8 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   regenerateResponse,
   responseSiblings,
 }) => {
+  const { selectedModels } = useChatStore();
+  const { isMobile } = useViewStore();
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
 
@@ -47,12 +50,16 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         (acc, id) => {
           const batch = history.messages[id];
           if (!batch) return acc;
-          const { model } = getModelAndCreatedTimestamp(batch, allMessages);
+          const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
           if (!model) return acc;
 
           if (!acc[model]) {
-            acc[model] = { batchIds: [], currentIdx: 0 };
+            acc[model] = {
+              batchIds: [],
+              currentIdx: 0,
+              createdTimestamp,
+            };
           }
 
           acc[model].batchIds.push(id);
@@ -63,12 +70,31 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
 
           return acc;
         },
-        {} as Record<string, { batchIds: string[]; currentIdx: number }>
+        {} as Record<string, {
+          batchIds: string[];
+          currentIdx: number;
+          createdTimestamp: number | null;
+        }>
       ) ?? {},
     [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj]
   );
 
-  const { isMobile } = useViewStore();
+  const messageList = useMemo(() => {
+    // If all selected models are present, return them in the order of selected models
+    if (
+      Object.keys(groupedBatchIds).length === selectedModels.length &&
+      selectedModels.every((model) => Object.keys(groupedBatchIds).includes(model))
+    ) {
+      return selectedModels.map((model) => groupedBatchIds[model]);
+    }
+
+    // Otherwise, return sorted by createdTimestamp
+    return Object.values(groupedBatchIds).sort((a, b) => {
+      if (a.createdTimestamp === null) return 1;
+      if (b.createdTimestamp === null) return -1;
+      return a.createdTimestamp - b.createdTimestamp;
+    });
+  }, [groupedBatchIds]);
 
   if (!parent) return null;
 
@@ -78,7 +104,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         className="scrollbar-hidden flex snap-x snap-mandatory overflow-x-auto"
         id={`responses-container-${batchId}`}
       >
-        {Object.values(groupedBatchIds).map(({ batchIds, currentIdx }) => {
+        {messageList.map(({ batchIds, currentIdx }) => {
           const isSeveralModels = Object.keys(groupedBatchIds).length > 1;
           return (
             <div
