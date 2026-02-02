@@ -30,6 +30,7 @@ export interface ConversationInfo {
     archived_at?: string;
     imported_at?: string;
     initial_created_at?: string;
+    root_response_id?: string;
   };
 }
 
@@ -569,7 +570,7 @@ export interface ChatStartStreamOptions {
   contentItems: ContentItem[];
   webSearchEnabled: boolean;
   conversationId?: string;
-  previous_response_id?: string;
+  previousResponseId?: string;
   currentModels?: string[];
   initiator: "new_chat" | "new_message" | "regenerate" | "edit_message";
 }

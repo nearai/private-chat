@@ -129,7 +129,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         contentItems,
         webSearchEnabled,
         conversationId,
-        previous_response_id,
+        previousResponseId: chatPreviousResponseId,
         currentModels,
         initiator,
       }: ChatStartStreamOptions
@@ -223,84 +223,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
         }
       };
 
-      if (isNewChat && !previous_response_id && !currentModels && validModels.length > 1) {
-        // Run the first model to establish the message anchor
-        setConversationInitStatus(conversationLocalId, "ready");
-        const firstModel = validModels[0];
-        const remainingModels = validModels.slice(1);
-        const modelMsgMap = validModels.reduce<Record<string, string>>((acc, model) => {
-          acc[model] = pushResponse({
-            conversationId: conversationLocalId,
-            model,
-            contentItems,
-            previousResponseId: "mock-initial-id",
-          });
-          return acc;
-        }, {});
-
-        try {
-          await runStreamForModel(firstModel, {
-            tempMsgId: modelMsgMap[firstModel],
-          });
-        } catch (error) {
-          console.error(`Stream failed for first model ${firstModel}:`, error);
-        }
-
-        let firstMessagePreviousId = previous_response_id;
-        let firstMessageResponseId = null;
-        try {
-          // Fetch conversation items to find the common parent ID
-          const items = await chatClient.getConversationItems(conversationLocalId);
-          // Find the user message we just created (should be one of the first items)
-          const userMsg = items.data.find((m) => m.role === ConversationRoles.USER);
-          if (userMsg) {
-            firstMessagePreviousId = userMsg.previous_response_id;
-            firstMessageResponseId = userMsg.response_id;
-          }
-        } catch (error) {
-          console.error("Failed to fetch conversation items to sync models:", error);
-        }
-
-        // Run the rest of the models attached to the same parent
-        updateConversation((draft) => {
-          if (!draft.conversation) return draft;
-          const messages = draft.conversation.conversation.data;
-          for (const model of Object.keys(modelMsgMap)) {
-            const tempMsgId = modelMsgMap[model];
-            const message = messages.find((m) => m.id === tempMsgId);
-            if (message) {
-              message.previous_response_id = firstMessagePreviousId;
-            }
-          }
-          if (firstMessageResponseId) {
-            const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
-              draft.conversation.conversation,
-              firstMessageResponseId
-            );
-            draft.conversation.history = history;
-            draft.conversation.allMessages = allMessages;
-            draft.conversation.lastResponseId = lastResponseId;
-            draft.conversation.batches = batches;
-          }
-          return draft;
-        });
-        await Promise.all(
-          remainingModels.map(async (model) => {
-            try {
-              await runStreamForModel(model, {
-                previousResponseId: firstMessagePreviousId,
-                tempMsgId: modelMsgMap[model],
-              });
-            } catch (error: any) {
-              toast.error(`Model ${model} failed to respond: ${error.message || error}`);
-            }
-          })
-        );
-        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
-        setConversationStreamStatus(conversationLocalId, "idle");
-        return;
-      }
-
       if (isNewChat) {
         setConversationInitStatus(conversationLocalId, "ready");
       }
@@ -326,7 +248,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         _chatModels.map(async (model) => {
           try {
             await runStreamForModel(model, {
-              previousResponseId: previous_response_id,
+              previousResponseId: chatPreviousResponseId,
             });
           } catch (error: any) {
             console.error(`Stream failed for model ${model}:`, error);
