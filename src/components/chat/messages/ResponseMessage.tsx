@@ -279,9 +279,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {createdTimestamp && (
             <div
               className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible"
-              title={formatDate(createdTimestamp * 1000)}
+              title={formatDate(createdTimestamp)}
             >
-              <span className="line-clamp-1">{formatDate(createdTimestamp * 1000)}</span>
+              <span className="line-clamp-1">{formatDate(createdTimestamp)}</span>
             </div>
           )}
         </div>
