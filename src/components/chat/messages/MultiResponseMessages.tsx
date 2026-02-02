@@ -5,7 +5,6 @@ import { useViewStore } from "@/stores/useViewStore";
 import type { ChatStartStreamOptions, ConversationItem } from "@/types";
 import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
-import { useChatStore } from "@/stores/useChatStore";
 
 interface MultiResponseMessagesProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -28,7 +27,6 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   regenerateResponse,
   responseSiblings,
 }) => {
-  const { selectedModels } = useChatStore();
   const { isMobile } = useViewStore();
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
@@ -63,6 +61,10 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           }
 
           acc[model].batchIds.push(id);
+          acc[model].createdTimestamp = Math.min(
+            acc[model].createdTimestamp ?? Infinity,
+            createdTimestamp ?? Infinity
+          );
           // Set current index according to current batch bundle
           if (currentBatchBundleObj[id]) {
             acc[model].currentIdx = acc[model].batchIds.length - 1;
@@ -80,19 +82,10 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   );
 
   const messageList = useMemo(() => {
-    // If all selected models are present, return them in the order of selected models
-    if (
-      Object.keys(groupedBatchIds).length === selectedModels.length &&
-      selectedModels.every((model) => Object.keys(groupedBatchIds).includes(model))
-    ) {
-      return selectedModels.map((model) => groupedBatchIds[model]);
-    }
-
-    // Otherwise, return sorted by createdTimestamp
     return Object.values(groupedBatchIds).sort((a, b) => {
-      if (a.createdTimestamp === null) return 1;
-      if (b.createdTimestamp === null) return -1;
-      return a.createdTimestamp - b.createdTimestamp;
+      const timeA = a.createdTimestamp ?? 0;
+      const timeB = b.createdTimestamp ?? 0;
+      return timeA - timeB;
     });
   }, [groupedBatchIds]);
 
