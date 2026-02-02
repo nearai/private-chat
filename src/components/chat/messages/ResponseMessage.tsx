@@ -101,7 +101,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
     if (!hasSignature) {
       if (conversationImportedAt) {
-        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX) || signatureError) {
+        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
           return "imported";
         }
       }
