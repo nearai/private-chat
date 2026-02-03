@@ -79,6 +79,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       ? signatureError.split("Message signature address:")[0].trim()
       : signatureError;
   }, [signatureError]);
+  const messageContent = useMemo(() => {
+    return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
+  }, [outputMessages]);
   const isBatchCompleted = batch.status === MessageStatus.COMPLETED || batch.status === MessageStatus.OUTPUT;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
   const isStreamingOutput = messageContent.length > 0 && !isMessageCompleted;
@@ -157,10 +160,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     }
     return <NearAIIcon className="mt-0.5 h-6 w-6 rounded" />;
   }, [models, model]);
-
-  const messageContent = useMemo(() => {
-    return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
-  }, [outputMessages]);
 
   const citations = useMemo(() => outputMessages.flatMap(({ content }) => extractCitations(content)), [outputMessages]);
 
