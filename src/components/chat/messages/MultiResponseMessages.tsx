@@ -27,6 +27,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   regenerateResponse,
   responseSiblings,
 }) => {
+  const { isMobile } = useViewStore();
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
 
@@ -47,15 +48,23 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         (acc, id) => {
           const batch = history.messages[id];
           if (!batch) return acc;
-          const { model } = getModelAndCreatedTimestamp(batch, allMessages);
+          const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
           if (!model) return acc;
 
           if (!acc[model]) {
-            acc[model] = { batchIds: [], currentIdx: 0 };
+            acc[model] = {
+              batchIds: [],
+              currentIdx: 0,
+              createdTimestamp,
+            };
           }
 
           acc[model].batchIds.push(id);
+          acc[model].createdTimestamp = Math.min(
+            acc[model].createdTimestamp ?? Infinity,
+            createdTimestamp ?? Infinity
+          );
           // Set current index according to current batch bundle
           if (currentBatchBundleObj[id]) {
             acc[model].currentIdx = acc[model].batchIds.length - 1;
@@ -63,12 +72,20 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
 
           return acc;
         },
-        {} as Record<string, { batchIds: string[]; currentIdx: number }>
+        {} as Record<string, {
+          batchIds: string[];
+          currentIdx: number;
+          createdTimestamp: number | null;
+        }>
       ) ?? {},
     [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj]
   );
 
-  const { isMobile } = useViewStore();
+  const messageList = useMemo(() => {
+    return Object.keys(groupedBatchIds)
+      .sort((m1, m2) => m1.localeCompare(m2))
+      .map((model) => groupedBatchIds[model]);
+  }, [groupedBatchIds]);
 
   if (!parent) return null;
 
@@ -78,7 +95,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         className="scrollbar-hidden flex snap-x snap-mandatory overflow-x-auto"
         id={`responses-container-${batchId}`}
       >
-        {Object.values(groupedBatchIds).map(({ batchIds, currentIdx }) => {
+        {messageList.map(({ batchIds, currentIdx }) => {
           const isSeveralModels = Object.keys(groupedBatchIds).length > 1;
           return (
             <div
