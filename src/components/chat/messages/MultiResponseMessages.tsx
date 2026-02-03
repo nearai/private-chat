@@ -82,11 +82,9 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   );
 
   const messageList = useMemo(() => {
-    return Object.values(groupedBatchIds).sort((a, b) => {
-      const timeA = a.createdTimestamp ?? Infinity;
-      const timeB = b.createdTimestamp ?? Infinity;
-      return timeA - timeB;
-    });
+    return Object.keys(groupedBatchIds)
+      .sort((m1, m2) => m1.localeCompare(m2))
+      .map((model) => groupedBatchIds[model]);
   }, [groupedBatchIds]);
 
   if (!parent) return null;
