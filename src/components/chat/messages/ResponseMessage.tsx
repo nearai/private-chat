@@ -30,8 +30,8 @@ import type {
 import { extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
-import { MarkDown } from "./MarkdownTokens";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
+import ProgressiveMessageContent from "./ProgressiveMessageContent";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -41,6 +41,8 @@ interface ResponseMessageProps {
   isLastMessage: boolean;
   readOnly: boolean;
   regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
+  autoScroll?: boolean;
+  onAutoScroll?: () => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -51,6 +53,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   readOnly,
   regenerateResponse,
   siblings,
+  autoScroll,
+  onAutoScroll,
 }) => {
   const { setLastResponseId } = useConversationStore();
   const { webSearchEnabled } = useChatStore();
@@ -75,8 +79,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       ? signatureError.split("Message signature address:")[0].trim()
       : signatureError;
   }, [signatureError]);
+  const messageContent = useMemo(() => {
+    return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
+  }, [outputMessages]);
   const isBatchCompleted = batch.status === MessageStatus.COMPLETED || batch.status === MessageStatus.OUTPUT;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
+  const isStreamingOutput = messageContent.length > 0 && !isMessageCompleted;
 
   const handleVerificationBadgeClick = () => {
     setShouldScrollToSignatureDetails(true);
@@ -153,10 +161,6 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     return <NearAIIcon className="mt-0.5 h-6 w-6 rounded" />;
   }, [models, model]);
 
-  const messageContent = useMemo(() => {
-    return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
-  }, [outputMessages]);
-
   const citations = useMemo(() => outputMessages.flatMap(({ content }) => extractCitations(content)), [outputMessages]);
 
   const copyToClipboard = async (text: string) => {
@@ -209,9 +213,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 {webSearchEnabled ? "Generating search query..." : "Generating response..."}
               </div>
             ) : messageContent ? (
-              <div className="markdown-content wrap-break-word">
-                <MarkDown messageContent={messageContent} batchId={batch.responseId} />
-              </div>
+              <ProgressiveMessageContent
+                fullText={messageContent}
+                isStreaming={isStreamingOutput}
+                batchId={batch.responseId}
+                autoScroll={autoScroll}
+                onAutoScroll={onAutoScroll}
+              />
             ) : null}
           </div>
         );

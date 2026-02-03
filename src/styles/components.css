@@ -274,3 +274,15 @@ pre code {
   border: 1px solid rgba(0, 61, 39, 1);
   background: linear-gradient(180deg, rgba(0, 236, 151, 0.02) 0%, rgba(0, 236, 151, 0.04) 100%);
 }
+
+.typing-caret {
+  display: inline-block;
+  width: 0.6ch;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
