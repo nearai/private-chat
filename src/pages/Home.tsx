@@ -143,7 +143,11 @@ const Home = ({
 
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
+  const { handleScroll, scrollToBottom, autoScroll } = useScrollHandler(
+    scrollContainerRef,
+    conversationState ?? undefined,
+    chatId
+  );
   const handleSendMessage = useCallback(
     async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
       const contentItems: ContentItem[] = [
@@ -334,6 +338,8 @@ const Home = ({
               readOnly={!canWrite}
               regenerateResponse={startStream}
               responseSiblings={responseSiblings}
+              autoScroll={autoScroll}
+              onAutoScroll={scrollToBottom}
             />
           );
         } else {
@@ -347,12 +353,14 @@ const Home = ({
               readOnly={!canWrite}
               regenerateResponse={startStream}
               siblings={[]}
+              autoScroll={autoScroll}
+              onAutoScroll={scrollToBottom}
             />
           );
         }
         return messages;
       });
-  }, [batches, history, allMessages, isSharedConversation, canWrite, currentMessages.length, startStream]);
+  }, [batches, history, allMessages, isSharedConversation, canWrite, currentMessages.length, startStream, autoScroll, scrollToBottom]);
 
   const lastBatchMessages = useMemo(() => {
     if (!batches.length) return [];

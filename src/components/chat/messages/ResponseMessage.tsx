@@ -30,10 +30,10 @@ import type {
 import { extractCitations, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
-import { MarkDown } from "./MarkdownTokens";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { checkIsClonedConversation, checkIsImportedConversation } from "@/utils/conversation";
 import { isClonedMessage } from "@/lib/utils/message";
+import ProgressiveMessageContent from "./ProgressiveMessageContent";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -44,6 +44,8 @@ interface ResponseMessageProps {
   readOnly: boolean;
   regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   onResponseVersionChange?: (batchId: string, model: string) => void;
+  autoScroll?: boolean;
+  onAutoScroll?: () => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -55,6 +57,8 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   regenerateResponse,
   onResponseVersionChange,
   siblings,
+  autoScroll,
+  onAutoScroll,
 }) => {
   const { setLastResponseId } = useConversationStore();
   const { webSearchEnabled } = useChatStore();
@@ -168,6 +172,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const messageContent = useMemo(() => {
     return outputMessages.map((msg) => extractMessageContent(msg?.content ?? {}, "output_text")).join("");
   }, [outputMessages]);
+  const isStreamingOutput = messageContent.length > 0 && !isMessageCompleted;
 
   const citations = useMemo(() => outputMessages.flatMap(({ content }) => extractCitations(content)), [outputMessages]);
 
@@ -221,9 +226,13 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 {webSearchEnabled ? "Generating search query..." : "Generating response..."}
               </div>
             ) : messageContent ? (
-              <div className="markdown-content wrap-break-word">
-                <MarkDown messageContent={messageContent} batchId={batch.responseId} />
-              </div>
+              <ProgressiveMessageContent
+                fullText={messageContent}
+                isStreaming={isStreamingOutput}
+                batchId={batch.responseId}
+                autoScroll={autoScroll}
+                onAutoScroll={onAutoScroll}
+              />
             ) : null}
           </div>
         );

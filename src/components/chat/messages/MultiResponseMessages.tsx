@@ -16,6 +16,8 @@ interface MultiResponseMessagesProps {
   readOnly: boolean;
   regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   responseSiblings?: string[];
+  autoScroll?: boolean;
+  onAutoScroll?: () => void;
 }
 
 const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
@@ -27,6 +29,8 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   readOnly,
   regenerateResponse,
   responseSiblings,
+  autoScroll,
+  onAutoScroll,
 }) => {
   const { isMobile } = useViewStore();
   const { getSelectedResponseVersion, setSelectedResponseVersion } = useMessagesStore();
@@ -135,6 +139,8 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
                       setSelectedResponseVersion(parentId, model, batchId);
                     }
                   }}
+                  autoScroll={autoScroll}
+                  onAutoScroll={onAutoScroll}
                 />
               )}
             </div>
