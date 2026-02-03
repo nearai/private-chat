@@ -180,7 +180,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
           queryClient,
           include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
           tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
-          previous_response_id: previousResponseId,
+          previousResponseId: previousResponseId,
           systemPrompt: userSettings.data?.settings.system_prompt,
           tempStreamId: tempMsgId,
           onReaderReady: (reader, abortController) => {
@@ -231,6 +231,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
       if (currentModels && currentModels.length > 0) {
         chatModels.push(...currentModels);
       } else if (initiator === "new_message" && validModels.length > 0) {
+        chatModels.push(...validModels);
+      } else if (initiator === "new_chat" && validModels.length > 0) {
         chatModels.push(...validModels);
       } else if (validModels.length > 0) {
         chatModels.push(validModels[0]);

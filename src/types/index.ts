@@ -562,7 +562,7 @@ export interface StartStreamProps {
   queryClient: QueryClient;
   tools?: Tool[];
   include?: string[];
-  previous_response_id?: string;
+  previousResponseId?: string;
   tempStreamId?: string;
 }
 

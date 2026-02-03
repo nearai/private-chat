@@ -139,7 +139,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       contentItems: userPrompt.content,
       webSearchEnabled,
       conversationId: chatId,
-      previous_response_id: prevResponseId,
+      previousResponseId: prevResponseId,
       currentModels: model ? [model] : undefined,
       initiator: "regenerate",
     });
