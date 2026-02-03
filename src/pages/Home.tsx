@@ -67,7 +67,11 @@ const Home = ({
   );
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
+  const { handleScroll, scrollToBottom, autoScroll } = useScrollHandler(
+    scrollContainerRef,
+    conversationState ?? undefined,
+    chatId
+  );
   const handleSendMessage = useCallback(
     async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
       const contentItems: ContentItem[] = [
@@ -210,6 +214,8 @@ const Home = ({
             readOnly={false}
             regenerateResponse={startStream}
             responseSiblings={responseSiblings}
+            autoScroll={autoScroll}
+            onAutoScroll={scrollToBottom}
           />
         );
       } else {
@@ -223,6 +229,8 @@ const Home = ({
             readOnly={false}
             regenerateResponse={startStream}
             siblings={[]}
+            autoScroll={autoScroll}
+            onAutoScroll={scrollToBottom}
           />
         );
       }
