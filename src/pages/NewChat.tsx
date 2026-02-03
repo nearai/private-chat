@@ -158,7 +158,6 @@ export default function NewChat({
         let title = "";
         for (const modelId of candidates) {
           try {
-            console.log(`Generating title with model ${modelId}`);
             title = await generateChatTitle.mutateAsync({ prompt: content, model: modelId });
             if (title) break;
           } catch (e) {
