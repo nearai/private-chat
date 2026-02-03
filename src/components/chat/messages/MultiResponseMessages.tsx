@@ -83,8 +83,8 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
 
   const messageList = useMemo(() => {
     return Object.values(groupedBatchIds).sort((a, b) => {
-      const timeA = a.createdTimestamp ?? 0;
-      const timeB = b.createdTimestamp ?? 0;
+      const timeA = a.createdTimestamp ?? Infinity;
+      const timeB = b.createdTimestamp ?? Infinity;
       return timeA - timeB;
     });
   }, [groupedBatchIds]);

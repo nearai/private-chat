@@ -34,7 +34,7 @@ export function generateMockAIResponse(
     type: ConversationTypes.MESSAGE,
     response_id: userRespId,
     next_response_ids: [],
-    created_at: Date.now() + 60000,
+    created_at: Date.now() + 60 * 1000,
     status: "pending",
     role: ConversationRoles.ASSISTANT,
     content: [
