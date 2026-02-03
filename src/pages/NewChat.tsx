@@ -146,7 +146,25 @@ export default function NewChat({
         conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE ||
         conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE
       ) {
-        const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
+        const models = useChatStore.getState().models;
+        const availableModelIds = models.map((m) => m.modelId);
+
+        // Create candidates list: preferred model first, then others
+        const candidates = [
+          ...(availableModelIds.includes(MODEL_FOR_TITLE_GENERATION) ? [MODEL_FOR_TITLE_GENERATION] : []),
+          ...availableModelIds.filter((id) => id !== MODEL_FOR_TITLE_GENERATION),
+        ];
+
+        let title = "";
+        for (const modelId of candidates) {
+          try {
+            console.log(`Generating title with model ${modelId}`);
+            title = await generateChatTitle.mutateAsync({ prompt: content, model: modelId });
+            if (title) break;
+          } catch (e) {
+            console.warn(`Title generation failed with model ${modelId}`, e);
+          }
+        }
 
         if (title) {
           // update the conversation details
