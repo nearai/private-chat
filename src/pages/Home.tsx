@@ -74,7 +74,6 @@ const Home = ({
         { type: "input_text", text: content },
         ...files.map(generateContentFileDataForOpenAI),
       ];
-      
       let prevRespId = previous_response_id;
       if (!prevRespId) {
         const msgs = scrollContainerRef.current?.getElementsByClassName(USER_MESSAGE_CLASSNAME);
