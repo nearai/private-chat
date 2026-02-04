@@ -34,7 +34,7 @@ const LeftSidebar: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
-  const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile } = useViewStore();
+  const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile, selectedTab, setSelectedTab } = useViewStore();
 
   // Helper to close sidebar on mobile
   const handleMobileNavigation = () => {
@@ -108,40 +108,80 @@ const LeftSidebar: React.FC = () => {
           </Button>
         </div>
 
-        {/* New Chat */}
-        <div className="my-6 w-full space-y-1">
-          <Button
-            variant="ghost"
-            type="button"
-            className="flex h-9 w-full justify-start rounded-xl"
-            asChild
-          >
-            <Link id="sidebar-new-chat-button" to="/" onClick={handleMobileNavigation}>
-              <PencilIcon />
-              <p className="text-sm">{t("New Chat")}</p>
-            </Link>
-          </Button>
+        {/* Profile Button */}
+        <div className="my-4 w-full border-primary/20 border-b pb-4">
+          <UserMenu />
+        </div>
 
+        {/* Tabs */}
+        <div className="my-4 flex w-full gap-2 rounded-lg bg-secondary/30 p-1">
           <Button
-            variant="ghost"
+            variant={selectedTab === "chat" ? "default" : "ghost"}
             type="button"
-            className="flex h-9 w-full justify-start rounded-xl"
-            onClick={openCrisp}
+            className="h-8 flex-1 text-xs"
+            onClick={() => {
+              setSelectedTab("chat");
+              handleMobileNavigation();
+            }}
           >
-            <FeedbackIcon />
-            <p className="text-sm">{t("Feedback")}</p>
+            Chat
+          </Button>
+          <Button
+            variant={selectedTab === "assistant" ? "default" : "ghost"}
+            type="button"
+            className="h-8 flex-1 text-xs"
+            onClick={() => {
+              setSelectedTab("assistant");
+              handleMobileNavigation();
+            }}
+          >
+            Assistant
           </Button>
         </div>
 
-        {/* Loading */}
-        {isLoading && (
+        {/* New Chat - only show for Chat tab */}
+        {selectedTab === "chat" && (
+          <div className="my-6 w-full space-y-1">
+            <Button
+              variant="ghost"
+              type="button"
+              className="flex h-9 w-full justify-start rounded-xl"
+              asChild
+            >
+              <Link 
+                id="sidebar-new-chat-button" 
+                to="/" 
+                onClick={() => {
+                  setSelectedTab("chat");
+                  handleMobileNavigation();
+                }}
+              >
+                <PencilIcon />
+                <p className="text-sm">{t("New Chat")}</p>
+              </Link>
+            </Button>
+
+            <Button
+              variant="ghost"
+              type="button"
+              className="flex h-9 w-full justify-start rounded-xl"
+              onClick={openCrisp}
+            >
+              <FeedbackIcon />
+              <p className="text-sm">{t("Feedback")}</p>
+            </Button>
+          </div>
+        )}
+
+        {/* Loading - only show for Chat tab */}
+        {selectedTab === "chat" && isLoading && (
           <div className="flex flex-1 items-center justify-center overflow-hidden">
             {t("Loading chats")}{" "}
             <div className="ml-2 size-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
           </div>
         )}
 
-        {!isLoading && (
+        {!isLoading && selectedTab === "chat" && (
           <div className="flex-1 overflow-hidden">
             <div className="h-full space-y-5 overflow-y-auto overflow-x-hidden">
               {pinned.length > 0 && (
@@ -207,11 +247,6 @@ const LeftSidebar: React.FC = () => {
             </div>
           </div>
         )}
-
-        <div className="flex flex-col items-start gap-6">
-          <div className="w-full border border-primary border-t opacity-20" />
-          <UserMenu />
-        </div>
       </div>
     </nav>
   );

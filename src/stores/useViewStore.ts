@@ -15,6 +15,8 @@ export const useViewStore = create<ViewStore>()(
       setSelectedMessageIdForVerifier: (messageId: string | null) => set({ selectedMessageIdForVerifier: messageId }),
       shouldScrollToSignatureDetails: false,
       setShouldScrollToSignatureDetails: (should: boolean) => set({ shouldScrollToSignatureDetails: should }),
+      selectedTab: "assistant",
+      setSelectedTab: (tab: "chat" | "assistant") => set({ selectedTab: tab }),
     }),
     {
       name: "view-storage",

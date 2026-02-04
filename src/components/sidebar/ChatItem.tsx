@@ -5,6 +5,7 @@ import { useConversation } from "@/api/chat/queries/useConversation";
 import { cn } from "@/lib";
 import { toChatRoute } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
+import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationInfo } from "@/types";
 import Spinner from "../common/Spinner";
 import ChatMenu from "../sidebar/ChatMenu";
@@ -25,6 +26,7 @@ function getChatTitle(chat: ConversationInfo) {
 
 const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNavigate }: ChatItemProps) => {
   const { startEditingChatName, stopEditingChatName, editingChatId } = useChatStore();
+  const { setSelectedTab } = useViewStore();
   const [showRename, setShowRename] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
@@ -85,7 +87,10 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
         )}
         to={toChatRoute(chat.id)}
         draggable="false"
-        onClick={!showRename ? onNavigate : undefined}
+        onClick={!showRename ? () => {
+          setSelectedTab("chat");
+          onNavigate?.();
+        } : undefined}
       >
         {showRename ? (
           <>

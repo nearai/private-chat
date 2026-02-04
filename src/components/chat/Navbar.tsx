@@ -8,7 +8,7 @@ import { Button } from "../ui/button";
 import ModelSelector from "./ModelSelector";
 
 export default function Navbar() {
-  const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
+  const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen, selectedTab } = useViewStore();
 
   const navigate = useNavigate();
   // const { chatId } = useParams();
@@ -58,13 +58,15 @@ export default function Navbar() {
             </div>
           )}
 
-          <div className="flex max-w-full flex-1 justify-center overflow-hidden py-0.5">
-            <ModelSelector />
-          </div>
+          {selectedTab === "chat" && (
+            <div className="flex max-w-full flex-1 justify-center overflow-hidden py-0.5">
+              <ModelSelector />
+            </div>
+          )}
 
           <div className="flex h-fit items-center gap-2">
             {/* {chatId && <ChatOptions chatId={chatId} />} */}
-            {!isRightSidebarOpen && (
+            {selectedTab === "chat" && !isRightSidebarOpen && (
               <Button
                 variant="ghost"
                 size="icon"

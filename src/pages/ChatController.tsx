@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
@@ -22,9 +22,11 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
+import AssistantPage from "./AssistantPage";
 import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { toast } from "sonner";
 import { generateMockAIResponse } from "@/lib/utils/mock";
+import { useViewStore } from "@/stores/useViewStore";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -38,6 +40,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const setConversationStreamStatus = useConversationStore((state) => state.setConversationStreamStatus);
   const userSettings = useUserSettings();
   const remoteConfig = useRemoteConfig();
+  const { selectedTab, setSelectedTab } = useViewStore();
+
+  // Switch to Chat tab when navigating to a chat route
+  useEffect(() => {
+    if (location.pathname.startsWith("/c/") && selectedTab !== "chat") {
+      setSelectedTab("chat");
+    }
+  }, [location.pathname, selectedTab, setSelectedTab]);
 
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
@@ -315,8 +325,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
     }
   }, [params.chatId, updateConversation, stopStream, stopAllStreams]);
 
-  // Determine which component to render based on route
+  // Determine which component to render based on route and selected tab
   const renderComponent = useMemo(() => {
+    // If Assistant tab is selected, show AssistantPage
+    if (selectedTab === "assistant") {
+      return <AssistantPage />;
+    }
+
+    // Otherwise, show Chat content based on route
     if (location.pathname === APP_ROUTES.HOME) {
       return <NewChat startStream={startStream} stopStream={handleStopStream} />;
     }
@@ -324,7 +340,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       return <Home startStream={startStream} stopStream={handleStopStream} />;
     }
     return children;
-  }, [location.pathname, children, startStream, handleStopStream]);
+  }, [location.pathname, selectedTab, children, startStream, handleStopStream]);
 
   return <>{renderComponent}</>;
 }

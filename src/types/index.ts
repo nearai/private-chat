@@ -518,6 +518,8 @@ export interface ViewStore {
   setSelectedMessageIdForVerifier: (messageId: string | null) => void;
   shouldScrollToSignatureDetails: boolean;
   setShouldScrollToSignatureDetails: (should: boolean) => void;
+  selectedTab: "chat" | "assistant";
+  setSelectedTab: (tab: "chat" | "assistant") => void;
 }
 
 export interface ChatStore {
