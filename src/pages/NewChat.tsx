@@ -125,11 +125,13 @@ export default function NewChat({
 
     await navigate(`/c/${newConversation.id}?new`);
 
+    const metadata = newConversation.metadata as ConversationInfo['metadata'];
     startStream({
       contentItems,
       webSearchEnabled,
       conversationId: newConversation.id,
       initiator: "new_chat",
+      previousResponseId: metadata?.root_response_id,
     });
 
     // Capture conversationId before the async operation, as the conversation object may change
