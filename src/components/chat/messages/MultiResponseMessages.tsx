@@ -2,6 +2,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { cn, type CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
+import { useMessagesStore } from "@/stores/useMessagesStore";
 import type { ChatStartStreamOptions, ConversationItem } from "@/types";
 import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
@@ -28,6 +29,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   responseSiblings,
 }) => {
   const { isMobile } = useViewStore();
+  const { getSelectedResponseVersion, setSelectedResponseVersion } = useMessagesStore();
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
 
@@ -43,8 +45,8 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   const siblingsToGroup = responseSiblings || parent?.nextResponseIds || [];
 
   const groupedBatchIds = useMemo(
-    () =>
-      siblingsToGroup.reduce(
+    () => {
+      const groups = siblingsToGroup.reduce(
         (acc, id) => {
           const batch = history.messages[id];
           if (!batch) return acc;
@@ -77,8 +79,22 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
           currentIdx: number;
           createdTimestamp: number | null;
         }>
-      ) ?? {},
-    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj]
+      ) ?? {};
+
+      if (parentId) {
+        Object.keys(groups).forEach((model) => {
+          const selectedVersion = getSelectedResponseVersion(parentId, model);
+          if (selectedVersion) {
+            const idx = groups[model].batchIds.indexOf(selectedVersion);
+            if (idx !== -1) {
+              groups[model].currentIdx = idx;
+            }
+          }
+        });
+      }
+      return groups;
+    },
+    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj, batchId, parentId]
   );
 
   const messageList = useMemo(() => {
@@ -114,6 +130,11 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
                   siblings={batchIds}
                   readOnly={readOnly}
                   regenerateResponse={regenerateResponse}
+                  onResponseVersionChange={(batchId, model) => {
+                    if (parentId) {
+                      setSelectedResponseVersion(parentId, model, batchId);
+                    }
+                  }}
                 />
               )}
             </div>
