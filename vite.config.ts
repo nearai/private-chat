@@ -22,7 +22,6 @@ export default defineConfig({
         "pwa-512x512.png",
         "maskable-icon-512x512.png",
         "icons/favicon.svg",
-        "icons/favicon.png",
       ],
       workbox: {
         disableDevLogs: false,
