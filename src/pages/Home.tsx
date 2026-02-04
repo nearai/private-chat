@@ -350,7 +350,7 @@ const Home = ({
         </div>
       </div>
     );
-  }
+  };
 
   useEffect(() => {
     if (!chatId) return;

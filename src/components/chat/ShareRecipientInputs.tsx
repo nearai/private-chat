@@ -43,7 +43,7 @@ export const ShareRecipientInputs = ({
   errors = {},
 }: ShareRecipientInputsProps) => {
   const maxRecipientCount = 5;
-  const disabedAddRecipient = recipients.length >= maxRecipientCount;
+  const disabledAddRecipient = recipients.length >= maxRecipientCount;
 
   const updateRecipient = (id: string, updates: Partial<RecipientInputValue>) => {
     onChange(recipients.map((recipient) => (recipient.id === id ? { ...recipient, ...updates } : recipient)));
@@ -119,13 +119,13 @@ export const ShareRecipientInputs = ({
           </div>
         );
       })}
-      {allowMultiple && !disabedAddRecipient && (
+      {allowMultiple && !disabledAddRecipient && (
         <Button
           variant="ghost"
           type="button"
           className="h-8 w-fit gap-1.5 px-2 text-muted-foreground/70 text-xs hover:bg-transparent hover:text-foreground"
           onClick={addRecipient}
-          disabled={disabedAddRecipient}
+          disabled={disabledAddRecipient}
         >
           <PlusIcon className="size-3.5" />
           Add Recipient

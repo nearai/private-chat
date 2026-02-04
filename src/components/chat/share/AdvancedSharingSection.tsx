@@ -37,7 +37,6 @@ export const AdvancedSharingSection = ({
   orgPattern,
   setOrgPattern,
   shareGroups,
-  // peopleShares,
   isPending,
   onAdvancedShare,
   onManageGroups,

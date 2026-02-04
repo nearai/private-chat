@@ -43,7 +43,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   const { data: shareGroups = [] } = useShareGroups();
   const createShare = useCreateConversationShare();
   const deleteShare = useDeleteConversationShare();
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Extract is_owner, can_share, and shares from the response
   const isOwner = sharesData?.is_owner ?? false;
@@ -188,12 +188,12 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   };
 
   useEffect(() => {
-    if (!containerRef.current || !showAdvanced) return
+    if (!containerRef.current || !showAdvanced) return;
     setTimeout(() => {
-      if (!containerRef.current) return
+      if (!containerRef.current) return;
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }, 300);
-  }, [advancedMode, showAdvanced])
+  }, [advancedMode, showAdvanced]);
 
   return (
     <>
