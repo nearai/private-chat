@@ -17,6 +17,12 @@ export const useViewStore = create<ViewStore>()(
       setShouldScrollToSignatureDetails: (should: boolean) => set({ shouldScrollToSignatureDetails: should }),
       selectedTab: "assistant",
       setSelectedTab: (tab: "chat" | "assistant") => set({ selectedTab: tab }),
+      selectedAssistantItem: null,
+      setSelectedAssistantItem: (item: string | null) => set({ selectedAssistantItem: item }),
+      assistantChatMode: false,
+      setAssistantChatMode: (enabled: boolean) => set({ assistantChatMode: enabled }),
+      agentDeployed: false,
+      setAgentDeployed: (value: boolean) => set({ agentDeployed: value }),
     }),
     {
       name: "view-storage",

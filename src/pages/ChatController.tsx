@@ -40,14 +40,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const setConversationStreamStatus = useConversationStore((state) => state.setConversationStreamStatus);
   const userSettings = useUserSettings();
   const remoteConfig = useRemoteConfig();
-  const { selectedTab, setSelectedTab } = useViewStore();
+  const { selectedTab, setSelectedTab, assistantChatMode } = useViewStore();
 
-  // Switch to Chat tab when navigating to a chat route
+  // Switch to Chat tab when navigating to a chat route (unless in assistant "Let's Talk" mode)
   useEffect(() => {
-    if (location.pathname.startsWith("/c/") && selectedTab !== "chat") {
+    if (location.pathname.startsWith("/c/") && selectedTab !== "chat" && !assistantChatMode) {
       setSelectedTab("chat");
     }
-  }, [location.pathname, selectedTab, setSelectedTab]);
+  }, [location.pathname, selectedTab, setSelectedTab, assistantChatMode]);
 
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
@@ -327,12 +327,14 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
   // Determine which component to render based on route and selected tab
   const renderComponent = useMemo(() => {
-    // If Assistant tab is selected, show AssistantPage
+    // Assistant tab: AssistantPage handles "I'm Here" (chat), integrations, and deploy UI
     if (selectedTab === "assistant") {
-      return <AssistantPage />;
+      return (
+        <AssistantPage startStream={startStream} stopStream={handleStopStream} />
+      );
     }
 
-    // Otherwise, show Chat content based on route
+    // Chat tab: show Chat content based on route
     if (location.pathname === APP_ROUTES.HOME) {
       return <NewChat startStream={startStream} stopStream={handleStopStream} />;
     }
