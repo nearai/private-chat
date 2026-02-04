@@ -7,7 +7,7 @@ import { useIsOnline } from "@/hooks/useIsOnline";
 
 export const MIN_NEAR_BALANCE = 1; // 1 NEAR
 
-async function getNearBalance(accountId: string, retries: number = 3) {
+export async function getNearBalance(accountId: string, retries: number = 3) {
   for (let i = 0; i <= retries; i++) {
     try {
       const response = await fetch(NEAR_RPC_URL, {
@@ -46,7 +46,7 @@ async function getNearBalance(accountId: string, retries: number = 3) {
   throw new Error("Failed to fetch NEAR balance");
 }
 
-function toYoctoNear(amount: number) {
+export function toYoctoNear(amount: number) {
   return BigInt(amount) * 10n ** 24n;
 }
 

@@ -38,6 +38,14 @@ export const useGetConversation = (
         offlineCache.saveConversationDetail(id, mergedConversation);
         return mergedConversation;
       } catch (error) {
+        if (typeof error === 'object' && error !== null && 'error' in error) {
+          const err = (error as { error: string }).error;
+          if (err === 'Conversation not found') {
+            // Do not use offline cache for not found conversations
+            throw Error(err);
+          }
+        }
+
         const cached = offlineCache.getConversationDetail(id);
         if (cached) {
           console.warn(`Using offline cache for conversation ${id} due to error:`, error);

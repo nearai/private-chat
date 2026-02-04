@@ -32,6 +32,7 @@ import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
+import { checkIsImportedConversation } from "@/utils/conversation";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -61,7 +62,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { chatId } = useParams<{ chatId: string }>();
   const { models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
+  const isImportedConversation = checkIsImportedConversation(conversationData);
 
   const batch = history.messages[batchId];
 
@@ -93,7 +94,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     const hasSignature = signature?.signature && signature.signing_address && signature.text;
 
     if (!hasSignature) {
-      if (conversationImportedAt) {
+      if (isImportedConversation) {
         if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX) || signatureError) {
           return "imported";
         }
@@ -108,16 +109,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, conversationImportedAt, isBatchCompleted, messageId]);
+  }, [signature, signatureError, isMessageCompleted, isImportedConversation, isBatchCompleted, messageId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
   const prevMessageIsImported = useMemo(() => {
     const prevResponseId = batch?.parentResponseId || undefined;
     if (!prevResponseId) return false;
-    if (!conversationImportedAt) return false;
+    if (!isImportedConversation) return false;
     return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, batch]);
+  }, [isImportedConversation, batch]);
 
   const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
@@ -369,7 +370,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
               </Button>
             </>
           )}
-          {!readOnly && isMessageCompleted && (
+          {isMessageCompleted && (
             <>
               <Button
                 size="icon"
@@ -396,7 +397,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && !readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"

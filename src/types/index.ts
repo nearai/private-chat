@@ -30,6 +30,7 @@ export interface ConversationInfo {
     archived_at?: string;
     imported_at?: string;
     initial_created_at?: string;
+    cloned_from_id?: string;
   };
 }
 
@@ -145,20 +146,20 @@ export interface ShareRecipient {
 
 export type ShareTargetRequest =
   | {
-      mode: "direct";
-      recipients: ShareRecipient[];
-    }
+    mode: "direct";
+    recipients: ShareRecipient[];
+  }
   | {
-      mode: "group";
-      group_id: string;
-    }
+    mode: "group";
+    group_id: string;
+  }
   | {
-      mode: "organization";
-      email_pattern: string;
-    }
+    mode: "organization";
+    email_pattern: string;
+  }
   | {
-      mode: "public";
-    };
+    mode: "public";
+  };
 
 export interface ConversationShareInfo {
   id: string;

@@ -62,7 +62,7 @@ export const PeopleWithAccessSection = ({
                 <p className="text-muted-foreground text-xs">{currentUserEmail}</p>
               </div>
 
-              <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary text-xs">
+              <span className="rounded-md bg-foreground/10 px-2 py-1 font-medium text-foreground/80 text-xs">
                 {t("Owner")}
               </span>
             </div>
@@ -75,12 +75,14 @@ export const PeopleWithAccessSection = ({
             const isCurrentUser = share.share_type === "direct" &&
               share.recipient?.value?.toLowerCase() === currentUserEmail;
 
+            if (!info) return null;
+
             return (
               <div
                 key={share.id}
                 className={cn(
                   "flex items-center gap-3 rounded-xl p-2 transition-colors",
-                  "group hover:bg-muted/50"
+                  "group hover:bg-muted/10",
                 )}
               >
                 <ShareAvatar
@@ -92,25 +94,28 @@ export const PeopleWithAccessSection = ({
                   <p className="truncate font-medium text-sm">
                     {info.name}
                     {isCurrentUser && (
-                      <span className="ml-1.5 text-muted-foreground">{t("(you)")}</span>
+                      <span className="ml-1.5 text-muted-foreground">
+                        {t("(you)")}
+                      </span>
                     )}
                   </p>
-                  <p className="text-muted-foreground text-xs">{info.subtitle}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {info.subtitle}
+                  </p>
                 </div>
 
-                <span className="rounded-md bg-muted/50 px-2 py-1 text-muted-foreground text-xs">
+                <span className="rounded-md bg-foreground/5 px-2 py-1 text-muted-foreground text-xs">
                   {share.permission === "write" ? t("Can edit") : t("Can view")}
                 </span>
 
                 {isOwner && (
                   <Button
-                    variant="ghost"
+                    variant="destructive"
                     size="icon"
                     onClick={() => onRemoveAccess(share)}
                     disabled={isDeleting}
                     className={cn(
-                      "size-8 rounded-lg opacity-0 transition-opacity group-hover:opacity-100",
-                      "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      "size-7 rounded-lg bg-destructive/10 text-destructive/80 hover:bg-destructive/20 hover:text-destructive",
                     )}
                   >
                     {isDeleting ? (
