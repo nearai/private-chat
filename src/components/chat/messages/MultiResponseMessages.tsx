@@ -94,7 +94,7 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
       }
       return groups;
     },
-    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj, batchId, parentId]
+    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj, parentId, getSelectedResponseVersion]
   );
 
   const messageList = useMemo(() => {

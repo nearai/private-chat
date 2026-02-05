@@ -369,7 +369,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 onClick={() => {
                   if (siblings[siblings.indexOf(batch.responseId) + 1]) {
                     const index = siblings.indexOf(batch.responseId) + 1;
-                    const respId = siblings[index]; 
+                    const respId = siblings[index];
                     setLastResponseId(respId);
                     if (respId && model) {
                       onResponseVersionChange?.(respId, model);
