@@ -141,7 +141,8 @@ const Home = ({
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
-    return !last || last.role !== "assistant" || last.status === "completed";
+    const statuses = ["completed", "failed"];
+    return !last || last.role !== "assistant" || statuses.indexOf(last.status) !== -1;
   }, [conversationData?.data]);
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
