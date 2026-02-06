@@ -98,77 +98,53 @@ export default function PublicConversationPage() {
     return conversation?.metadata?.title || "Shared Conversation";
   }, [conversation]);
 
-  // Organize messages into conversation groups (user message + parallel responses)
+  // Organize messages into conversation groups by previous_response_id
+  // Simple approach: group all items (user messages and assistant responses) by their previous_response_id
   const conversationGroups = useMemo(() => {
     type MessageItem = ConversationUserInput | ConversationModelOutput;
     const allItems: MessageItem[] = (items?.data || []).filter(isMessageItem);
-    const itemsByResponseId = new Map(allItems.map((item) => [item.response_id, item]));
     
-    // Group assistant messages by their previous_response_id (parent)
-    const responsesByParent = new Map<string, MessageItem[]>();
-    
-    // Track user messages and group by content to avoid duplicates
-    const userMessagesByContent = new Map<string, MessageItem>();
-    const userMessageOrder: string[] = [];
+    // Group all items by previous_response_id
+    const groupsByPreviousResponse = new Map<string, {
+      userMessages: MessageItem[];
+      assistantResponses: MessageItem[];
+    }>();
     
     allItems.forEach((item) => {
+      // Use previous_response_id as the key (use "__root__" for items without previous_response_id)
+      const previousResponseId = item.previous_response_id || "__root__";
+      
+      if (!groupsByPreviousResponse.has(previousResponseId)) {
+        groupsByPreviousResponse.set(previousResponseId, {
+          userMessages: [],
+          assistantResponses: [],
+        });
+      }
+      
+      const group = groupsByPreviousResponse.get(previousResponseId)!;
       if (item.role === "user") {
-        const contentArray = Array.isArray(item.content) ? item.content : [];
-        const messageContent = extractMessageContent(contentArray, "input_text");
-        
-        // Only keep the first occurrence of each unique content
-        if (!userMessagesByContent.has(messageContent)) {
-          userMessagesByContent.set(messageContent, item);
-          userMessageOrder.push(messageContent);
-        }
-      } else if (item.previous_response_id) {
-        // This is an assistant response
-        const parentResponseId = item.previous_response_id;
-        if (!responsesByParent.has(parentResponseId)) {
-          responsesByParent.set(parentResponseId, []);
-        }
-        responsesByParent.get(parentResponseId)!.push(item);
+        group.userMessages.push(item);
+      } else {
+        group.assistantResponses.push(item);
       }
     });
     
-    // Build conversation groups maintaining order and deduplicating by content
+    // Build final groups array
     const groups: Array<{
       userMessage?: MessageItem;
       responses: MessageItem[];
     }> = [];
     
-    // Process user messages by content (deduplicated) and collect all responses
-    userMessageOrder.forEach((content) => {
-      const userMsg = userMessagesByContent.get(content);
-      if (!userMsg) return;
+    // Process each group by previous_response_id
+    groupsByPreviousResponse.forEach((groupData) => {
+      // Get the earliest user message as the representative (or undefined if no user messages)
+      const userMessage = groupData.userMessages.length > 0
+        ? groupData.userMessages.sort((a, b) => (a.created_at || 0) - (b.created_at || 0))[0]
+        : undefined;
       
-      // Collect all responses from all user messages with this content
-      const allResponses: MessageItem[] = [];
-      const seenResponseIds = new Set<string>();
-      
-      // Find all user messages with the same content
-      allItems.forEach((item) => {
-        if (item.role === "user") {
-          const itemContentArray = Array.isArray(item.content) ? item.content : [];
-          const itemContent = extractMessageContent(itemContentArray, "input_text");
-          
-          if (itemContent === content) {
-            // Get responses for this user message
-            const responses = responsesByParent.get(item.response_id) || [];
-            responses.forEach((response) => {
-              // Avoid duplicate responses
-              if (!seenResponseIds.has(response.id)) {
-                seenResponseIds.add(response.id);
-                allResponses.push(response);
-              }
-            });
-          }
-        }
-      });
-      
-      // Deduplicate by model - keep only the last/most recent response per model
+      // Deduplicate assistant responses by model - keep only the last/most recent response per model
       const responsesByModel = new Map<string, MessageItem>();
-      allResponses.forEach((response) => {
+      groupData.assistantResponses.forEach((response) => {
         const modelKey = response.model || "";
         const existing = responsesByModel.get(modelKey);
         if (!existing || (response.created_at || 0) > (existing.created_at || 0)) {
@@ -177,9 +153,8 @@ export default function PublicConversationPage() {
       });
       
       groups.push({
-        userMessage: userMsg,
+        userMessage,
         responses: Array.from(responsesByModel.values()).sort((a, b) => {
-          // Sort by model name, then by created_at
           if (a.model !== b.model) {
             return (a.model || "").localeCompare(b.model || "");
           }
@@ -188,33 +163,23 @@ export default function PublicConversationPage() {
       });
     });
     
-    // Also include orphaned assistant messages (no parent user message found)
-    responsesByParent.forEach((responses, parentResponseId) => {
-      if (!itemsByResponseId.has(parentResponseId)) {
-        // Deduplicate by model - keep only the last/most recent response per model
-        const orphanedResponsesByModel = new Map<string, MessageItem>();
-        responses.forEach((response) => {
-          const modelKey = response.model || "";
-          const existing = orphanedResponsesByModel.get(modelKey);
-          if (!existing || (response.created_at || 0) > (existing.created_at || 0)) {
-            orphanedResponsesByModel.set(modelKey, response);
-          }
-        });
-        
-        // Parent not found, add as orphaned responses
-        groups.push({
-          userMessage: undefined,
-          responses: Array.from(orphanedResponsesByModel.values()).sort((a, b) => {
-            if (a.model !== b.model) {
-              return (a.model || "").localeCompare(b.model || "");
-            }
-            return (a.created_at || 0) - (b.created_at || 0);
-          }),
-        });
-      }
+    // Sort groups chronologically by user message timestamp (or earliest response timestamp if no user message)
+    const sortedGroups = groups.sort((a, b) => {
+      const getGroupTimestamp = (group: { userMessage?: MessageItem; responses: MessageItem[] }) => {
+        if (group.userMessage?.created_at) {
+          return group.userMessage.created_at;
+        }
+        // For orphaned responses, use earliest response timestamp
+        if (group.responses.length > 0) {
+          return Math.min(...group.responses.map((r) => r.created_at || Infinity));
+        }
+        return Infinity;
+      };
+      
+      return getGroupTimestamp(a) - getGroupTimestamp(b);
     });
     
-    return groups;
+    return sortedGroups;
   }, [items]);
 
   if (isLoading) {
