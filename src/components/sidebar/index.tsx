@@ -1,7 +1,8 @@
 import type React from "react";
 import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 
@@ -16,7 +17,10 @@ import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationInfo } from "@/types";
 import { Button } from "../ui/button";
 import ChatItem from "./ChatItem";
+import SidebarItem from "./SidebarItem";
 import UserMenu from "./UserMenu";
+import { LinkIcon } from "@heroicons/react/24/outline";
+import { Calendar, LayoutDashboard, Mail, MessageSquare, MessageCircle } from "lucide-react";
 
 type CrispCommand = [string, string];
 type CrispWindow = Window & {
@@ -32,9 +36,28 @@ const getCrispWindow = (): CrispWindow | undefined => {
 
 const LeftSidebar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
-  const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile } = useViewStore();
+  const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile, selectedTab, setSelectedTab, selectedAssistantItem, setSelectedAssistantItem, setAssistantChatMode, agentDeployed } = useViewStore();
+
+  const handleSelectChatTab = () => {
+    setSelectedTab("chat");
+    setAssistantChatMode(false);
+    handleMobileNavigation();
+  };
+  
+  // OpenClaw Control / Dashboard URL
+  const OPENCLAW_DASHBOARD_URL = "https://d7433dc094c61a3b49dd8a84fd7273f96cfbb1de-18789.infra.near.ai:9204/";
+
+  // Mock data for Assistant - Integrations only
+  const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(true);
+
+  const integrations = [
+    { id: "google-calendar", title: "Google Calendar", icon: <Calendar className="size-4" /> },
+    { id: "gmail", title: "Gmail", icon: <Mail className="size-4" /> },
+    { id: "slack", title: "Slack", icon: <MessageSquare className="size-4" /> },
+  ];
 
   // Helper to close sidebar on mobile
   const handleMobileNavigation = () => {
@@ -108,40 +131,77 @@ const LeftSidebar: React.FC = () => {
           </Button>
         </div>
 
-        {/* New Chat */}
-        <div className="my-6 w-full space-y-1">
-          <Button
-            variant="ghost"
-            type="button"
-            className="flex h-9 w-full justify-start rounded-xl"
-            asChild
-          >
-            <Link id="sidebar-new-chat-button" to="/" onClick={handleMobileNavigation}>
-              <PencilIcon />
-              <p className="text-sm">{t("New Chat")}</p>
-            </Link>
-          </Button>
+        {/* Profile Button */}
+        <div className="my-4 w-full border-primary/20 border-b pb-4">
+          <UserMenu />
+        </div>
 
+        {/* Tabs */}
+        <div className="my-4 flex w-full gap-2 rounded-lg bg-secondary/30 p-1">
           <Button
-            variant="ghost"
+            variant={selectedTab === "chat" ? "default" : "ghost"}
             type="button"
-            className="flex h-9 w-full justify-start rounded-xl"
-            onClick={openCrisp}
+            className="h-8 flex-1 text-xs"
+            onClick={handleSelectChatTab}
           >
-            <FeedbackIcon />
-            <p className="text-sm">{t("Feedback")}</p>
+            Chat
+          </Button>
+          <Button
+            variant={selectedTab === "assistant" ? "default" : "ghost"}
+            type="button"
+            className="h-8 flex-1 text-xs"
+            onClick={() => {
+              setSelectedTab("assistant");
+              handleMobileNavigation();
+            }}
+          >
+            Assistant
           </Button>
         </div>
 
-        {/* Loading */}
-        {isLoading && (
+        {/* New Chat - only show for Chat tab */}
+        {selectedTab === "chat" && (
+          <div className="my-6 w-full space-y-1">
+            <Button
+              variant="ghost"
+              type="button"
+              className="flex h-9 w-full justify-start rounded-xl"
+              asChild
+            >
+              <Link 
+                id="sidebar-new-chat-button" 
+                to="/" 
+                onClick={() => {
+                  setSelectedTab("chat");
+                  handleMobileNavigation();
+                }}
+              >
+                <PencilIcon />
+                <p className="text-sm">{t("New Chat")}</p>
+              </Link>
+            </Button>
+
+            <Button
+              variant="ghost"
+              type="button"
+              className="flex h-9 w-full justify-start rounded-xl"
+              onClick={openCrisp}
+            >
+              <FeedbackIcon />
+              <p className="text-sm">{t("Feedback")}</p>
+            </Button>
+          </div>
+        )}
+
+        {/* Loading - only show for Chat tab */}
+        {selectedTab === "chat" && isLoading && (
           <div className="flex flex-1 items-center justify-center overflow-hidden">
             {t("Loading chats")}{" "}
             <div className="ml-2 size-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
           </div>
         )}
 
-        {!isLoading && (
+        {!isLoading && selectedTab === "chat" && (
           <div className="flex-1 overflow-hidden">
             <div className="h-full space-y-5 overflow-y-auto overflow-x-hidden">
               {pinned.length > 0 && (
@@ -208,10 +268,79 @@ const LeftSidebar: React.FC = () => {
           </div>
         )}
 
-        <div className="flex flex-col items-start gap-6">
-          <div className="w-full border border-primary border-t opacity-20" />
-          <UserMenu />
-        </div>
+        {/* Assistant Tab Sections - only after agent is deployed */}
+        {selectedTab === "assistant" && (
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full space-y-5 overflow-y-auto overflow-x-hidden">
+              {agentDeployed ? (
+                <>
+                  {/* I'm Here + Dashboard - grouped with tight spacing */}
+                  <div className="mt-2 w-full space-y-1">
+                    <button
+                      type="button"
+                      className="flex h-9 w-full items-center justify-start gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-secondary/30"
+                      onClick={() => {
+                        flushSync(() => {
+                          setAssistantChatMode(true);
+                          setSelectedAssistantItem(null);
+                        });
+                        if (location.pathname !== "/") {
+                          navigate("/");
+                        }
+                        handleMobileNavigation();
+                      }}
+                    >
+                      <MessageCircle className="size-4 shrink-0" />
+                      <p className="text-sm">I&apos;m Here</p>
+                    </button>
+                    <a
+                      href={OPENCLAW_DASHBOARD_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-full items-center justify-start gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-secondary/30"
+                      onClick={handleMobileNavigation}
+                    >
+                      <LayoutDashboard className="size-4 shrink-0" />
+                      <p className="text-sm">Dashboard</p>
+                    </a>
+                  </div>
+
+                  {/* Integrations Section */}
+                  <div>
+                    <div
+                      className="flex cursor-pointer items-center gap-1.5 pl-2 text-gray-500 text-xs"
+                      onClick={() => setIsIntegrationsOpen(!isIntegrationsOpen)}
+                    >
+                      <ChatArrowDown
+                        stroke="#676767"
+                        className={cn("size-3 text-gray-300 transition-transform", !isIntegrationsOpen && "rotate-270")}
+                      />
+                      <LinkIcon className="size-3" />
+                      <span>Integrations</span>
+                    </div>
+
+                    {isIntegrationsOpen &&
+                      integrations.map((integration) => (
+                        <SidebarItem
+                          key={integration.id}
+                          title={integration.title}
+                          isSelected={selectedAssistantItem === integration.id}
+                          onClick={() => {
+                            flushSync(() => {
+                              setAssistantChatMode(false);
+                              setSelectedAssistantItem(integration.id);
+                            });
+                            handleMobileNavigation();
+                          }}
+                          icon={integration.icon}
+                        />
+                      ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

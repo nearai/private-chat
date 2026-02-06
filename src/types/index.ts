@@ -518,6 +518,14 @@ export interface ViewStore {
   setSelectedMessageIdForVerifier: (messageId: string | null) => void;
   shouldScrollToSignatureDetails: boolean;
   setShouldScrollToSignatureDetails: (should: boolean) => void;
+  selectedTab: "chat" | "assistant";
+  setSelectedTab: (tab: "chat" | "assistant") => void;
+  selectedAssistantItem: string | null;
+  setSelectedAssistantItem: (item: string | null) => void;
+  assistantChatMode: boolean;
+  setAssistantChatMode: (enabled: boolean) => void;
+  agentDeployed: boolean;
+  setAgentDeployed: (value: boolean) => void;
 }
 
 export interface ChatStore {

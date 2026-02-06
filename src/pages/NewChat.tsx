@@ -19,6 +19,7 @@ import {
 } from "@/lib/constants";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
+import { useViewStore } from "@/stores/useViewStore";
 import type { ChatStartStreamOptions, Conversation, ConversationInfo } from "@/types";
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { allPrompts } from "./welcome/data";
@@ -43,6 +44,7 @@ export default function NewChat({
   const queryClient = useQueryClient();
   const { resetConversation } = useConversationStore();
   const { data: remoteConfig } = useRemoteConfig();
+  const { assistantChatMode } = useViewStore();
 
   // TODO: intermediate solution that Load prompt only after MessageInput is mounted
   useEffect(() => {
@@ -196,20 +198,18 @@ export default function NewChat({
   };
 
   useEffect(() => {
-    if (modelInitializedRef.current) return;
+    if (modelInitializedRef.current && !assistantChatMode) return;
     const validSelectedModels = selectedModels.filter((modelId) => models.some((model) => model.modelId === modelId));
-    if (validSelectedModels.length === 0 && models.length > 0) {
-      // set default model
-      if (remoteConfig?.default_model) {
-        const selectedDefaultModel = models.find((model) => model.modelId === remoteConfig.default_model);
-        if (selectedDefaultModel) {
-          setSelectedModels([selectedDefaultModel.modelId]);
-        }
+    const shouldSetDefault = validSelectedModels.length === 0 || assistantChatMode;
+    if (shouldSetDefault && models.length > 0 && remoteConfig?.default_model) {
+      const selectedDefaultModel = models.find((model) => model.modelId === remoteConfig.default_model);
+      if (selectedDefaultModel) {
+        setSelectedModels([selectedDefaultModel.modelId]);
       }
     }
-    modelInitializedRef.current = true;
+    if (!assistantChatMode) modelInitializedRef.current = true;
     resetConversation();
-  }, [selectedModels, models, remoteConfig?.default_model, setSelectedModels, resetConversation]);
+  }, [selectedModels, models, remoteConfig?.default_model, setSelectedModels, resetConversation, assistantChatMode]);
 
   return (
     <div id="chat-container" className="relative flex h-full grow flex-col">
