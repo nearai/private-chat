@@ -98,7 +98,7 @@ const Home = ({
   } = useGetConversation(
     conversationIsReady && !currentStreamIsActive ? chatId : undefined,
     {
-      polling: isSharedConversationWithWriters && !currentStreamIsActive,
+      polling: isSharedConversationWithWriters,
       pollingInterval: 60000, // 60 seconds
     },
   );
