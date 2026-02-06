@@ -36,6 +36,7 @@ export default defineConfig({
         globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          // NetworkFirst for HTML to ensure fresh content on updates
           {
             urlPattern: ({ url, sameOrigin }) => {
               const isApi =
@@ -43,22 +44,48 @@ export default defineConfig({
                 url.pathname.startsWith("/docs") ||
                 url.pathname.startsWith("/health") ||
                 url.pathname.startsWith("/api-docs");
-                return (
-                  sameOrigin &&
-                  !isApi &&
-                  (url.pathname.endsWith(".html") ||
-                    url.pathname.endsWith(".js") ||
-                    url.pathname.endsWith(".css") ||
-                    url.pathname.endsWith(".png") ||
-                    url.pathname.endsWith(".jpg"))
-                );
+              return (
+                sameOrigin &&
+                !isApi &&
+                (url.pathname === "/" || url.pathname.endsWith(".html"))
+              );
+            },
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-cache",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 3600, // 1 hour fallback cache
+              },
+              cacheableResponse: {
+                statuses: [200],
+              },
+              networkTimeoutSeconds: 3,
+            },
+          },
+          // CacheFirst for static assets (JS, CSS, images)
+          {
+            urlPattern: ({ url, sameOrigin }) => {
+              const isApi =
+                url.pathname.startsWith("/v1/") ||
+                url.pathname.startsWith("/docs") ||
+                url.pathname.startsWith("/health") ||
+                url.pathname.startsWith("/api-docs");
+              return (
+                sameOrigin &&
+                !isApi &&
+                (url.pathname.endsWith(".js") ||
+                  url.pathname.endsWith(".css") ||
+                  url.pathname.endsWith(".png") ||
+                  url.pathname.endsWith(".jpg"))
+              );
             },
             handler: "CacheFirst",
             options: {
               cacheName: "static-resources",
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 86400,
+                maxAgeSeconds: 86400, // 24 hours
               },
               cacheableResponse: {
                 statuses: [200],
