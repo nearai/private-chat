@@ -347,7 +347,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="invisible text-muted-foreground group-hover:visible"
+                        className="text-muted-foreground group-hover:visible sm:invisible"
                         onClick={handleEdit}
                         title="Edit"
                       >
@@ -371,7 +371,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="invisible text-muted-foreground group-hover:visible"
+                      className="text-muted-foreground group-hover:visible sm:invisible"
                       onClick={() => copyToClipboard(messageContent)}
                       title="Copy"
                     >
