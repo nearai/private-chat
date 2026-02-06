@@ -25,6 +25,8 @@ import { type ContentItem, type FileContentItem, generateContentFileDataForOpenA
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
 import type { ChatStartStreamOptions } from "@/types";
 
+const NEW_CHAT_KEY = "new";
+
 const Home = ({
   startStream,
   stopStream,
@@ -94,10 +96,13 @@ const Home = ({
     isLoading: isConversationsLoading,
     data: conversationData,
     error: conversationError,
-  } = useGetConversation(conversationIsReady ? chatId : undefined, {
-    polling: isSharedConversationWithWriters && !currentStreamIsActive,
-    pollingInterval: 60000, // 60 seconds
-  });
+  } = useGetConversation(
+    conversationIsReady && !currentStreamIsActive ? chatId : undefined,
+    {
+      polling: isSharedConversationWithWriters && !currentStreamIsActive,
+      pollingInterval: 60000, // 60 seconds
+    },
+  );
 
   // Parse error type for proper display
   const errorInfo = useMemo(() => {
@@ -145,7 +150,6 @@ const Home = ({
         { type: "input_text", text: content },
         ...files.map(generateContentFileDataForOpenAI),
       ];
-
       let prevRespId = previous_response_id;
       if (!prevRespId) {
         const msgs = scrollContainerRef.current?.getElementsByClassName(USER_MESSAGE_CLASSNAME);
@@ -162,7 +166,7 @@ const Home = ({
         contentItems,
         webSearchEnabled,
         conversationId: chatId,
-        previous_response_id: prevRespId,
+        previousResponseId: prevRespId,
         initiator: "new_message",
       });
       scrollToBottom();
@@ -189,37 +193,44 @@ const Home = ({
   useEffect(() => {
     if (isSharedConversationWithWriters) return;
     if (!chatId || !conversationData) return;
+    const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (conversationState?.conversationId !== chatId) {
       dataInitializedRef.current = false;
-      prevDataLengthRef.current = 0;
     }
-
+    
     if (dataInitializedRef.current) return;
     if (isConversationsLoading || currentStreamIsActive) return;
     if (!conversationIsReady) return;
     if (!conversationData.data?.length) return;
-
-    // Only update if data has actually changed (new messages added)
-    // This prevents unnecessary re-renders during polling when data is unchanged
-    const currentLength = conversationData.data.length;
-    if (dataInitializedRef.current && currentLength === prevDataLengthRef.current) {
-      return;
+    
+    const aiMsg = conversationData.data.filter((item) => item.type === 'message' && item.role === 'assistant');
+    if (isNewChat) {
+      if (aiMsg.length) {
+        setConversationData(conversationData);
+        setSearchParams((prev) => {
+          prev.delete(NEW_CHAT_KEY);
+          return prev;
+        });
+      }
+    } else {
+      setConversationData(conversationData);
     }
 
-    setConversationData(conversationData);
-    if (conversationData.data.length > 2) {
+    if (aiMsg.length) {
       dataInitializedRef.current = true;
     }
     setModelsInitialized(false);
   }, [
     isSharedConversationWithWriters,
     chatId,
+    searchParams,
     conversationState?.conversationId,
     isConversationsLoading,
     currentStreamIsActive,
     conversationIsReady,
     conversationData,
     setConversationData,
+    setSearchParams
   ]);
 
   useEffect(() => {
@@ -241,11 +252,10 @@ const Home = ({
 
   const isMessageCompleted = useMemo(() => {
     const last = conversationData?.data?.at(-1);
-    return !last || last.role !== "assistant" || last.status === "completed";
+    return !last || last.role !== "assistant" || last.status === "completed" || last.status === "failed";
   }, [conversationData?.data]);
 
   const currentMessages = useMemo(() => combineMessages(conversationData?.data ?? []), [conversationData?.data]);
-
   const history = conversationState?.history ?? { messages: {} };
   const allMessages = conversationState?.allMessages ?? {};
   const batches = conversationState?.batches ?? [];
@@ -335,7 +345,7 @@ const Home = ({
         }
         return messages;
       });
-  }, [batches, history, allMessages, currentMessages.length, startStream]);
+  }, [batches, history, allMessages, isSharedConversation, canWrite, currentMessages.length, startStream]);
 
   const lastBatchMessages = useMemo(() => {
     if (!batches.length) return [];
@@ -391,10 +401,6 @@ const Home = ({
     const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (isNewChat) {
       setModelsInitialized(true);
-      setSearchParams((prev) => {
-        prev.delete(NEW_CHAT_KEY);
-        return prev;
-      });
       return;
     }
 
@@ -433,10 +439,7 @@ const Home = ({
     searchParams,
     remoteConfig.data?.default_model,
     setSelectedModels,
-    setSearchParams,
   ]);
-
-  const isLoading = isConversationsLoading || !conversationIsReady;
 
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
@@ -465,6 +468,7 @@ const Home = ({
     );
   }
 
+  const isLoading = !conversationIsReady;
   return (
     <div className="flex h-full flex-col" id="chat-container">
       <Navbar />

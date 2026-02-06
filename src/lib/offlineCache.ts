@@ -49,6 +49,9 @@ export const offlineCache = {
     if (!hasStorage()) return null;
     return safelyParse<Conversation>(window.localStorage.getItem(detailKey(conversationId)));
   },
+  clearConversationDetail(conversationId: string) {
+    removeItem(detailKey(conversationId));
+  },
   clearConversationList() {
     removeItem(OFFLINE_CACHE_KEYS.CONVERSATION_LIST);
   },

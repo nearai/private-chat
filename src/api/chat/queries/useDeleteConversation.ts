@@ -2,6 +2,7 @@ import { type UseMutationOptions, useMutation, useQueryClient } from "@tanstack/
 import { queryKeys } from "@/api/query-keys";
 
 import { chatClient } from "../client";
+import { offlineCache } from "@/lib/offlineCache";
 
 type DeleteChatParams = {
   id: string;
@@ -25,6 +26,7 @@ export const useDeleteChat = (options?: UseDeleteChatOptions) => {
     mutationFn: ({ id }: DeleteChatParams) => chatClient.deleteConversation(id),
     onSuccess: async (_data, variables, context) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.conversation.all });
+      offlineCache.clearConversationDetail(variables.id);
       if (onSuccess) {
         await onSuccess(undefined, variables, context);
       }

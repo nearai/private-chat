@@ -18,7 +18,7 @@ interface MessagesSignaturesState {
 
 const loadCachedSignatures = () => offlineCache.getMessageSignatures() ?? {};
 
-export const useMessagesSignaturesStore = create<MessagesSignaturesState>()((set) => ({
+export const useMessagesSignaturesStore = create<MessagesSignaturesState>()((set, get) => ({
   messagesSignatures: loadCachedSignatures(),
   messagesSignaturesErrors: {},
   setMessageSignature: (chatCompletionId: string, signature: MessageSignature) =>
@@ -49,10 +49,15 @@ export const useMessagesSignaturesStore = create<MessagesSignaturesState>()((set
         [chatCompletionId]: error,
       },
     })),
-  removeMessageSignatureError: (chatCompletionId: string) =>
+  removeMessageSignatureError: (chatCompletionId: string) => {
+    const currentErrors = get().messagesSignaturesErrors;
+    // If there's no error for this id, do not call set to avoid unnecessary updates
+    if (!currentErrors || !(chatCompletionId in currentErrors)) return;
+
     set((state) => {
       const newErrors = { ...state.messagesSignaturesErrors };
       delete newErrors[chatCompletionId];
       return { messagesSignaturesErrors: newErrors };
-    }),
+    });
+  },
 }));

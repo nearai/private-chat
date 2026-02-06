@@ -28,9 +28,25 @@ import { checkIsImportedConversation } from "@/utils/conversation";
 const ChatVerifier: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
-  const { selectedModels } = useChatStore();
+  const { selectedModels, models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
   const isImportedConversation = checkIsImportedConversation(conversationData);
+
+  // Count verifiable and anonymized models
+  const modelCounts = useMemo(() => {
+    const verifiableModels = selectedModels.filter((modelId) => {
+      const modelInfo = models.find((m) => m.modelId === modelId);
+      return modelInfo?.metadata?.verifiable === true;
+    });
+    const anonymizedModels = selectedModels.filter((modelId) => {
+      const modelInfo = models.find((m) => m.modelId === modelId);
+      return modelInfo?.metadata?.verifiable !== true;
+    });
+    return {
+      verifiable: verifiableModels.length,
+      anonymized: anonymizedModels.length,
+    };
+  }, [selectedModels, models]);
 
   const {
     isRightSidebarOpen,
@@ -78,7 +94,7 @@ const ChatVerifier: React.FC = () => {
 
     for (const responseId in responseItems) {
       const response = responseItems[responseId];
-      if (response.content.every((item) => item.status === "completed")) {
+      if (response.content.every((item) => item.status === "completed" || item.status === "failed")) {
         messages.push({
           content: response.content,
           chatCompletionId: responseId,
@@ -165,20 +181,35 @@ const ChatVerifier: React.FC = () => {
             renderError()
           ) : modelVerificationStatus?.isVerified ? (
             <>
-              {selectedModels.length > 0 && (
-                <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
-                  {selectedModels.length} Verified Models
-                </p>
+              {modelCounts.verifiable > 0 && (
+                <>
+                  <p className="self-stretch font-medium text-green-dark text-xs leading-[normal]">
+                    {modelCounts.verifiable} Private Model{modelCounts.verifiable > 1 ? "s" : ""}
+                  </p>
+
+                  <p className="font-normal text-sm leading-[140%] opacity-80">
+                    Verified models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
+                    messages.
+                  </p>
+                </>
               )}
 
-              <p className="font-normal text-sm leading-[140%] opacity-80">
-                All models run in TEE (Trusted Execution Environment) — isolated hardware where no one can access your
-                messages.
-              </p>
+              {modelCounts.anonymized > 0 && (
+                <>
+                  <p className="self-stretch font-medium text-blue-600 text-xs leading-[normal]">
+                    {modelCounts.anonymized} Anonymized Model{modelCounts.anonymized > 1 ? "s" : ""}
+                  </p>
+
+                  <p className="font-normal text-sm leading-[140%] opacity-80">
+                    Anonymized models keep your requests protected and store your messages privately in TEE (Trusted Execution Environment).
+                  </p>
+                </>
+              )}
+
               <div className="flex flex-col items-start gap-3">
                 <p className="font-normal text-xs leading-[160%] opacity-60">Hardware attestation:</p>
                 <div className="flex items-end gap-4">
-                  <NvidiaLogo className="h-3" />
+                  { modelCounts.verifiable > 0 && <NvidiaLogo className="h-3" />}
                   <IntelLogo className="h-4" />
                 </div>
               </div>
@@ -237,6 +268,7 @@ const ChatVerifier: React.FC = () => {
       <ModelVerifier
         autoVerify={isRightSidebarOpen && !!selectedModels[0]}
         model={selectedModels[0] || ""}
+        selectedModels={selectedModels.length > 1 ? selectedModels : undefined}
         show={showModelVerifier}
         onClose={closeModelVerifier}
         onStatusUpdate={handleModelStatusUpdate}

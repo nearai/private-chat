@@ -31,6 +31,7 @@ export interface ConversationInfo {
     imported_at?: string;
     initial_created_at?: string;
     cloned_from_id?: string;
+    root_response_id?: string;
   };
 }
 
@@ -647,14 +648,15 @@ export interface StartStreamProps {
   queryClient: QueryClient;
   tools?: Tool[];
   include?: string[];
-  previous_response_id?: string;
+  previousResponseId?: string;
+  tempStreamId?: string;
 }
 
 export interface ChatStartStreamOptions {
   contentItems: ContentItem[];
   webSearchEnabled: boolean;
   conversationId?: string;
-  previous_response_id?: string;
+  previousResponseId?: string;
   currentModels?: string[];
   initiator: "new_chat" | "new_message" | "regenerate" | "edit_message";
 }

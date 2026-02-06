@@ -101,7 +101,6 @@ The following environment variables can be configured (optional):
 - `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics key
 - `VITE_PUBLIC_POSTHOG_HOST` - PostHog host URL
 - `VITE_DEFAULT_MODEL` - Default AI model (default: `zai-org/GLM-4.6`)
-- `VITE_MODEL_FOR_TITLE_GENERATION` - Model for title generation (default: `Qwen/Qwen3-30B-A3B-Instruct-2507`)
 - `VITE_NEAR_RPC_URL` - NEAR RPC endpoint (default: `https://free.rpc.fastnear.com`)
 
 Create a `.env` file in the root directory to set these variables:
