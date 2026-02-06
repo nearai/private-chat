@@ -42,7 +42,6 @@ const Home = ({
   const [inputValue, setInputValue] = useState("");
   const [modelsInitialized, setModelsInitialized] = useState(false);
   const dataInitializedRef = useRef<boolean>(false);
-  const prevDataLengthRef = useRef<number>(0);
   const remoteConfig = useRemoteConfig();
 
   // Get permission info for shared conversations
