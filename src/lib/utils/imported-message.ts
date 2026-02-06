@@ -21,5 +21,12 @@ export function isImportedMessage(conversation: Conversation, message: Conversat
     }
     const importedAt = dayjs(importedAtNum);
     const msgCreatedAt = dayjs(message.created_at * 1000);
-    return Math.abs(msgCreatedAt.diff(importedAt, 'second')) < IMPORT_TIMESTAMP_TOLERANCE_SECONDS;
+
+    if (msgCreatedAt.isBefore(importedAt)) {
+        return true;
+    }
+    if (Math.abs(msgCreatedAt.diff(importedAt, 'second')) < IMPORT_TIMESTAMP_TOLERANCE_SECONDS) {
+        return true;
+    }
+    return false;
 }
