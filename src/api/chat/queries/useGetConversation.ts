@@ -61,5 +61,6 @@ export const useGetConversation = (
     refetchInterval: polling ? pollingInterval : false,
     // Only poll when the window is focused to save resources
     refetchIntervalInBackground: false,
+    ...options,
   });
 };

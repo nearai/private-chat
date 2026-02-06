@@ -77,13 +77,26 @@ const Home = ({
     return conversationStreamStatus.get(chatId) === "streaming";
   }, [chatId, conversationIsReady, conversationStreamStatus]);
 
-  // Enable polling for real-time sync, but disable while streaming to avoid conflicts
+  // Check if this is a shared conversation with others who can write messages
+  const isSharedConversationWithWriters = useMemo(() => {
+    if (!sharesData) return false;
+    if (!sharesData.is_owner) {
+      // I'm not the owner - this is shared with me
+      return true;
+    }
+    // I'm the owner - check if shared with others who can write
+    return (sharesData.shares ?? []).some((share) => share.permission === "write");
+  }, [sharesData]);
+
+  // Enable auto-refresh for shared conversations every 60 seconds,
+  // but disable while streaming to avoid conflicts
   const {
     isLoading: isConversationsLoading,
     data: conversationData,
     error: conversationError,
   } = useGetConversation(conversationIsReady ? chatId : undefined, {
-    polling: !currentStreamIsActive,
+    polling: isSharedConversationWithWriters && !currentStreamIsActive,
+    pollingInterval: 60000, // 60 seconds
   });
 
   // Parse error type for proper display
@@ -174,6 +187,7 @@ const Home = ({
   }, [chatId, cloneChat, navigate]);
 
   useEffect(() => {
+    if (isSharedConversationWithWriters) return;
     if (!chatId || !conversationData) return;
     if (conversationState?.conversationId !== chatId) {
       dataInitializedRef.current = false;
@@ -198,8 +212,26 @@ const Home = ({
     }
     setModelsInitialized(false);
   }, [
+    isSharedConversationWithWriters,
     chatId,
     conversationState?.conversationId,
+    isConversationsLoading,
+    currentStreamIsActive,
+    conversationIsReady,
+    conversationData,
+    setConversationData,
+  ]);
+
+  useEffect(() => {
+    if (!isSharedConversationWithWriters) return;
+    if (!chatId || !conversationData) return;
+    if (isConversationsLoading || currentStreamIsActive) return;
+    if (!conversationIsReady) return;
+    if (!conversationData.data?.length) return;
+    setConversationData(conversationData);
+  }, [
+    isSharedConversationWithWriters,
+    chatId,
     isConversationsLoading,
     currentStreamIsActive,
     conversationIsReady,
