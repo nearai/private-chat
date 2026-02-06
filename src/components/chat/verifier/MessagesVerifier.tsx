@@ -84,7 +84,7 @@ const MessagesVerifier: React.FC<MessagesVerifierProps> = ({ conversation, histo
       <div className="scrollbar-none flex flex-1 flex-col gap-y-2 overflow-y-auto px-1 py-4">
         {[...chatCompletions].map((message, index, array) => {
           const reversedIndex = array.length - 1 - index;
-          const isCompleted = message.content.every((item) => item.status === "completed");
+          const isCompleted = message.content.every((item) => item.status === "completed" || item.status === "failed");
           if (!isCompleted) return null;
 
           const msgHasSignature =

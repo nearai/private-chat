@@ -93,7 +93,7 @@ const ChatVerifier: React.FC = () => {
 
     for (const responseId in responseItems) {
       const response = responseItems[responseId];
-      if (response.content.every((item) => item.status === "completed")) {
+      if (response.content.every((item) => item.status === "completed" || item.status === "failed")) {
         messages.push({
           content: response.content,
           chatCompletionId: responseId,
