@@ -6,11 +6,13 @@ import { useCloneChat } from "@/api/chat/queries/useCloneChat";
 import { cn } from "@/lib";
 import type { Conversation, ConversationItemsResponse, ConversationUserInput, ConversationModelOutput } from "@/types";
 import { ConversationTypes } from "@/types";
+import { extractMessageContent } from "@/types/openai";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { toast } from "sonner";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
+import { MarkDown } from "@/components/chat/messages/MarkdownTokens";
 
 // Helper to check if an item is a displayable message
 const isMessageItem = (item: unknown): item is ConversationUserInput | ConversationModelOutput => {
@@ -95,13 +97,21 @@ export default function PublicConversationPage() {
   const messages = useMemo(() => {
     return (items?.data || [])
       .filter(isMessageItem)
-      .map((item) => ({
-        id: item.id,
-        role: item.role,
-        content: item.content,
-        status: item.status,
-        created_at: item.created_at,
-      }));
+      .map((item) => {
+        const contentArray = Array.isArray(item.content) ? item.content : [];
+        const messageContent = extractMessageContent(
+          contentArray,
+          item.role === "user" ? "input_text" : "output_text"
+        );
+        return {
+          id: item.id,
+          role: item.role,
+          content: item.content,
+          messageContent,
+          status: item.status,
+          created_at: item.created_at,
+        };
+      });
   }, [items]);
 
   if (isLoading) {
@@ -196,16 +206,15 @@ export default function PublicConversationPage() {
                         : "w-full"
                     )}
                   >
-                    <div className="whitespace-pre-wrap text-sm">
-                      {Array.isArray(message.content)
-                        ? message.content
-                            .filter((c) => c.type === "input_text" || c.type === "output_text")
-                            .map((c) => ("text" in c ? c.text : ""))
-                            .join("\n")
-                        : typeof message.content === "string"
-                          ? message.content
-                          : ""}
-                    </div>
+                    {message.messageContent ? (
+                      <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>
+                        <div className="markdown-content wrap-break-word">
+                          <MarkDown messageContent={message.messageContent} batchId={message.id} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground text-sm">Empty message</div>
+                    )}
                   </div>
                 </div>
               ))}
