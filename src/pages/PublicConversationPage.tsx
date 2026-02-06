@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
 import { MarkDown } from "@/components/chat/messages/MarkdownTokens";
+import { formatDate } from "@/lib/time";
 
 // Helper to check if an item is a displayable message
 const isMessageItem = (item: unknown): item is ConversationUserInput | ConversationModelOutput => {
@@ -103,6 +104,7 @@ export default function PublicConversationPage() {
           contentArray,
           item.role === "user" ? "input_text" : "output_text"
         );
+        const authorName = item.role === "user" ? (item as ConversationUserInput).metadata?.author_name : undefined;
         return {
           id: item.id,
           role: item.role,
@@ -110,6 +112,8 @@ export default function PublicConversationPage() {
           messageContent,
           status: item.status,
           created_at: item.created_at,
+          model: item.model,
+          authorName,
         };
       });
   }, [items]);
@@ -206,6 +210,30 @@ export default function PublicConversationPage() {
                         : "w-full"
                     )}
                   >
+                    {/* Author name (for user messages) */}
+                    {message.role === "user" && message.authorName && (
+                      <div className="mb-1 text-muted-foreground text-xs">
+                        {message.authorName}
+                      </div>
+                    )}
+
+                    {/* Model name and timestamp (for assistant messages) */}
+                    {message.role === "assistant" && (
+                      <div className="mb-2 flex items-center gap-2">
+                        {message.model && (
+                          <span className="line-clamp-1 font-normal text-muted-foreground text-sm" title={message.model}>
+                            {message.model}
+                          </span>
+                        )}
+                        {message.created_at && (
+                          <span className="text-muted-foreground text-xs" title={formatDate(message.created_at)}>
+                            {formatDate(message.created_at)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Message content */}
                     {message.messageContent ? (
                       <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>
                         <div className="markdown-content wrap-break-word">
@@ -214,6 +242,13 @@ export default function PublicConversationPage() {
                       </div>
                     ) : (
                       <div className="text-muted-foreground text-sm">Empty message</div>
+                    )}
+
+                    {/* Timestamp for user messages */}
+                    {message.role === "user" && message.created_at && (
+                      <div className="mt-1 text-right text-muted-foreground text-xs" title={formatDate(message.created_at)}>
+                        {formatDate(message.created_at)}
+                      </div>
                     )}
                   </div>
                 </div>
