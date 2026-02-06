@@ -419,11 +419,6 @@ const Home = ({
     setSelectedModels,
   ]);
 
-  console.log("canWrite", canWrite);
-  console.log("cloneChat.isPending", cloneChat.isPending);
-  console.log("sharesData", sharesData);
-  console.log("onCopyAndContinue", canWrite ? handleCopyAndContinue : undefined);
-
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
     const ErrorIcon = errorInfo.icon;
