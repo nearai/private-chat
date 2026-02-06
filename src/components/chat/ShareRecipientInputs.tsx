@@ -61,7 +61,7 @@ export const ShareRecipientInputs = ({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {recipients.map((recipient, index) => {
+      {recipients.map((recipient) => {
         const isValid =
           !recipient.value || (recipient.kind === "email" ? isValidEmail(recipient.value) : isValidNearAccount(recipient.value));
         const error = errors[recipient.id];
