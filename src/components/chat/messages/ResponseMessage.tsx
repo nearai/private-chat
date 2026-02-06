@@ -41,6 +41,7 @@ interface ResponseMessageProps {
   isLastMessage: boolean;
   readOnly: boolean;
   regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
+  onResponseVersionChange?: (batchId: string, model: string) => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -50,6 +51,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   isLastMessage,
   readOnly,
   regenerateResponse,
+  onResponseVersionChange,
   siblings,
 }) => {
   const { setLastResponseId } = useConversationStore();
@@ -336,7 +338,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 className="text-muted-foreground"
                 onClick={() => {
                   if (siblings[siblings.indexOf(batch.responseId) - 1]) {
-                    setLastResponseId(siblings[siblings.indexOf(batch.responseId) - 1]);
+                    const index = siblings.indexOf(batch.responseId) - 1;
+                    const respId = siblings[index];
+                    setLastResponseId(respId);
+                    if (respId && model) {
+                      onResponseVersionChange?.(respId, model);
+                    }
                   }
                 }}
               >
@@ -362,7 +369,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 className="text-muted-foreground"
                 onClick={() => {
                   if (siblings[siblings.indexOf(batch.responseId) + 1]) {
-                    setLastResponseId(siblings[siblings.indexOf(batch.responseId) + 1]);
+                    const index = siblings.indexOf(batch.responseId) + 1;
+                    const respId = siblings[index];
+                    setLastResponseId(respId);
+                    if (respId && model) {
+                      onResponseVersionChange?.(respId, model);
+                    }
                   }
                 }}
               >

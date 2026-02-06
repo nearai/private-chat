@@ -80,6 +80,11 @@ export type ConversationReasoningUpdatedEvent = {
   delta: string;
 };
 
+export type ConversationFailedEvent = {
+  type: "response.failed";
+  text?: string;
+};
+
 export class ApiClient {
   protected baseURLV1: string;
   protected baseURLV2: string;
@@ -392,7 +397,7 @@ export class ApiClient {
 
       async function onParse(event: EventSourceMessage) {
         if (!options.queryClient) return;
-        const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent =
+        const data: Responses.ResponseStreamEvent | ConversationReasoningUpdatedEvent | ConversationTitleUpdatedEvent | ConversationFailedEvent =
           JSON.parse(event.data);
         const model = (body as { model?: string })?.model || "";
         const tempStreamId = (body as { tempStreamId?: string })?.tempStreamId || "";
@@ -701,6 +706,12 @@ export class ApiClient {
                   )
               );
             }
+            break;
+          }
+          case "response.failed": {
+            const failedData = data as ConversationFailedEvent;
+            const errMsg = failedData.text || 'The model is currently unavailable. Please try again later.';
+            updateFailedMessage(errMsg);
             break;
           }
           case "response.completed": {
