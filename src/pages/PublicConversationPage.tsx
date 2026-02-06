@@ -15,14 +15,18 @@ import { Button } from "@/components/ui/button";
 import { MarkDown } from "@/components/chat/messages/MarkdownTokens";
 import { formatDate } from "@/lib/time";
 
-// Helper to check if an item is a displayable message
+// Helper to check if an item is a displayable message (excludes reasoning items)
 const isMessageItem = (item: unknown): item is ConversationUserInput | ConversationModelOutput => {
-  return (
-    typeof item === "object" &&
-    item !== null &&
-    "type" in item &&
-    (item as { type: string }).type === ConversationTypes.MESSAGE
-  );
+  if (
+    typeof item !== "object" ||
+    item === null ||
+    !("type" in item)
+  ) {
+    return false;
+  }
+  const itemType = (item as { type: string }).type;
+  // Only include MESSAGE type items (this automatically excludes REASONING, WEB_SEARCH_CALL, etc.)
+  return itemType === ConversationTypes.MESSAGE;
 };
 
 export default function PublicConversationPage() {
@@ -162,9 +166,19 @@ export default function PublicConversationPage() {
         }
       });
       
+      // Deduplicate by model - keep only the last/most recent response per model
+      const responsesByModel = new Map<string, MessageItem>();
+      allResponses.forEach((response) => {
+        const modelKey = response.model || "";
+        const existing = responsesByModel.get(modelKey);
+        if (!existing || (response.created_at || 0) > (existing.created_at || 0)) {
+          responsesByModel.set(modelKey, response);
+        }
+      });
+      
       groups.push({
         userMessage: userMsg,
-        responses: allResponses.sort((a, b) => {
+        responses: Array.from(responsesByModel.values()).sort((a, b) => {
           // Sort by model name, then by created_at
           if (a.model !== b.model) {
             return (a.model || "").localeCompare(b.model || "");
@@ -177,10 +191,20 @@ export default function PublicConversationPage() {
     // Also include orphaned assistant messages (no parent user message found)
     responsesByParent.forEach((responses, parentResponseId) => {
       if (!itemsByResponseId.has(parentResponseId)) {
+        // Deduplicate by model - keep only the last/most recent response per model
+        const orphanedResponsesByModel = new Map<string, MessageItem>();
+        responses.forEach((response) => {
+          const modelKey = response.model || "";
+          const existing = orphanedResponsesByModel.get(modelKey);
+          if (!existing || (response.created_at || 0) > (existing.created_at || 0)) {
+            orphanedResponsesByModel.set(modelKey, response);
+          }
+        });
+        
         // Parent not found, add as orphaned responses
         groups.push({
           userMessage: undefined,
-          responses: responses.sort((a, b) => {
+          responses: Array.from(orphanedResponsesByModel.values()).sort((a, b) => {
             if (a.model !== b.model) {
               return (a.model || "").localeCompare(b.model || "");
             }
@@ -312,9 +336,9 @@ export default function PublicConversationPage() {
                     {group.responses.length > 0 && (
                       <div className={cn(
                         "w-full",
-                        hasMultipleResponses && "grid gap-4",
-                        hasMultipleResponses && group.responses.length === 2 && "grid-cols-1 sm:grid-cols-2",
-                        hasMultipleResponses && group.responses.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                        hasMultipleResponses && "grid",
+                        hasMultipleResponses && group.responses.length === 2 && "grid-cols-1 gap-4 sm:grid-cols-2",
+                        hasMultipleResponses && group.responses.length >= 3 && "grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4"
                       )}>
                         {group.responses.map((response) => {
                           const contentArray = Array.isArray(response.content) ? response.content : [];
@@ -325,18 +349,19 @@ export default function PublicConversationPage() {
                               key={response.id}
                               className={cn(
                                 "rounded-2xl border border-border/50 bg-background p-5 shadow-sm transition-shadow hover:shadow-md",
-                                !hasMultipleResponses && "w-full"
+                                !hasMultipleResponses && "w-full",
+                                hasMultipleResponses && "min-w-0"
                               )}
                             >
                               {/* Model name and timestamp */}
-                              <div className="mb-3 flex items-center gap-3 border-border/30 border-b pb-2">
+                              <div className="mb-3 flex items-center justify-between gap-2 border-border/30 border-b pb-2">
                                 {response.model && (
-                                  <span className="line-clamp-1 font-semibold text-foreground text-sm" title={response.model}>
+                                  <span className="min-w-0 flex-1 truncate font-semibold text-foreground text-sm" title={response.model}>
                                     {response.model}
                                   </span>
                                 )}
                                 {response.created_at && (
-                                  <span className="text-muted-foreground text-xs" title={formatDate(response.created_at)}>
+                                  <span className="flex-shrink-0 whitespace-nowrap text-muted-foreground text-xs" title={formatDate(response.created_at)}>
                                     {formatDate(response.created_at)}
                                   </span>
                                 )}
