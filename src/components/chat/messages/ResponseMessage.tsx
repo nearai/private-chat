@@ -396,7 +396,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
               <Button
                 size="icon"
                 variant="ghost"
-                className={cn("text-muted-foreground", isLastMessage ? "visible" : "visible group-hover:visible sm:invisible")}
+                className={cn("text-muted-foreground", isLastMessage ? "visible" : "group-hover:visible! sm:invisible")}
                 onClick={() => {
                   copyToClipboard(messageContent);
                 }}
@@ -422,7 +422,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("text-muted-foreground", isLastMessage ? "visible" : "visible group-hover:visible sm:invisible")}
+                  className={cn("text-muted-foreground", isLastMessage ? "visible" : "group-hover:visible! sm:invisible")}
                   onClick={handleRegenerateResponse}
                   title="Regenerate"
                 >
