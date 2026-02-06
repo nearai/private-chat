@@ -33,7 +33,7 @@ export default defineConfig({
           /^\/health$/,
           /^\/api-docs(\/|$)/,
         ],
-        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
+        globPatterns: ["**/*.{js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
@@ -46,8 +46,7 @@ export default defineConfig({
                 return (
                   sameOrigin &&
                   !isApi &&
-                  (url.pathname.endsWith(".html") ||
-                    url.pathname.endsWith(".js") ||
+                  (url.pathname.endsWith(".js") ||
                     url.pathname.endsWith(".css") ||
                     url.pathname.endsWith(".png") ||
                     url.pathname.endsWith(".jpg"))
