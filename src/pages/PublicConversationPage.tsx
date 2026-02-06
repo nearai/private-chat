@@ -94,28 +94,103 @@ export default function PublicConversationPage() {
     return conversation?.metadata?.title || "Shared Conversation";
   }, [conversation]);
 
-  // Filter to only message items (user and assistant messages)
-  const messages = useMemo(() => {
-    return (items?.data || [])
-      .filter(isMessageItem)
-      .map((item) => {
+  // Organize messages into conversation groups (user message + parallel responses)
+  const conversationGroups = useMemo(() => {
+    type MessageItem = ConversationUserInput | ConversationModelOutput;
+    const allItems: MessageItem[] = (items?.data || []).filter(isMessageItem);
+    const itemsByResponseId = new Map(allItems.map((item) => [item.response_id, item]));
+    
+    // Group assistant messages by their previous_response_id (parent)
+    const responsesByParent = new Map<string, MessageItem[]>();
+    
+    // Track user messages and group by content to avoid duplicates
+    const userMessagesByContent = new Map<string, MessageItem>();
+    const userMessageOrder: string[] = [];
+    
+    allItems.forEach((item) => {
+      if (item.role === "user") {
         const contentArray = Array.isArray(item.content) ? item.content : [];
-        const messageContent = extractMessageContent(
-          contentArray,
-          item.role === "user" ? "input_text" : "output_text"
-        );
-        const authorName = item.role === "user" ? (item as ConversationUserInput).metadata?.author_name : undefined;
-        return {
-          id: item.id,
-          role: item.role,
-          content: item.content,
-          messageContent,
-          status: item.status,
-          created_at: item.created_at,
-          model: item.model,
-          authorName,
-        };
+        const messageContent = extractMessageContent(contentArray, "input_text");
+        
+        // Only keep the first occurrence of each unique content
+        if (!userMessagesByContent.has(messageContent)) {
+          userMessagesByContent.set(messageContent, item);
+          userMessageOrder.push(messageContent);
+        }
+      } else if (item.previous_response_id) {
+        // This is an assistant response
+        const parentResponseId = item.previous_response_id;
+        if (!responsesByParent.has(parentResponseId)) {
+          responsesByParent.set(parentResponseId, []);
+        }
+        responsesByParent.get(parentResponseId)!.push(item);
+      }
+    });
+    
+    // Build conversation groups maintaining order and deduplicating by content
+    const groups: Array<{
+      userMessage?: MessageItem;
+      responses: MessageItem[];
+    }> = [];
+    
+    // Process user messages by content (deduplicated) and collect all responses
+    userMessageOrder.forEach((content) => {
+      const userMsg = userMessagesByContent.get(content);
+      if (!userMsg) return;
+      
+      // Collect all responses from all user messages with this content
+      const allResponses: MessageItem[] = [];
+      const seenResponseIds = new Set<string>();
+      
+      // Find all user messages with the same content
+      allItems.forEach((item) => {
+        if (item.role === "user") {
+          const itemContentArray = Array.isArray(item.content) ? item.content : [];
+          const itemContent = extractMessageContent(itemContentArray, "input_text");
+          
+          if (itemContent === content) {
+            // Get responses for this user message
+            const responses = responsesByParent.get(item.response_id) || [];
+            responses.forEach((response) => {
+              // Avoid duplicate responses
+              if (!seenResponseIds.has(response.id)) {
+                seenResponseIds.add(response.id);
+                allResponses.push(response);
+              }
+            });
+          }
+        }
       });
+      
+      groups.push({
+        userMessage: userMsg,
+        responses: allResponses.sort((a, b) => {
+          // Sort by model name, then by created_at
+          if (a.model !== b.model) {
+            return (a.model || "").localeCompare(b.model || "");
+          }
+          return (a.created_at || 0) - (b.created_at || 0);
+        }),
+      });
+    });
+    
+    // Also include orphaned assistant messages (no parent user message found)
+    responsesByParent.forEach((responses, parentResponseId) => {
+      if (!itemsByResponseId.has(parentResponseId)) {
+        // Parent not found, add as orphaned responses
+        groups.push({
+          userMessage: undefined,
+          responses: responses.sort((a, b) => {
+            if (a.model !== b.model) {
+              return (a.model || "").localeCompare(b.model || "");
+            }
+            return (a.created_at || 0) - (b.created_at || 0);
+          }),
+        });
+      }
+    });
+    
+    return groups;
   }, [items]);
 
   if (isLoading) {
@@ -186,73 +261,105 @@ export default function PublicConversationPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 py-6">
-          {messages.length === 0 ? (
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {conversationGroups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <DocumentDuplicateIcon className="mb-4 size-12 opacity-50" />
               <p>This conversation is empty</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "w-full",
-                    message.role === "user" ? "flex flex-col items-end" : ""
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "rounded-xl px-4 py-2",
-                      message.role === "user"
-                        ? "max-w-[90%] bg-card"
-                        : "w-full"
-                    )}
-                  >
-                    {/* Author name (for user messages) */}
-                    {message.role === "user" && message.authorName && (
-                      <div className="mb-1 text-muted-foreground text-xs">
-                        {message.authorName}
-                      </div>
-                    )}
-
-                    {/* Model name and timestamp (for assistant messages) */}
-                    {message.role === "assistant" && (
-                      <div className="mb-2 flex items-center gap-2">
-                        {message.model && (
-                          <span className="line-clamp-1 font-normal text-muted-foreground text-sm" title={message.model}>
-                            {message.model}
-                          </span>
-                        )}
-                        {message.created_at && (
-                          <span className="text-muted-foreground text-xs" title={formatDate(message.created_at)}>
-                            {formatDate(message.created_at)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Message content */}
-                    {message.messageContent ? (
-                      <div className={cn("markdown-prose w-full min-w-full", `chat-${message.role}`)}>
-                        <div className="markdown-content wrap-break-word">
-                          <MarkDown messageContent={message.messageContent} batchId={message.id} />
+            <div className="space-y-6">
+              {conversationGroups.map((group, groupIdx) => {
+                const hasMultipleResponses = group.responses.length > 1;
+                
+                return (
+                  <div key={groupIdx} className="space-y-4">
+                    {/* User message */}
+                    {group.userMessage && (() => {
+                      const userMsg = group.userMessage!;
+                      const contentArray = Array.isArray(userMsg.content) ? userMsg.content : [];
+                      const messageContent = extractMessageContent(contentArray, "input_text");
+                      const authorName = (userMsg as ConversationUserInput).metadata?.author_name;
+                      
+                      return (
+                        <div className="flex w-full flex-col items-end">
+                          <div className="max-w-[85%] rounded-xl bg-card px-4 py-2">
+                            {authorName && (
+                              <div className="mb-1.5 font-medium text-primary text-xs">
+                                {authorName}
+                              </div>
+                            )}
+                            {messageContent ? (
+                              <div className={cn("markdown-prose w-full min-w-full", "chat-user")}>
+                                <div className="markdown-content wrap-break-word text-foreground">
+                                  <MarkDown messageContent={messageContent} batchId={userMsg.id} />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-muted-foreground text-sm">Empty message</div>
+                            )}
+                            {userMsg.created_at && (
+                              <div className="mt-2 text-right text-muted-foreground text-xs" title={formatDate(userMsg.created_at)}>
+                                {formatDate(userMsg.created_at)}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground text-sm">Empty message</div>
-                    )}
+                      );
+                    })()}
 
-                    {/* Timestamp for user messages */}
-                    {message.role === "user" && message.created_at && (
-                      <div className="mt-1 text-right text-muted-foreground text-xs" title={formatDate(message.created_at)}>
-                        {formatDate(message.created_at)}
+                    {/* Assistant responses - display in parallel if multiple */}
+                    {group.responses.length > 0 && (
+                      <div className={cn(
+                        "w-full",
+                        hasMultipleResponses && "grid gap-4",
+                        hasMultipleResponses && group.responses.length === 2 && "grid-cols-1 sm:grid-cols-2",
+                        hasMultipleResponses && group.responses.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                      )}>
+                        {group.responses.map((response) => {
+                          const contentArray = Array.isArray(response.content) ? response.content : [];
+                          const messageContent = extractMessageContent(contentArray, "output_text");
+                          
+                          return (
+                            <div
+                              key={response.id}
+                              className={cn(
+                                "rounded-2xl border border-border/50 bg-background p-5 shadow-sm transition-shadow hover:shadow-md",
+                                !hasMultipleResponses && "w-full"
+                              )}
+                            >
+                              {/* Model name and timestamp */}
+                              <div className="mb-3 flex items-center gap-3 border-border/30 border-b pb-2">
+                                {response.model && (
+                                  <span className="line-clamp-1 font-semibold text-foreground text-sm" title={response.model}>
+                                    {response.model}
+                                  </span>
+                                )}
+                                {response.created_at && (
+                                  <span className="text-muted-foreground text-xs" title={formatDate(response.created_at)}>
+                                    {formatDate(response.created_at)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Message content */}
+                              {messageContent ? (
+                                <div className={cn("markdown-prose w-full min-w-full", "chat-assistant")}>
+                                  <div className="markdown-content wrap-break-word">
+                                    <MarkDown messageContent={messageContent} batchId={response.id} />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-muted-foreground text-sm">Empty message</div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -260,7 +367,7 @@ export default function PublicConversationPage() {
 
       {/* Footer - Copy & Continue CTA */}
       <footer className="border-border border-t bg-muted/30 px-4 py-4">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
             <div className="text-center sm:text-left">
               <p className="font-medium text-sm">Want to continue this conversation?</p>
