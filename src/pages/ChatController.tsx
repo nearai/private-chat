@@ -17,12 +17,13 @@ import {
   useConversationStore,
 } from "@/stores/useConversationStore";
 import { useStreamStore } from "@/stores/useStreamStore";
-import type { ChatStartStreamOptions, ConversationUserInput } from "@/types";
+import type { ChatStartStreamOptions, ConversationItem, ConversationUserInput } from "@/types";
 import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
 import { toast } from "sonner";
+import { generateMockAIResponse } from "@/lib/utils/mock";
 
 export default function ChatController({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
@@ -40,10 +41,22 @@ export default function ChatController({ children }: { children?: React.ReactNod
 
   // Push response used for adding new response to the end of the conversation
   const pushResponse = useCallback(
-    (conversationId: string, model: string, contentItems: ContentItem[], previous_response_id?: string) => {
+    ({
+      conversationId,
+      model,
+      contentItems,
+      previousResponseId,
+      addMockAIResponse = true,
+    }: {
+      conversationId: string;
+      model: string;
+      contentItems: ContentItem[];
+      previousResponseId?: string;
+      addMockAIResponse?: boolean;
+    }) => {
       // Generate unique temp ID to prevent collisions in regenerate/branch scenarios
       const tempId = `temp-message-${crypto.randomUUID()}`;
-      const tempRespId = TEMP_RESPONSE_ID;
+      const tempRespId = `${TEMP_RESPONSE_ID}-${model}`;
 
       const updatedConversation = (draft: ConversationStoreState) => {
         if (!draft.conversation) {
@@ -67,17 +80,21 @@ export default function ChatController({ children }: { children?: React.ReactNod
           type: ConversationTypes.MESSAGE,
           content: contentItems,
           model: model,
-          previous_response_id: previous_response_id ?? draft.conversation.lastResponseId ?? undefined,
           metadata: userData?.user
             ? {
                 ...(userData.user.id && { author_id: userData.user.id }),
                 ...(userData.user.name && { author_name: userData.user.name }),
               }
             : undefined,
+          previous_response_id: previousResponseId ?? draft.conversation.lastResponseId ?? undefined,
         };
+        const aiMessage = generateMockAIResponse(tempId, tempRespId, model);
 
         draft.conversation.conversation.data.push(userMessage);
-        const lastResponseParentId = previous_response_id ?? draft.conversation.lastResponseId;
+        if (addMockAIResponse) {
+          draft.conversation.conversation.data.push(aiMessage);
+        }
+        const lastResponseParentId = previousResponseId ?? draft.conversation.lastResponseId;
 
         // update conversation entry for rendering
         const { history, allMessages, lastResponseId, batches } = buildConversationEntry(
@@ -118,7 +135,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         contentItems,
         webSearchEnabled,
         conversationId,
-        previous_response_id,
+        previousResponseId: chatPreviousResponseId,
         currentModels,
         initiator,
       }: ChatStartStreamOptions
@@ -131,21 +148,36 @@ export default function ChatController({ children }: { children?: React.ReactNod
       
       const isNewChat = initiator === "new_chat";
       const invalidateQueryKey = queryKeys.conversation.byId(conversationLocalId);
-      const validModels = selectedModels.filter((model) => model && model.length > 0);
+      const validModels = Array.from(
+        new Set(selectedModels.filter((model) => model && model.length > 0))
+      );
 
       if (isNewChat) {
+        resetConversation();
         setConversationInitStatus(conversationLocalId, "initializing");
       }
       setConversationStreamStatus(conversationLocalId, "streaming");
 
       const runStreamForModel = async (model: string, {
         previousResponseId,
-        onResponseCreated,
+        addMockAIResponse,
+        tempMsgId,
+        onUserResponseCreated,
       }: {
         previousResponseId?: string
-        onResponseCreated?: () => void
+        addMockAIResponse?: boolean
+        tempMsgId?: string
+        onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void
       }) => {
-        const tempMsgId = pushResponse(conversationLocalId, model, contentItems, previousResponseId);
+        if (!tempMsgId) {
+          tempMsgId = pushResponse({
+            conversationId: conversationLocalId,
+            model,
+            contentItems,
+            previousResponseId,
+            addMockAIResponse,
+          });
+        }
         const streamPromise = chatClient.startStream({
           model,
           role: "user",
@@ -154,19 +186,19 @@ export default function ChatController({ children }: { children?: React.ReactNod
           queryClient,
           include: webSearchEnabled ? ["web_search_call.action.sources"] : [],
           tools: webSearchEnabled ? [{ type: "web_search" }] : undefined,
-          previous_response_id: previousResponseId,
+          previousResponseId: previousResponseId,
           systemPrompt: userSettings.data?.settings.system_prompt,
+          tempStreamId: tempMsgId,
           onReaderReady: (reader, abortController) => {
             addStream(conversationLocalId, tempMsgId, streamPromise, undefined, reader, abortController);
           },
-          onResponseCreated,
+          onUserResponseCreated,
         });
 
         try {
           await streamPromise;
           markStreamComplete(conversationLocalId, tempMsgId);
           removeStream(conversationLocalId, tempMsgId);
-          // biome-ignore lint/suspicious/noExplicitAny: explanation
         } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
@@ -197,50 +229,6 @@ export default function ChatController({ children }: { children?: React.ReactNod
         }
       };
 
-      if (isNewChat && !previous_response_id && !currentModels && validModels.length > 1) {
-        // Run the first model to establish the message anchor
-        const firstModel = validModels[0];
-        try {
-          await runStreamForModel(firstModel, {
-            previousResponseId: previous_response_id,
-          });
-        } catch (error) {
-          console.error(`Stream failed for first model ${firstModel}:`, error);
-        }
-
-        let firstMessagePreviousId = previous_response_id;
-        try {
-          // Fetch conversation items to find the common parent ID
-          const items = await chatClient.getConversationItems(conversationLocalId);
-          // Find the user message we just created (should be one of the first items)
-          const userMsg = items.data.find((m) => m.role === ConversationRoles.USER);
-          if (userMsg) {
-            firstMessagePreviousId = userMsg.previous_response_id;
-          }
-        } catch (error) {
-          console.error("Failed to fetch conversation items to sync models:", error);
-        }
-
-        // Run the rest of the models attached to the same parent
-        const remainingModels = validModels.slice(1);
-        await Promise.all(
-          remainingModels.map(async (model) => {
-            try {
-              await runStreamForModel(model, {
-                previousResponseId: firstMessagePreviousId,
-              });
-            } catch (error: any) {
-              toast.error(`Model ${model} failed to respond: ${error.message || error}`);
-            }
-          })
-        );
-        resetConversation();
-        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
-        setConversationInitStatus(conversationLocalId, "ready");
-        setConversationStreamStatus(conversationLocalId, "idle");
-        return;
-      }
-
       if (isNewChat) {
         setConversationInitStatus(conversationLocalId, "ready");
       }
@@ -249,6 +237,8 @@ export default function ChatController({ children }: { children?: React.ReactNod
       if (currentModels && currentModels.length > 0) {
         chatModels.push(...currentModels);
       } else if (initiator === "new_message" && validModels.length > 0) {
+        chatModels.push(...validModels);
+      } else if (initiator === "new_chat" && validModels.length > 0) {
         chatModels.push(...validModels);
       } else if (validModels.length > 0) {
         chatModels.push(validModels[0]);
@@ -261,11 +251,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
         return;
       }
 
+      const _chatModels = Array.from(new Set(chatModels));
       await Promise.all(
-        chatModels.map(async (model) => {
+        _chatModels.map(async (model) => {
           try {
             await runStreamForModel(model, {
-              previousResponseId: previous_response_id,
+              previousResponseId: chatPreviousResponseId,
             });
           } catch (error: any) {
             console.error(`Stream failed for model ${model}:`, error);

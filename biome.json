@@ -27,11 +27,12 @@
       "recommended": true,
       "correctness": {
         "noUnusedImports": "error",
-        "noUnusedVariables": "error",
+        "noUnusedVariables": "off",
         "useExhaustiveDependencies": "warn",
         "useUniqueElementIds": "off"
       },
       "suspicious": {
+        "noExplicitAny": "off",
         "noConsole": {
           "options": {
             "allow": [

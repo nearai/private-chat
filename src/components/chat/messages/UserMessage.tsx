@@ -139,8 +139,8 @@ const UserMessage: React.FC<UserMessageProps> = ({
       contentItems,
       webSearchEnabled,
       conversationId: chatId,
-      previous_response_id: parentResponseId,
-      currentModels,
+      previousResponseId: parentResponseId,
+      currentModels: Array.from(new Set(currentModels)),
       initiator: "edit_message",
     });
     setEdit(false);
@@ -213,7 +213,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [messageContent, message]);
 
   if (!message) return null;
-  const isTempMsg = message.response_id === TEMP_RESPONSE_ID;
+  const isTempMsg = (message.response_id || '').startsWith(TEMP_RESPONSE_ID);
 
   return (
     <div
@@ -293,7 +293,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                     )}
                     <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">
                       {messageContent && (
-                        <div className="markdown-content">
+                        <div className="markdown-content wrap-break-word">
                           <MarkdownTokens tokens={tokens} id={`message-${message.id}`} />
                         </div>
                       )}

@@ -1,6 +1,7 @@
-import dayjs from "dayjs";
+
 import type { Conversation, ConversationItem } from "@/types";
 import { wrapMockResponseID } from "./utils/mock";
+import { isImportedMessage } from "./utils/imported-message";
 
 export function convertImportedMessages(
   conversation: Conversation,
@@ -22,13 +23,11 @@ export function convertImportedMessages(
     };
   }
 
-  const importedAt = dayjs(Number(importedAtStr));
   const result = messages.map(m => ({ ...m }));
   const importedIndices: number[] = [];
 
   result.forEach((msg, index) => {
-    const msgCreatedAt = dayjs(msg.created_at * 1000);
-    if (Math.abs(msgCreatedAt.diff(importedAt, 'second')) < 10) {
+    if (isImportedMessage(conversation, msg)) {
       importedIndices.push(index);
     }
   });

@@ -2,6 +2,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { cn, type CombinedResponse } from "@/lib";
 import { useViewStore } from "@/stores/useViewStore";
+import { useMessagesStore } from "@/stores/useMessagesStore";
 import type { ChatStartStreamOptions, ConversationItem } from "@/types";
 import { getModelAndCreatedTimestamp } from "@/types/openai";
 import ResponseMessage from "./ResponseMessage";
@@ -27,6 +28,8 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   regenerateResponse,
   responseSiblings,
 }) => {
+  const { isMobile } = useViewStore();
+  const { getSelectedResponseVersion, setSelectedResponseVersion } = useMessagesStore();
   const parentId = history.messages[batchId].parentResponseId;
   const parent = parentId ? history.messages[parentId] : null;
 
@@ -42,20 +45,28 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
   const siblingsToGroup = responseSiblings || parent?.nextResponseIds || [];
 
   const groupedBatchIds = useMemo(
-    () =>
-      siblingsToGroup.reduce(
+    () => {
+      const groups = siblingsToGroup.reduce(
         (acc, id) => {
           const batch = history.messages[id];
           if (!batch) return acc;
-          const { model } = getModelAndCreatedTimestamp(batch, allMessages);
+          const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
           if (!model) return acc;
 
           if (!acc[model]) {
-            acc[model] = { batchIds: [], currentIdx: 0 };
+            acc[model] = {
+              batchIds: [],
+              currentIdx: 0,
+              createdTimestamp,
+            };
           }
 
           acc[model].batchIds.push(id);
+          acc[model].createdTimestamp = Math.min(
+            acc[model].createdTimestamp ?? Infinity,
+            createdTimestamp ?? Infinity
+          );
           // Set current index according to current batch bundle
           if (currentBatchBundleObj[id]) {
             acc[model].currentIdx = acc[model].batchIds.length - 1;
@@ -63,12 +74,34 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
 
           return acc;
         },
-        {} as Record<string, { batchIds: string[]; currentIdx: number }>
-      ) ?? {},
-    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj]
+        {} as Record<string, {
+          batchIds: string[];
+          currentIdx: number;
+          createdTimestamp: number | null;
+        }>
+      ) ?? {};
+
+      if (parentId) {
+        Object.keys(groups).forEach((model) => {
+          const selectedVersion = getSelectedResponseVersion(parentId, model);
+          if (selectedVersion) {
+            const idx = groups[model].batchIds.indexOf(selectedVersion);
+            if (idx !== -1) {
+              groups[model].currentIdx = idx;
+            }
+          }
+        });
+      }
+      return groups;
+    },
+    [siblingsToGroup, history.messages, allMessages, currentBatchBundleObj, parentId, getSelectedResponseVersion]
   );
 
-  const { isMobile } = useViewStore();
+  const messageList = useMemo(() => {
+    return Object.keys(groupedBatchIds)
+      .sort((m1, m2) => m1.localeCompare(m2))
+      .map((model) => groupedBatchIds[model]);
+  }, [groupedBatchIds]);
 
   if (!parent) return null;
 
@@ -78,20 +111,14 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
         className="scrollbar-hidden flex snap-x snap-mandatory overflow-x-auto"
         id={`responses-container-${batchId}`}
       >
-        {Object.values(groupedBatchIds).map(({ batchIds, currentIdx }) => {
-          const isCurrentMessage = currentBatchBundleObj[batchIds[currentIdx]] !== undefined;
+        {messageList.map(({ batchIds, currentIdx }) => {
           const isSeveralModels = Object.keys(groupedBatchIds).length > 1;
-          const borderClass = isCurrentMessage
-            ? `border border-gray-300 dark:border-gray-700 border-[1.5px] ${isMobile ? "min-w-full" : "min-w-[10vw]"}`
-            : `border border-gray-300 dark:border-gray-700 border-dashed ${isMobile ? "min-w-full" : "min-w-[10vw]"}`;
-
           return (
             <div
               key={batchIds[currentIdx]}
-              data-role={isCurrentMessage ? "current-response-message" : "other-response-message"}
               className={cn(`m-1 w-full max-w-full snap-center rounded-2xl transition-all`, {
                 'p-5': isSeveralModels,
-                [borderClass]: isSeveralModels,
+                [`border-[1.5px] border-gray-300 dark:border-gray-700 ${isMobile ? "min-w-full" : "min-w-[10vw]"}`]: isSeveralModels,
               })}
             >
               {history.messages[batchIds[currentIdx]] && (
@@ -103,6 +130,11 @@ const MultiResponseMessages: React.FC<MultiResponseMessagesProps> = ({
                   siblings={batchIds}
                   readOnly={readOnly}
                   regenerateResponse={regenerateResponse}
+                  onResponseVersionChange={(batchId, model) => {
+                    if (parentId) {
+                      setSelectedResponseVersion(parentId, model, batchId);
+                    }
+                  }}
                 />
               )}
             </div>

@@ -125,11 +125,13 @@ export default function NewChat({
 
     await navigate(`/c/${newConversation.id}?new`);
 
+    const metadata = newConversation.metadata as ConversationInfo['metadata'];
     startStream({
       contentItems,
       webSearchEnabled,
       conversationId: newConversation.id,
       initiator: "new_chat",
+      previousResponseId: metadata?.root_response_id,
     });
 
     // Capture conversationId before the async operation, as the conversation object may change
@@ -146,7 +148,24 @@ export default function NewChat({
         conversation?.metadata?.title === DEFAULT_CONVERSATION_TITLE ||
         conversation?.metadata?.title === FALLBACK_CONVERSATION_TITLE
       ) {
-        const title = await generateChatTitle.mutateAsync({ prompt: content, model: MODEL_FOR_TITLE_GENERATION });
+        const models = useChatStore.getState().models;
+        const availableModelIds = models.map((m) => m.modelId);
+
+        // Create candidates list: preferred model first, then others
+        const candidates = [
+          ...(availableModelIds.includes(MODEL_FOR_TITLE_GENERATION) ? [MODEL_FOR_TITLE_GENERATION] : []),
+          ...availableModelIds.filter((id) => id !== MODEL_FOR_TITLE_GENERATION),
+        ];
+
+        let title = "";
+        for (const modelId of candidates) {
+          try {
+            title = await generateChatTitle.mutateAsync({ prompt: content, model: modelId });
+            if (title) break;
+          } catch (e) {
+            console.warn(`Title generation failed with model ${modelId}`, e);
+          }
+        }
 
         if (title) {
           // update the conversation details

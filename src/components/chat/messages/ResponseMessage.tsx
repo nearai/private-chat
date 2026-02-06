@@ -42,6 +42,7 @@ interface ResponseMessageProps {
   isLastMessage: boolean;
   readOnly: boolean;
   regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
+  onResponseVersionChange?: (batchId: string, model: string) => void;
 }
 
 const ResponseMessage: React.FC<ResponseMessageProps> = ({
@@ -51,6 +52,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   isLastMessage,
   readOnly,
   regenerateResponse,
+  onResponseVersionChange,
   siblings,
 }) => {
   const { setLastResponseId } = useConversationStore();
@@ -69,8 +71,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const messageId = batch.responseId;
   const signature = messagesSignatures[messageId];
   const signatureError = messagesSignaturesErrors[messageId];
+  // Extract short error message for tooltip (without addresses)
+  const shortError = useMemo(() => {
+    if (!signatureError) return null;
+    return signatureError.includes("Message signature address:")
+      ? signatureError.split("Message signature address:")[0].trim()
+      : signatureError;
+  }, [signatureError]);
   const isBatchCompleted = batch.status === MessageStatus.COMPLETED || batch.status === MessageStatus.OUTPUT;
   const isMessageCompleted = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "completed");
+  const isMessageFinished = batch.outputMessagesIds.every((id) => allMessages[id]?.status === "failed" || allMessages[id]?.status === "completed");
 
   const handleVerificationBadgeClick = () => {
     setShouldScrollToSignatureDetails(true);
@@ -79,7 +89,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   };
 
   const verificationStatus = useMemo(() => {
-    if (!isBatchCompleted || !isMessageCompleted) {
+    if (!isBatchCompleted || !isMessageFinished) {
       return null;
     }
 
@@ -95,7 +105,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
 
     if (!hasSignature) {
       if (isImportedConversation) {
-        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX) || signatureError) {
+        if (messageId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX)) {
           return "imported";
         }
       }
@@ -109,7 +119,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageCompleted, isImportedConversation, isBatchCompleted, messageId]);
+  }, [signature, signatureError, isMessageFinished, isImportedConversation, isBatchCompleted, messageId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
@@ -133,7 +143,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
       contentItems: userPrompt.content,
       webSearchEnabled,
       conversationId: chatId,
-      previous_response_id: prevResponseId,
+      previousResponseId: prevResponseId,
       currentModels: model ? [model] : undefined,
       initiator: "regenerate",
     });
@@ -203,7 +213,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 {webSearchEnabled ? "Generating search query..." : "Generating response..."}
               </div>
             ) : messageContent ? (
-              <div className="markdown-content">
+              <div className="markdown-content wrap-break-word">
                 <MarkDown messageContent={messageContent} batchId={batch.responseId} />
               </div>
             ) : null}
@@ -238,14 +248,16 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {/* Verification Badge */}
           <div className="message-verification-badge ml-3 flex items-center">
             {verificationStatus === "failed" ? (
-              <button
-                onClick={handleVerificationBadgeClick}
-                className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"
-                title="Click to view verification details"
-              >
-                <XCircleIcon className="h-4 w-4 text-destructive-foreground" />
-                <span className="font-medium text-destructive-foreground text-xs">{t("Not Verified")}</span>
-              </button>
+              <CompactTooltip content={shortError || signatureError || t("Verification failed")} align="start">
+                <button
+                  onClick={handleVerificationBadgeClick}
+                  className="flex items-center gap-1 rounded border border-destructive bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/20"
+                  title="Click to view verification details"
+                >
+                  <XCircleIcon className="h-4 w-4 text-destructive-foreground" />
+                  <span className="font-medium text-destructive-foreground text-xs">{t("Not Verified")}</span>
+                </button>
+              </CompactTooltip>
             ) : verificationStatus === "verifying" ? (
               <div className="flex items-center gap-1 rounded border border-border px-1.5 py-0.5">
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
@@ -271,9 +283,9 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {createdTimestamp && (
             <div
               className="invisible ml-0.5 translate-y-px self-center font-medium text-muted-foreground text-xs first-letter:capitalize group-hover:visible"
-              title={formatDate(createdTimestamp * 1000)}
+              title={formatDate(createdTimestamp)}
             >
-              <span className="line-clamp-1">{formatDate(createdTimestamp * 1000)}</span>
+              <span className="line-clamp-1">{formatDate(createdTimestamp)}</span>
             </div>
           )}
         </div>
@@ -327,7 +339,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 className="text-muted-foreground"
                 onClick={() => {
                   if (siblings[siblings.indexOf(batch.responseId) - 1]) {
-                    setLastResponseId(siblings[siblings.indexOf(batch.responseId) - 1]);
+                    const index = siblings.indexOf(batch.responseId) - 1;
+                    const respId = siblings[index];
+                    setLastResponseId(respId);
+                    if (respId && model) {
+                      onResponseVersionChange?.(respId, model);
+                    }
                   }
                 }}
               >
@@ -353,7 +370,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 className="text-muted-foreground"
                 onClick={() => {
                   if (siblings[siblings.indexOf(batch.responseId) + 1]) {
-                    setLastResponseId(siblings[siblings.indexOf(batch.responseId) + 1]);
+                    const index = siblings.indexOf(batch.responseId) + 1;
+                    const respId = siblings[index];
+                    setLastResponseId(respId);
+                    if (respId && model) {
+                      onResponseVersionChange?.(respId, model);
+                    }
                   }
                 }}
               >

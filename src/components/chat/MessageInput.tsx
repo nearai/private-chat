@@ -399,10 +399,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
       (msg) =>
         msg.role === ConversationRoles.ASSISTANT &&
         msg.status === "pending" &&
+        !msg.id.startsWith("mock_") &&
         msg.type !== ConversationTypes.REASONING &&
         msg.type !== ConversationTypes.WEB_SEARCH_CALL
     );
-
     return !hasUnfinishedNonReasoning;
   }, [isConversationStreamActive, allMessages]);
 
