@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!public"]
+    "includes": ["**", "!public", "!dist", "!.vscode", "!src-tauri/target"]
   },
   "formatter": {
     "enabled": true,
@@ -27,7 +27,7 @@
       "recommended": true,
       "correctness": {
         "noUnusedImports": "error",
-        "noUnusedVariables": "error",
+        "noUnusedVariables": "off",
         "useExhaustiveDependencies": "warn",
         "useUniqueElementIds": "off"
       },

@@ -3,11 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { chatClient } from "@/api/chat/client";
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
 import { queryKeys } from "@/api/query-keys";
-
+import { useUserData } from "@/api/users/queries/useUserData";
 import { useUserSettings } from "@/api/users/queries/useUserSettings";
-
 import { APP_ROUTES } from "@/pages/routes";
 import { useChatStore } from "@/stores/useChatStore";
 import {
@@ -22,7 +22,6 @@ import { ConversationRoles, ConversationTypes } from "@/types";
 import type { ContentItem } from "@/types/openai";
 import Home from "./Home";
 import NewChat from "./NewChat";
-import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import { toast } from "sonner";
 import { generateMockAIResponse } from "@/lib/utils/mock";
 
@@ -37,6 +36,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
   const setConversationInitStatus = useConversationStore((state) => state.setConversationInitStatus);
   const setConversationStreamStatus = useConversationStore((state) => state.setConversationStreamStatus);
   const userSettings = useUserSettings();
+  const { data: userData } = useUserData();
   const remoteConfig = useRemoteConfig();
 
   // Push response used for adding new response to the end of the conversation
@@ -80,6 +80,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
           type: ConversationTypes.MESSAGE,
           content: contentItems,
           model: model,
+          metadata: userData?.user
+            ? {
+                ...(userData.user.id && { author_id: userData.user.id }),
+                ...(userData.user.name && { author_name: userData.user.name }),
+              }
+            : undefined,
           previous_response_id: previousResponseId ?? draft.conversation.lastResponseId ?? undefined,
         };
         const aiMessage = generateMockAIResponse(tempId, tempRespId, model);
@@ -120,7 +126,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
       updateConversation(updatedConversation);
       return tempId;
     },
-    [selectedModels, updateConversation]
+    [selectedModels, updateConversation, userData]
   );
 
   const startStream = useCallback(

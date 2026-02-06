@@ -8,6 +8,18 @@ import type {
 } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 
+/**
+ * Generate a unique ID using crypto.randomUUID() with a fallback
+ * for environments where it's not available.
+ */
+export const generateId = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback: combine timestamp with random number to avoid duplicates
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+};
+
 // COMPLETED status is final used only for responses that generated with stream, needed to know when exactly start veryfing signature.
 // We don't have and can't mark batch commpleted from items endpoint because we combine messages on frontend.
 export const MessageStatus = {
@@ -130,7 +142,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
     {} as Record<string, ConversationItem>
   );
 
-  const responseIds = new Set(messages.map(msg => msg.response_id));
+  const responseIds = new Set(messages.map((msg) => msg.response_id));
   let rootNode: string | null = null;
 
   for (const msg of messages) {
@@ -146,7 +158,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
         nextResponseIds: [],
       };
     }
-  
+
     const previousResponseId = msg.previous_response_id;
     if (!rootNode && (!previousResponseId || !responseIds.has(previousResponseId))) {
       rootNode = msg.response_id;
@@ -154,7 +166,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
 
     if (previousResponseId) {
       history.messages[msg.response_id].parentResponseId = previousResponseId;
-      
+
       if (!history.messages[previousResponseId]) {
         history.messages[previousResponseId] = {
           status: MessageStatus.CREATED,
@@ -167,7 +179,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
           nextResponseIds: [],
         };
       }
-      
+
       if (!history.messages[previousResponseId].nextResponseIds.includes(msg.response_id)) {
         history.messages[previousResponseId].nextResponseIds.push(msg.response_id);
       }
@@ -178,7 +190,7 @@ export const combineMessagesById = (messages: ConversationItem[]) => {
       const merged = [...new Set([...existing, ...msg.next_response_ids])];
       history.messages[msg.response_id].nextResponseIds = merged;
     }
-    
+
     switch (msg.type) {
       case "reasoning":
         history.messages[msg.response_id].reasoningMessagesIds.push(msg.id);

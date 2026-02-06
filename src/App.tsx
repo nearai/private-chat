@@ -18,6 +18,8 @@ import { useModels } from "./api/models/queries";
 import { useUserData } from "./api/users/queries/useUserData";
 import { posthogPageView, posthogReset } from "./lib/posthog";
 import ChatController from "./pages/ChatController";
+import ConversationWrapper from "./pages/ConversationWrapper";
+import SharedPage from "./pages/SharedPage";
 import { useUserStore } from "./stores/useUserStore";
 import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
@@ -79,6 +81,7 @@ function App() {
       <div className="relative h-screen">
         <Toaster />
         <Routes>
+          {/* Protected routes - require authentication */}
           <Route
             element={
               <ProtectedRoute>
@@ -87,7 +90,7 @@ function App() {
             }
           >
             <Route index element={<ChatController />} />
-            <Route path="c/:chatId" element={<ChatController />} />
+            <Route path={APP_ROUTES.SHARED} element={<SharedPage />} />
 
             <Route
               element={
@@ -105,6 +108,10 @@ function App() {
               {/* <Route path={APP_ROUTES.PLAYGROUND} element={<Playground />} /> */}
             </Route>
           </Route>
+
+          {/* Conversation route - accessible with or without auth */}
+          {/* Uses ConversationWrapper to determine authenticated vs public view */}
+          <Route path="c/:chatId" element={<ConversationWrapper />} />
 
           <Route path={APP_ROUTES.WELCOME} element={<WelcomePage />} />
           <Route path={APP_ROUTES.AUTH} element={<AuthPage />} />

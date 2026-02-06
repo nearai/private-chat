@@ -16,6 +16,12 @@ export const CHAT_API_BASE_URL = (
   "https://private.near.ai"
 ).replace(/\/+$/, "");
 
+// Cloud API URL for model list, organization management, etc.
+// Falls back to CHAT_API_BASE_URL if not set (production uses same URL)
+export const CLOUD_API_BASE_URL = (
+  import.meta.env.VITE_CLOUD_API_URL ||
+  CHAT_API_BASE_URL
+).replace(/\/+$/, "");
 // NEAR login URL can be different from CHAT_API_BASE_URL in some deployment scenarios
 // In development, use local dev server. In production, use the hosted app URL.
 export const NEAR_LOGIN_URL = import.meta.env.MODE === "development"

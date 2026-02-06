@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
+import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import FileDialog from "@/components/common/dialogs/FileDialog";
 import { Button } from "@/components/ui/button";
 import { type CombinedResponse, cn } from "@/lib";
@@ -15,9 +16,9 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import type { ChatStartStreamOptions, ConversationItem, ConversationUserInput } from "@/types";
 import { type ContentItem, extractFiles, extractMessageContent, getModelAndCreatedTimestamp } from "@/types/openai";
 import MarkdownTokens from "./MarkdownTokens";
-import { useGetConversation } from "@/api/chat/queries/useGetConversation";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
 import { TEMP_RESPONSE_ID } from "@/api/constants";
+import { checkIsImportedConversation } from "@/utils/conversation";
 
 interface UserMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -25,6 +26,9 @@ interface UserMessageProps {
   batchId: string;
   regenerateResponse: (options: ChatStartStreamOptions) => Promise<void>;
   siblings?: string[];
+  /** Only show author name if conversation is shared */
+  isSharedConversation?: boolean;
+  readOnly: boolean;
 }
 
 const UserMessage: React.FC<UserMessageProps> = ({
@@ -33,6 +37,8 @@ const UserMessage: React.FC<UserMessageProps> = ({
   batchId,
   regenerateResponse,
   siblings,
+  isSharedConversation,
+  readOnly,
 }) => {
   const { settings } = useSettingsStore();
   const { setLastResponseId } = useConversationStore();
@@ -46,20 +52,20 @@ const UserMessage: React.FC<UserMessageProps> = ({
   const messageFiles = extractFiles(message?.content ?? []);
   const { model } = getModelAndCreatedTimestamp(batch, allMessages);
   const { data: conversationData } = useGetConversation(chatId);
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
+  const isImportedConversation = checkIsImportedConversation(conversationData);
 
   const messageIsImported = useMemo(() => {
-    if (!conversationImportedAt) return false;
+    if (!isImportedConversation) return false;
     if (!message?.response_id) return false;
     return message.response_id.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, message?.response_id]);
+  }, [isImportedConversation, message?.response_id]);
 
   const prevMessageIsImported = useMemo(() => {
     const prevResponseId = batch?.parentResponseId || undefined;
     if (!prevResponseId) return false;
-    if (!conversationImportedAt) return false;
+    if (!isImportedConversation) return false;
     return prevResponseId.startsWith(MOCK_MESSAGE_RESPONSE_ID_PREFIX);
-  }, [conversationImportedAt, batch]);
+  }, [isImportedConversation, batch]);
 
   // Find the current index in siblings by comparing input content
   const currentSiblingIndex = useMemo(() => {
@@ -105,7 +111,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
     const currentModels: string[] = [];
     if (parentResponseId) {
       const parent = history.messages[parentResponseId];
-      if (parent && parent.nextResponseIds?.length) {
+      if (parent?.nextResponseIds?.length) {
         const msgs = parent.nextResponseIds
           .map((respId) => {
             const batch = Object.values(history.messages).find(
@@ -259,9 +265,11 @@ const UserMessage: React.FC<UserMessageProps> = ({
                           Cancel
                         </Button>
                       </div>
-                      <div className={cn({
-                        "cursor-not-allowed! opacity-40!": disabledSendButton,
-                      })}>
+                      <div
+                        className={cn({
+                          "cursor-not-allowed! opacity-40!": disabledSendButton,
+                        })}
+                      >
                         <Button
                           id="confirm-edit-message-button"
                           onClick={handleSave}
@@ -276,7 +284,13 @@ const UserMessage: React.FC<UserMessageProps> = ({
                 </div>
               ) : (
                 <div className="w-full">
-                  <div className="flex w-full justify-end pb-1">
+                  <div className="flex w-full flex-col items-end pb-1">
+                    {/* Show author name only for shared conversations */}
+                    {isSharedConversation && message.metadata?.author_name && (
+                      <div className="mr-2 mb-1 text-muted-foreground text-xs">
+                        {message.metadata.author_name as string}
+                      </div>
+                    )}
                     <div className="max-w-[90%] rounded-xl bg-card px-4 py-2">
                       {messageContent && (
                         <div className="markdown-content wrap-break-word">
@@ -343,7 +357,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </>
                     )}
 
-                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && (
+                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && !readOnly && (
                       <Button
                         variant="ghost"
                         size="icon"

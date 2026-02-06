@@ -30,6 +30,7 @@ export interface ConversationInfo {
     archived_at?: string;
     imported_at?: string;
     initial_created_at?: string;
+    cloned_from_id?: string;
     root_response_id?: string;
   };
 }
@@ -58,6 +59,13 @@ export enum ConversationRoles {
   SYSTEM = "system",
 }
 
+/** Metadata attached to messages, includes author info for shared conversations */
+export interface MessageMetadata {
+  author_id?: string;
+  author_name?: string;
+  [key: string]: unknown;
+}
+
 export interface ConversationUserInput {
   type: ConversationTypes.MESSAGE;
   id: string;
@@ -69,6 +77,7 @@ export interface ConversationUserInput {
   content: ContentItem[];
   model: string;
   previous_response_id?: string;
+  metadata?: MessageMetadata;
 }
 
 export interface ConversationModelOutput {
@@ -126,6 +135,83 @@ export interface ConversationItemsResponse {
 }
 
 export type Conversation = ConversationInfo & ConversationItemsResponse;
+
+export type SharePermission = "read" | "write";
+export type ShareRecipientKind = "email" | "near_account";
+export type ShareType = "direct" | "group" | "organization" | "public";
+
+export interface ShareRecipient {
+  kind: ShareRecipientKind;
+  value: string;
+}
+
+export type ShareTargetRequest =
+  | {
+    mode: "direct";
+    recipients: ShareRecipient[];
+  }
+  | {
+    mode: "group";
+    group_id: string;
+  }
+  | {
+    mode: "organization";
+    email_pattern: string;
+  }
+  | {
+    mode: "public";
+  };
+
+export interface ConversationShareInfo {
+  id: string;
+  conversation_id: string;
+  permission: SharePermission;
+  share_type: ShareType;
+  recipient: ShareRecipient | null;
+  group_id: string | null;
+  org_email_pattern: string | null;
+  public_token: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OwnerInfo {
+  user_id: string;
+  name?: string;
+}
+
+export interface ConversationSharesListResponse {
+  is_owner: boolean;
+  can_share: boolean;
+  /** Whether the user can send messages (has write access) */
+  can_write: boolean;
+  shares: ConversationShareInfo[];
+  /** Owner information for displaying author names on messages */
+  owner?: OwnerInfo;
+}
+
+export interface ShareGroup {
+  id: string;
+  name: string;
+  members: ShareRecipient[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateConversationShareRequest {
+  permission: SharePermission;
+  target: ShareTargetRequest;
+}
+
+export interface CreateShareGroupRequest {
+  name: string;
+  members: ShareRecipient[];
+}
+
+export interface UpdateShareGroupRequest {
+  name?: string;
+  members?: ShareRecipient[];
+}
 
 // export interface Conversation extends OpenAIConversation {
 //   // ConversationItemsPage properties

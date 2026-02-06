@@ -23,13 +23,14 @@ import type {
 import type { VerificationStatus } from "../types";
 import MessagesVerifier from "./MessagesVerifier";
 import ModelVerifier from "./ModelVerifier";
+import { checkIsImportedConversation } from "@/utils/conversation";
 
 const ChatVerifier: React.FC = () => {
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
   const { selectedModels, models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
-  const conversationImportedAt = conversationData?.metadata?.imported_at;
+  const isImportedConversation = checkIsImportedConversation(conversationData);
 
   // Count verifiable and anonymized models
   const modelCounts = useMemo(() => {
@@ -143,7 +144,7 @@ const ChatVerifier: React.FC = () => {
 
   const renderError = () => {
     if (!modelVerificationStatus?.error) return null;
-    if (conversationImportedAt) return null;
+    if (isImportedConversation) return null;
     return (
       <>
         <div className="mb-3 flex items-center rounded-lg border border-destructive/30 bg-destructive/10 p-3">

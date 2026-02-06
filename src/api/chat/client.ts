@@ -14,8 +14,14 @@ import type {
   ConversationInfo,
   ConversationItem,
   ConversationItemsResponse,
+  ConversationShareInfo,
+  ConversationSharesListResponse,
+  CreateConversationShareRequest,
+  CreateShareGroupRequest,
+  ShareGroup,
   StartStreamProps,
   Tag,
+  UpdateShareGroupRequest,
 } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
 import type { ConversationStoreState } from "@/stores/useConversationStore";
@@ -116,9 +122,15 @@ class ChatClient extends ApiClient {
     );
   }
 
-  getConversation(id: string) {
+  /**
+   * Get a conversation by ID
+   * @param id - Conversation ID
+   * @param options.requiresAuth - Set to false for public conversations (default: true)
+   */
+  getConversation(id: string, options?: { requiresAuth?: boolean }) {
     return this.get<Conversation>(`/conversations/${id}`, {
       apiVersion: "v2",
+      requiresAuth: options?.requiresAuth,
     });
   }
 
@@ -150,9 +162,15 @@ class ChatClient extends ApiClient {
     return [];
   }
 
-  getConversationItems(id: string) {
+  /**
+   * Get conversation items by conversation ID
+   * @param id - Conversation ID
+   * @param options.requiresAuth - Set to false for public conversations (default: true)
+   */
+  getConversationItems(id: string, options?: { requiresAuth?: boolean }) {
     return this.get<ConversationItemsResponse>(`/conversations/${id}/items`, {
       apiVersion: "v2",
+      requiresAuth: options?.requiresAuth,
     });
   }
 
@@ -430,6 +448,62 @@ class ChatClient extends ApiClient {
 
   async deleteFile(id: string) {
     return this.delete(`/files/${id}`, { apiVersion: "v2" });
+  }
+
+  async listConversationShares(conversationId: string) {
+    return this.get<ConversationSharesListResponse>(`/conversations/${conversationId}/shares`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async createConversationShare(conversationId: string, payload: CreateConversationShareRequest) {
+    return this.post<ConversationShareInfo[]>(`/conversations/${conversationId}/shares`, payload, {
+      apiVersion: "v2",
+    });
+  }
+
+  async deleteConversationShare(conversationId: string, shareId: string) {
+    return this.delete<void>(`/conversations/${conversationId}/shares/${shareId}`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async listShareGroups() {
+    return this.get<ShareGroup[]>(`/share-groups`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async createShareGroup(payload: CreateShareGroupRequest) {
+    return this.post<ShareGroup>(`/share-groups`, payload, {
+      apiVersion: "v2",
+    });
+  }
+
+  async updateShareGroup(groupId: string, payload: UpdateShareGroupRequest) {
+    return this.patch<ShareGroup>(`/share-groups/${groupId}`, payload, {
+      apiVersion: "v2",
+    });
+  }
+
+  async deleteShareGroup(groupId: string) {
+    return this.delete<void>(`/share-groups/${groupId}`, {
+      apiVersion: "v2",
+    });
+  }
+
+  async listSharedWithMe() {
+    return this.get<
+      {
+        conversation_id: string;
+        permission: "read" | "write";
+        title: string | null;
+        created_at: number | null;
+        error: string | null;
+      }[]
+    >(`/shared-with-me`, {
+      apiVersion: "v2",
+    });
   }
 }
 

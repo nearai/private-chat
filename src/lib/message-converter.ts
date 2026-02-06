@@ -10,14 +10,22 @@ export function convertImportedMessages(
   newMessages: ConversationItem[];
   idMapping?: Record<string, string>;
 } {
-  if (!conversation.metadata?.imported_at) return {
-    newMessages: messages,
-    idMapping: {},
-  };
+  let importedAtStr = conversation.metadata?.imported_at;
+  const cloneFromId = conversation.metadata?.cloned_from_id;
+  if (cloneFromId) {
+    importedAtStr = conversation.created_at.toString();
+  }
+
+  if (!importedAtStr) {
+    return {
+      newMessages: messages,
+      idMapping: {},
+    };
+  }
 
   const result = messages.map(m => ({ ...m }));
   const importedIndices: number[] = [];
-  
+
   result.forEach((msg, index) => {
     if (isImportedMessage(conversation, msg)) {
       importedIndices.push(index);

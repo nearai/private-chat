@@ -1,26 +1,30 @@
+import { DocumentDuplicateIcon, ExclamationTriangleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { toast } from "sonner";
+import { useCloneChat } from "@/api/chat/queries/useCloneChat";
 import { useGetConversation } from "@/api/chat/queries/useGetConversation";
-
+import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
+import { useConversationShares } from "@/api/sharing/useConversationShares";
 import MessageInput from "@/components/chat/MessageInput";
 import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessages";
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
+import { CopyConversationDialog } from "@/components/chat/CopyConversationDialog";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import Spinner from "@/components/common/Spinner";
+import { Button } from "@/components/ui/button";
 import { useScrollHandler } from "@/hooks/useScrollHandler";
-
 import { analyzeSiblings, cn, combineMessages, MessageStatus } from "@/lib";
+import { unwrapMockResponseID } from "@/lib/utils/mock";
 import { useChatStore } from "@/stores/useChatStore";
 import { useConversationStore } from "@/stores/useConversationStore";
 import { useViewStore } from "@/stores/useViewStore";
-
 import { type ContentItem, type FileContentItem, generateContentFileDataForOpenAI } from "@/types/openai";
 import { MOCK_MESSAGE_RESPONSE_ID_PREFIX, USER_MESSAGE_CLASSNAME } from "@/lib/constants";
-import { unwrapMockResponseID } from "@/lib/utils/mock";
-import { useRemoteConfig } from "@/api/config/queries/useRemoteConfig";
 import type { ChatStartStreamOptions } from "@/types";
-import { useTranslation } from "react-i18next";
 
 const NEW_CHAT_KEY = "new";
 
@@ -34,18 +38,31 @@ const Home = ({
   const { t } = useTranslation("translation", { useSuspense: false });
   const [searchParams, setSearchParams] = useSearchParams();
   const { chatId } = useParams<{ chatId: string }>();
+  const navigate = useNavigate();
   const isLeftSidebarOpen = useViewStore((state) => state.isLeftSidebarOpen);
   const [inputValue, setInputValue] = useState("");
   const [modelsInitialized, setModelsInitialized] = useState(false);
   const dataInitializedRef = useRef<boolean>(false);
   const remoteConfig = useRemoteConfig();
 
+  // Get permission info for shared conversations
+  const { data: sharesData } = useConversationShares(chatId);
+  const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
+
+  // Show author names when conversation has multiple users:
+  // - You're not the owner (it's been shared with you), OR
+  // - You're the owner but have shared it with others
+  const isSharedConversation = !sharesData?.is_owner || (sharesData?.shares?.length ?? 0) > 0;
+
+  // Use the clone hook which invalidates conversation list queries
+  const cloneChat = useCloneChat();
+
   const { models, selectedModels, setSelectedModels } = useChatStore();
   const selectedModelsRef = useRef(selectedModels);
   selectedModelsRef.current = selectedModels;
   const modelsRef = useRef(models);
   modelsRef.current = models;
-  
+
   const conversationState = useConversationStore((state) => state.conversation);
   const conversationInitStatus = useConversationStore((state) => state.conversationInitStatus);
   const conversationStreamStatus = useConversationStore((state) => state.conversationStreamStatus);
@@ -62,9 +79,68 @@ const Home = ({
     return conversationStreamStatus.get(chatId) === "streaming";
   }, [chatId, conversationIsReady, conversationStreamStatus]);
 
-  const { isLoading: isConversationsLoading, data: conversationData } = useGetConversation(
-    conversationIsReady && !currentStreamIsActive ? chatId : undefined
+  // Check if this is a shared conversation with others who can write messages
+  const isSharedConversationWithWriters = useMemo(() => {
+    if (!sharesData) return false;
+    if (!sharesData.is_owner) {
+      // I'm not the owner - this is shared with me
+      return true;
+    }
+    // I'm the owner - check if shared with others who can write
+    return (sharesData.shares ?? []).some((share) => share.permission === "write");
+  }, [sharesData]);
+
+  // Enable auto-refresh for shared conversations every 60 seconds,
+  // but disable while streaming to avoid conflicts
+  const {
+    isLoading: isConversationsLoading,
+    data: conversationData,
+    error: conversationError,
+  } = useGetConversation(
+    conversationIsReady && !currentStreamIsActive ? chatId : undefined,
+    {
+      polling: isSharedConversationWithWriters,
+      pollingInterval: 60000, // 60 seconds
+    },
   );
+
+  // Parse error type for proper display
+  const errorInfo = useMemo(() => {
+    if (!conversationError) return null;
+
+    const errorMessage = conversationError instanceof Error ? conversationError.message : String(conversationError);
+
+    // Check for specific error types
+    const isAccessDenied =
+      errorMessage.toLowerCase().includes("access denied") ||
+      errorMessage.toLowerCase().includes("forbidden") ||
+      errorMessage.includes("403");
+    const isNotFound = errorMessage.toLowerCase().includes("not found") || errorMessage.includes("404");
+
+    if (isAccessDenied) {
+      return {
+        type: "access_denied" as const,
+        title: "Access Denied",
+        message: "You don't have permission to view this conversation.",
+        icon: LockClosedIcon,
+      };
+    }
+    if (isNotFound) {
+      return {
+        type: "not_found" as const,
+        title: "Conversation Not Found",
+        message: "This conversation doesn't exist or has been deleted.",
+        icon: ExclamationTriangleIcon,
+      };
+    }
+    return {
+      type: "unknown" as const,
+      title: "Unable to Load Conversation",
+      message: errorMessage || "An unexpected error occurred while loading this conversation.",
+      icon: ExclamationTriangleIcon,
+    };
+  }, [conversationError]);
+
   const setConversationData = useConversationStore((state) => state.setConversationData);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
@@ -98,7 +174,31 @@ const Home = ({
     [chatId, scrollToBottom, startStream]
   );
 
+  const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+
+  const handleCopyAndContinue = useCallback(async () => {
+    if (!chatId) return;
+
+    try {
+      const clonedChat = await cloneChat.mutateAsync({ id: chatId });
+      toast.success("Conversation copied to your account");
+      setIsCopyDialogOpen(false);
+      // Navigate to the cloned conversation
+      if (clonedChat && typeof clonedChat === "object" && "id" in clonedChat) {
+        navigate(`/c/${clonedChat.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to clone conversation:", err);
+      toast.error("Failed to copy conversation");
+    }
+  }, [chatId, cloneChat, navigate]);
+
+  const handleCopyClick = useCallback(() => {
+    setIsCopyDialogOpen(true);
+  }, []);
+
   useEffect(() => {
+    if (isSharedConversationWithWriters) return;
     if (!chatId || !conversationData) return;
     const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (conversationState?.conversationId !== chatId) {
@@ -128,6 +228,7 @@ const Home = ({
     }
     setModelsInitialized(false);
   }, [
+    isSharedConversationWithWriters,
     chatId,
     searchParams,
     conversationState?.conversationId,
@@ -137,6 +238,23 @@ const Home = ({
     conversationData,
     setConversationData,
     setSearchParams
+  ]);
+
+  useEffect(() => {
+    if (!isSharedConversationWithWriters) return;
+    if (!chatId || !conversationData) return;
+    if (isConversationsLoading || currentStreamIsActive) return;
+    if (!conversationIsReady) return;
+    if (!conversationData.data?.length) return;
+    setConversationData(conversationData);
+  }, [
+    isSharedConversationWithWriters,
+    chatId,
+    isConversationsLoading,
+    currentStreamIsActive,
+    conversationIsReady,
+    conversationData,
+    setConversationData,
   ]);
 
   const isMessageCompleted = useMemo(() => {
@@ -150,84 +268,91 @@ const Home = ({
   const batches = conversationState?.batches ?? [];
   const renderedMessages = useMemo(() => {
     if (!batches.length) return [];
-  
-    return batches.filter((batch) => {
-      const batchMessage = history.messages[batch];
-      return !!batchMessage;
-    }).map((batch, idx) => {
-      const isLast = idx === currentMessages.length - 1;
-      const batchMessage = history.messages[batch];
-      if (!batchMessage) return null;
-      if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
-        const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
-        return (
-          <UserMessage
-            key={batchMessage.userPromptId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            regenerateResponse={startStream}
-            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
-          />
-        );
-      }
-      if (
-        !batchMessage.outputMessagesIds.length &&
-        !batchMessage.reasoningMessagesIds.length &&
-        !batchMessage.webSearchMessagesIds.length
-      ) {
-        return null;
-      }
-      const messages = [];
 
-      // Analyze siblings to determine if they're input variants or response variants
-      const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
-      if (batchMessage.userPromptId) {
-        messages.push(
-          <UserMessage
-            key={batchMessage.userPromptId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            regenerateResponse={startStream}
-            siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
-          />
-        );
-      }
+    return batches
+      .filter((batch) => {
+        const batchMessage = history.messages[batch];
+        return !!batchMessage;
+      })
+      .map((batch, idx) => {
+        const isLast = idx === currentMessages.length - 1;
+        const batchMessage = history.messages[batch];
+        if (!batchMessage) return null;
+        if (batchMessage.status === MessageStatus.INPUT && batchMessage.userPromptId !== null) {
+          const { inputSiblings } = analyzeSiblings(batch, history, allMessages);
+          return (
+            <UserMessage
+              key={batchMessage.userPromptId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              readOnly={!canWrite}
+              regenerateResponse={startStream}
+              siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+              isSharedConversation={isSharedConversation}
+            />
+          );
+        }
+        if (
+          !batchMessage.outputMessagesIds.length &&
+          !batchMessage.reasoningMessagesIds.length &&
+          !batchMessage.webSearchMessagesIds.length
+        ) {
+          return null;
+        }
+        const messages = [];
 
-      // Show MultiResponseMessages if there are multiple responses for the same input
-      // This can happen even when there are input siblings
-      if (responseSiblings.length > 1) {
-        messages.push(
-          <MultiResponseMessages
-            key={batchMessage.parentResponseId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            currentBatchBundle={batches}
-            isLastMessage={isLast}
-            readOnly={false}
-            regenerateResponse={startStream}
-            responseSiblings={responseSiblings}
-          />
-        );
-      } else {
-        messages.push(
-          <ResponseMessage
-            key={batchMessage.responseId}
-            history={history}
-            allMessages={allMessages}
-            batchId={batch}
-            isLastMessage={isLast}
-            readOnly={false}
-            regenerateResponse={startStream}
-            siblings={[]}
-          />
-        );
-      }
-      return messages;
-    });
-  }, [batches, history, allMessages, currentMessages.length, startStream]);
+        // Analyze siblings to determine if they're input variants or response variants
+        const { inputSiblings, responseSiblings } = analyzeSiblings(batch, history, allMessages);
+
+        if (batchMessage.userPromptId) {
+          messages.push(
+            <UserMessage
+              key={batchMessage.userPromptId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              readOnly={!canWrite}
+              regenerateResponse={startStream}
+              siblings={inputSiblings.length > 1 ? inputSiblings : undefined}
+              isSharedConversation={isSharedConversation}
+            />
+          );
+        }
+
+        // Show MultiResponseMessages if there are multiple responses for the same input
+        // This can happen even when there are input siblings
+        if (responseSiblings.length > 1) {
+          messages.push(
+            <MultiResponseMessages
+              key={batchMessage.parentResponseId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              currentBatchBundle={batches}
+              isLastMessage={isLast}
+              readOnly={!canWrite}
+              regenerateResponse={startStream}
+              responseSiblings={responseSiblings}
+            />
+          );
+        } else {
+          messages.push(
+            <ResponseMessage
+              key={batchMessage.responseId}
+              history={history}
+              allMessages={allMessages}
+              batchId={batch}
+              isLastMessage={isLast}
+              readOnly={!canWrite}
+              regenerateResponse={startStream}
+              siblings={[]}
+            />
+          );
+        }
+        return messages;
+      });
+  }, [batches, history, allMessages, isSharedConversation, canWrite, currentMessages.length, startStream]);
 
   const lastBatchMessages = useMemo(() => {
     if (!batches.length) return [];
@@ -250,12 +375,13 @@ const Home = ({
 
   useEffect(() => {
     if (!chatId) return;
+
     const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (isNewChat) {
       setModelsInitialized(true);
       return;
     }
-    
+
     if (modelsInitialized) return;
     const newModels: string[] = [];
     const defaultModel = modelsRef.current.find((model) => model.modelId === remoteConfig.data?.default_model);
@@ -291,13 +417,52 @@ const Home = ({
     searchParams,
     remoteConfig.data?.default_model,
     setSelectedModels,
-    setSearchParams,
   ]);
+
+  console.log("canWrite", canWrite);
+  console.log("cloneChat.isPending", cloneChat.isPending);
+  console.log("sharesData", sharesData);
+  console.log("onCopyAndContinue", canWrite ? handleCopyAndContinue : undefined);
+
+  // Show error UI if there's an error loading the conversation
+  if (errorInfo && chatId) {
+    const ErrorIcon = errorInfo.icon;
+    return (
+      <div className="flex h-full flex-col" id="chat-container">
+        <Navbar 
+          sharesData={sharesData}
+          onCopyAndContinue={canWrite ? handleCopyClick : undefined}
+          isCopying={cloneChat.isPending}
+        />
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10">
+              <ErrorIcon className="size-8 text-destructive" />
+            </div>
+            <h1 className="font-semibold text-2xl">{errorInfo.title}</h1>
+            <p className="max-w-md text-muted-foreground">{errorInfo.message}</p>
+          </div>
+          <div className="flex gap-3">
+            <Link
+              to="/"
+              className="rounded-xl bg-secondary px-6 py-3 font-medium transition-colors hover:bg-secondary/80"
+            >
+              Go to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isLoading = !conversationIsReady;
   return (
     <div className="flex h-full flex-col" id="chat-container">
-      <Navbar />
+      <Navbar 
+        sharesData={sharesData}
+        onCopyAndContinue={canWrite ? handleCopyClick : undefined}
+        isCopying={cloneChat.isPending}
+      />
 
       {isLoading && <LoadingScreen />}
 
@@ -313,22 +478,55 @@ const Home = ({
         {renderedMessages}
       </div>
 
-      <div className="flex flex-col items-center">
-        <MessageInput
-          onSubmit={handleSendMessage}
-          prompt={inputValue}
-          setPrompt={setInputValue}
-          selectedModels={selectedModels}
-          isMessageCompleted={isMessageCompleted}
-          stopStream={stopStream}
-          isConversationStreamActive={currentStreamIsActive}
-          allMessages={allMessages}
-          autoFocusKey={chatId ?? "home"}
-        />
-        <p className="px-4 pb-4 text-muted-foreground text-xs">
-          {t('AI can make mistakes. Verify information before relying on it.')}
-        </p>
-      </div>
+      {/* Show MessageInput for users with write access, or Copy & Continue for read-only */}
+      {canWrite ? (
+        <div className="flex flex-col items-center">
+          <MessageInput
+            onSubmit={handleSendMessage}
+            prompt={inputValue}
+            setPrompt={setInputValue}
+            selectedModels={selectedModels}
+            isMessageCompleted={isMessageCompleted}
+            stopStream={stopStream}
+            isConversationStreamActive={currentStreamIsActive}
+            allMessages={allMessages}
+            autoFocusKey={chatId ?? "home"}
+          />
+          <p className="px-4 pb-4 text-muted-foreground text-xs">
+            {t("AI can make mistakes. Verify information before relying on it.")}
+          </p>
+        </div>
+      ) : (
+        sharesData && !sharesData.is_owner && (
+          <div className="w-full rounded-b-xl border-border border-t bg-muted/30 p-2 sm:p-3 md:px-6">
+            <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-3">
+              <div className="flex flex-col text-center sm:gap-1 sm:text-left">
+                <p className="font-medium text-sm">Want to continue this conversation?</p>
+                <p className="text-muted-foreground text-xs">
+                  Copy this conversation to your account and continue where it left off
+                </p>
+              </div>
+              <Button size="small" onClick={handleCopyClick} disabled={cloneChat.isPending} className="px-4!">
+                {cloneChat.isPending ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  <DocumentDuplicateIcon className="mr-1 size-4" />
+                )}
+                Copy & Continue
+              </Button>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* Copy Conversation Confirmation Dialog */}
+      <CopyConversationDialog
+        open={isCopyDialogOpen}
+        onOpenChange={setIsCopyDialogOpen}
+        conversationTitle={conversationState?.conversation?.metadata?.title}
+        onConfirm={handleCopyAndContinue}
+        isCopying={cloneChat.isPending}
+      />
     </div>
   );
 };

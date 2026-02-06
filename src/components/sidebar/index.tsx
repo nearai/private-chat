@@ -1,9 +1,11 @@
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useLocation } from "react-router";
+import { ShareIcon } from "@heroicons/react/24/outline";
 
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
+import { useSharedWithMe } from "@/api/sharing/useSharedWithMe";
 
 import ChatArrowDown from "@/assets/icons/chat-arrow-down.svg?react";
 import FeedbackIcon from "@/assets/icons/feedback.svg?react";
@@ -14,6 +16,7 @@ import { cn } from "@/lib";
 import { getTimeRange } from "@/lib/time";
 import { useViewStore } from "@/stores/useViewStore";
 import type { ConversationInfo } from "@/types";
+import { APP_ROUTES } from "@/pages/routes";
 import { Button } from "../ui/button";
 import ChatItem from "./ChatItem";
 import UserMenu from "./UserMenu";
@@ -32,6 +35,7 @@ const getCrispWindow = (): CrispWindow | undefined => {
 
 const LeftSidebar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation("translation", { useSuspense: false });
   const { chatId } = useParams();
   const { isLeftSidebarOpen, setIsLeftSidebarOpen, isMobile } = useViewStore();
@@ -50,6 +54,7 @@ const LeftSidebar: React.FC = () => {
   };
 
   const { data: conversations, isLoading } = useGetConversations();
+  const { data: sharedWithMe } = useSharedWithMe();
 
   const [isPinnedOpen, setIsPinnedOpen] = useState(true);
   const [isChatsOpen, setIsChatsOpen] = useState(true);
@@ -131,6 +136,26 @@ const LeftSidebar: React.FC = () => {
             <FeedbackIcon />
             <p className="text-sm">{t("Feedback")}</p>
           </Button>
+
+          {sharedWithMe && sharedWithMe.length > 0 && (
+            <Button
+              variant="ghost"
+              type="button"
+              className={cn(
+                "flex h-9 w-full justify-start rounded-xl",
+                location.pathname === APP_ROUTES.SHARED && "bg-accent"
+              )}
+              asChild
+            >
+              <Link to={APP_ROUTES.SHARED} onClick={handleMobileNavigation}>
+                <ShareIcon className="size-4" />
+                <p className="text-sm">{t("Shared with me")}</p>
+                <span className="ml-auto text-muted-foreground text-xs">
+                  {sharedWithMe.length}
+                </span>
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Loading */}
