@@ -43,6 +43,26 @@ export default defineConfig({
                 url.pathname.startsWith("/docs") ||
                 url.pathname.startsWith("/health") ||
                 url.pathname.startsWith("/api-docs");
+              return sameOrigin && !isApi && url.pathname.endsWith(".html");
+            },
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-pages",
+              expiration: {
+                maxAgeSeconds: 3600, // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
+          {
+            urlPattern: ({ url, sameOrigin }) => {
+              const isApi =
+                url.pathname.startsWith("/v1/") ||
+                url.pathname.startsWith("/docs") ||
+                url.pathname.startsWith("/health") ||
+                url.pathname.startsWith("/api-docs");
                 return (
                   sameOrigin &&
                   !isApi &&
