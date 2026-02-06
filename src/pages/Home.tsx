@@ -12,6 +12,7 @@ import MultiResponseMessages from "@/components/chat/messages/MultiResponseMessa
 import ResponseMessage from "@/components/chat/messages/ResponseMessage";
 import UserMessage from "@/components/chat/messages/UserMessage";
 import Navbar from "@/components/chat/Navbar";
+import { CopyConversationDialog } from "@/components/chat/CopyConversationDialog";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
@@ -173,12 +174,15 @@ const Home = ({
     [chatId, scrollToBottom, startStream]
   );
 
+  const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+
   const handleCopyAndContinue = useCallback(async () => {
     if (!chatId) return;
 
     try {
       const clonedChat = await cloneChat.mutateAsync({ id: chatId });
       toast.success("Conversation copied to your account");
+      setIsCopyDialogOpen(false);
       // Navigate to the cloned conversation
       if (clonedChat && typeof clonedChat === "object" && "id" in clonedChat) {
         navigate(`/c/${clonedChat.id}`);
@@ -188,6 +192,10 @@ const Home = ({
       toast.error("Failed to copy conversation");
     }
   }, [chatId, cloneChat, navigate]);
+
+  const handleCopyClick = useCallback(() => {
+    setIsCopyDialogOpen(true);
+  }, []);
 
   useEffect(() => {
     if (isSharedConversationWithWriters) return;
@@ -365,34 +373,6 @@ const Home = ({
     }) as typeof allMessages[string][];
   }, [history, batches, allMessages]);
 
-  const renderCopyConversationButton = () => {
-    if (!sharesData || sharesData.is_owner) return null;
-    return (
-      <div className="w-full rounded-b-xl border-border border-t bg-muted/30 p-2 sm:p-3 md:px-6">
-        <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-3">
-          <div className="flex flex-col text-center sm:gap-1 sm:text-left">
-            <p className="font-medium text-sm">Want to continue this conversation?</p>
-            <p className="text-muted-foreground text-xs">
-              Copy this conversation to your account and continue where it left off
-            </p>
-          </div>
-          <Button size="small"
-            onClick={handleCopyAndContinue}
-            disabled={cloneChat.isPending}
-            className="px-4!"
-          >
-            {cloneChat.isPending ? (
-              <Spinner className="size-4" />
-            ) : (
-              <DocumentDuplicateIcon className="mr-1 size-4" />
-            )}
-            Copy & Continue
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   useEffect(() => {
     if (!chatId) return;
 
@@ -439,12 +419,21 @@ const Home = ({
     setSelectedModels,
   ]);
 
+  console.log("canWrite", canWrite);
+  console.log("cloneChat.isPending", cloneChat.isPending);
+  console.log("sharesData", sharesData);
+  console.log("onCopyAndContinue", canWrite ? handleCopyAndContinue : undefined);
+
   // Show error UI if there's an error loading the conversation
   if (errorInfo && chatId) {
     const ErrorIcon = errorInfo.icon;
     return (
       <div className="flex h-full flex-col" id="chat-container">
-        <Navbar />
+        <Navbar 
+          sharesData={sharesData}
+          onCopyAndContinue={canWrite ? handleCopyClick : undefined}
+          isCopying={cloneChat.isPending}
+        />
         <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10">
@@ -469,7 +458,11 @@ const Home = ({
   const isLoading = !conversationIsReady;
   return (
     <div className="flex h-full flex-col" id="chat-container">
-      <Navbar />
+      <Navbar 
+        sharesData={sharesData}
+        onCopyAndContinue={canWrite ? handleCopyClick : undefined}
+        isCopying={cloneChat.isPending}
+      />
 
       {isLoading && <LoadingScreen />}
 
@@ -502,9 +495,38 @@ const Home = ({
           <p className="px-4 pb-4 text-muted-foreground text-xs">
             {t("AI can make mistakes. Verify information before relying on it.")}
           </p>
-          {renderCopyConversationButton()}
         </div>
-      ) : renderCopyConversationButton()}
+      ) : (
+        sharesData && !sharesData.is_owner && (
+          <div className="w-full rounded-b-xl border-border border-t bg-muted/30 p-2 sm:p-3 md:px-6">
+            <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-3">
+              <div className="flex flex-col text-center sm:gap-1 sm:text-left">
+                <p className="font-medium text-sm">Want to continue this conversation?</p>
+                <p className="text-muted-foreground text-xs">
+                  Copy this conversation to your account and continue where it left off
+                </p>
+              </div>
+              <Button size="small" onClick={handleCopyClick} disabled={cloneChat.isPending} className="px-4!">
+                {cloneChat.isPending ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  <DocumentDuplicateIcon className="mr-1 size-4" />
+                )}
+                Copy & Continue
+              </Button>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* Copy Conversation Confirmation Dialog */}
+      <CopyConversationDialog
+        open={isCopyDialogOpen}
+        onOpenChange={setIsCopyDialogOpen}
+        conversationTitle={conversationState?.conversation?.metadata?.title}
+        onConfirm={handleCopyAndContinue}
+        isCopying={cloneChat.isPending}
+      />
     </div>
   );
 };

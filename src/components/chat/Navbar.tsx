@@ -1,4 +1,4 @@
-import { GlobeAltIcon, ShareIcon } from "@heroicons/react/24/outline";
+import { DocumentDuplicateIcon, GlobeAltIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useConversationShares } from "@/api/sharing/useConversationShares";
@@ -6,20 +6,28 @@ import PencilIcon from "@/assets/icons/pencil-icon.svg?react";
 import ShieldIcon from "@/assets/icons/shield.svg?react";
 import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { useViewStore } from "@/stores/useViewStore";
+import Spinner from "@/components/common/Spinner";
 import { Button } from "../ui/button";
 import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
 import ShareConversationDialog from "./ShareConversationDialog";
 
-export default function Navbar() {
+interface NavbarProps {
+  sharesData?: ReturnType<typeof useConversationShares>["data"];
+  onCopyAndContinue?: () => void;
+  isCopying?: boolean;
+}
+
+export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, isCopying }: NavbarProps = {} as NavbarProps) {
   const { isLeftSidebarOpen, isRightSidebarOpen, setIsRightSidebarOpen, setIsLeftSidebarOpen } = useViewStore();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   const navigate = useNavigate();
   const { chatId } = useParams<{ chatId?: string }>();
 
-  // Check sharing status
-  const { data: sharesData } = useConversationShares(chatId);
+  // Check sharing status - use prop if provided, otherwise fetch
+  const { data: hookSharesData } = useConversationShares(chatId);
+  const sharesData = propSharesData ?? hookSharesData;
   const isPublic = sharesData?.shares?.some((share) => share.share_type === "public") ?? false;
   const hasShares = (sharesData?.shares?.length ?? 0) > 0;
 
@@ -80,6 +88,18 @@ export default function Navbar() {
             </div>
 
             <div className="flex h-fit items-center gap-2">
+              {chatId && sharesData && !sharesData.is_owner && onCopyAndContinue && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCopyAndContinue}
+                  disabled={isCopying}
+                  className="size-8 text-muted-foreground"
+                  title="Copy conversation"
+                >
+                  {isCopying ? <Spinner className="size-4" /> : <DocumentDuplicateIcon className="size-4.5" />}
+                </Button>
+              )}
               {chatId && (
                 <div className="relative">
                   <Button
