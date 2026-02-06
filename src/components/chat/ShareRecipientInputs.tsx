@@ -113,7 +113,6 @@ export const ShareRecipientInputs = ({
                   <TrashIcon className="size-4" />
                 </Button>
               )}
-              {(!allowMultiple || recipients.length === 1) && index === recipients.length - 1 && <div className="hidden" />}
             </div>
             {error && <p className="ml-1 font-medium text-[11px] text-destructive tracking-wide">{error}</p>}
           </div>

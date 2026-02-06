@@ -364,7 +364,6 @@ const Home = ({
   useEffect(() => {
     if (!chatId) return;
 
-    const NEW_CHAT_KEY = "new";
     const isNewChat = searchParams.has(NEW_CHAT_KEY);
     if (isNewChat) {
       setModelsInitialized(true);

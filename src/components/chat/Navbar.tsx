@@ -88,6 +88,7 @@ export default function Navbar() {
                     onClick={() => setIsShareDialogOpen(true)}
                     className="size-8 text-muted-foreground"
                     title="Share"
+                    aria-label="Share conversation"
                   >
                     <ShareIcon className="size-4.5" />
                   </Button>

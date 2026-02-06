@@ -14,6 +14,7 @@ export const useDeleteConversationShare = () => {
       chatClient.deleteConversationShare(conversationId, shareId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.share.byConversationId(variables.conversationId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sharing.sharedWithMe });
     },
   });
 };
