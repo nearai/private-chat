@@ -415,8 +415,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const renderSendButton = () => {
     if (isConversationStreamActive) {
       return (
-        <div className="mr-1 flex shrink-0 space-x-1 self-end">
+        <div className="mr-1 flex shrink-0 select-none space-x-1 self-end">
           <Button
+            key="stop-button"
             id="stop-message-button"
             className={cn("size-10 rounded-full", {
               'cursor-not-allowed!': disabledStopButton,
@@ -433,10 +434,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
 
     return (
-        <div className={cn("mr-1 flex shrink-0 space-x-1 self-end", {
+        <div className={cn("mr-1 flex shrink-0 select-none space-x-1 self-end", {
           'cursor-not-allowed!': disabledSendButton,
         })}>
           <Button
+            key="send-button"
             id="send-message-button"
             className="size-10 rounded-full"
             type="submit"
