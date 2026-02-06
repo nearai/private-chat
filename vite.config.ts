@@ -33,9 +33,29 @@ export default defineConfig({
           /^\/health$/,
           /^\/api-docs(\/|$)/,
         ],
-        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
+        globPatterns: ["**/*.{js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) => {
+              const isApi =
+                url.pathname.startsWith("/v1/") ||
+                url.pathname.startsWith("/docs") ||
+                url.pathname.startsWith("/health") ||
+                url.pathname.startsWith("/api-docs");
+              return sameOrigin && !isApi && url.pathname.endsWith(".html");
+            },
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-pages",
+              expiration: {
+                maxAgeSeconds: 3600, // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
           {
             urlPattern: ({ url, sameOrigin }) => {
               const isApi =
@@ -46,8 +66,7 @@ export default defineConfig({
                 return (
                   sameOrigin &&
                   !isApi &&
-                  (url.pathname.endsWith(".html") ||
-                    url.pathname.endsWith(".js") ||
+                  (url.pathname.endsWith(".js") ||
                     url.pathname.endsWith(".css") ||
                     url.pathname.endsWith(".png") ||
                     url.pathname.endsWith(".jpg"))
