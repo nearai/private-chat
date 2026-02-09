@@ -1,6 +1,8 @@
 import { APP_NAME } from "@/api/constants";
 
 const AboutSettings = () => {
+  const commitHash = import.meta.env.VITE_GIT_COMMIT_HASH;
+
   return (
     <div className="flex h-full flex-col justify-between text-sm">
       <div className="max-h-112 space-y-3 overflow-y-scroll lg:max-h-full">
@@ -8,6 +10,11 @@ const AboutSettings = () => {
           <div className="mb-2.5 flex items-center space-x-2 font-medium text-sm">
             <div>{APP_NAME}</div>
           </div>
+          {commitHash && commitHash !== "unknown" && (
+            <div className="mt-2 text-muted-foreground text-xs">
+              Commit: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{commitHash}</code>
+            </div>
+          )}
         </div>
 
         <hr className="border-border" />
