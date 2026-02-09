@@ -1,6 +1,8 @@
 import { APP_NAME } from "@/api/constants";
 
 const AboutSettings = () => {
+  const commitHash = __GIT_COMMIT_HASH__;
+
   return (
     <div className="flex h-full flex-col justify-between text-sm">
       <div className="max-h-112 space-y-3 overflow-y-scroll lg:max-h-full">
@@ -8,6 +10,19 @@ const AboutSettings = () => {
           <div className="mb-2.5 flex items-center space-x-2 font-medium text-sm">
             <div>{APP_NAME}</div>
           </div>
+          {commitHash && commitHash !== "unknown" && (
+            <div className="mt-3 text-xs">
+              <span className="text-muted-foreground">Code Hash: </span>
+              <a
+                href={`https://github.com/nearai/private-chat/commit/${commitHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-foreground transition-colors hover:text-muted-foreground hover:underline"
+              >
+                {commitHash}
+              </a>
+            </div>
+          )}
         </div>
 
         <hr className="border-border" />
