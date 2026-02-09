@@ -5,7 +5,7 @@ import { defineConfig, type PluginOption } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 import svgr from "vite-plugin-svgr";
-import { version } from './package.json';
+import { version } from "./package.json";
 
 // https://vite.dev/config/
 export default defineConfig({

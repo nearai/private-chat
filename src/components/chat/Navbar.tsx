@@ -114,7 +114,6 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
                   {hasShares && <span className="-top-0.5 -right-0.5 absolute size-3 rounded-full bg-green-500" />}
                 </div>
               )}
-              {/* {chatId && <ChatOptions chatId={chatId} />} */}
               {!isRightSidebarOpen && (
                 <Button
                   variant="ghost"
