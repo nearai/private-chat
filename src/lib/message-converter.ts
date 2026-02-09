@@ -54,39 +54,6 @@ export function convertImportedMessages(
       );
     }
   });
-  Object.keys(idMapping).forEach((oldId) => {
-    const newId = idMapping[oldId];
-    const msgs = result.filter((m) => m.response_id === newId);
-    msgs.forEach((msg) => {
-      const msgIndex = result.indexOf(msg);
-      if (msgIndex === -1) return;
-      // Connect with previous
-      if (msgIndex > 0) {
-        const prevMsg = result[msgIndex - 1];
-        if (prevMsg.response_id === msg.response_id) {
-          msg.previous_response_id = undefined;
-        } else {
-          msg.previous_response_id = prevMsg.response_id;
-          prevMsg.next_response_ids = [msg.response_id];
-        }
-      } else {
-        msg.previous_response_id = undefined;
-      }
-
-      // Connect with next
-      if (msgIndex < result.length - 1) {
-        const nextMsg = result[msgIndex + 1];
-        if (nextMsg.response_id === msg.response_id) {
-          msg.next_response_ids = [];
-          return;
-        }
-        msg.next_response_ids = [nextMsg.response_id];
-        nextMsg.previous_response_id = msg.response_id;
-      } else {
-        msg.next_response_ids = [];
-      }
-    });
-  });
 
   return {
     newMessages: result,
