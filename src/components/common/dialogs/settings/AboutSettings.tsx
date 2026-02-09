@@ -11,8 +11,9 @@ const AboutSettings = () => {
             <div>{APP_NAME}</div>
           </div>
           {commitHash && commitHash !== "unknown" && (
-            <div className="mt-2 text-muted-foreground text-xs">
-              Commit: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{commitHash}</code>
+            <div className="mt-3 text-xs">
+              <span className="text-muted-foreground">Code Hash: </span>
+              <span className="font-mono text-foreground">{commitHash}</span>
             </div>
           )}
         </div>
