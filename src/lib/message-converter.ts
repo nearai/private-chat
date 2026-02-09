@@ -24,30 +24,24 @@ export function convertImportedMessages(
   }
 
   const result = messages.map(m => ({ ...m }));
-  const importedIndices: number[] = [];
+  const idMapping: Record<string, string> = {};
 
   result.forEach((msg, index) => {
     if (isImportedMessage(conversation, msg)) {
-      importedIndices.push(index);
+      if (msg.response_id in idMapping) {
+        msg.response_id = idMapping[msg.response_id];
+        return;
+      }
+      idMapping[msg.response_id] = wrapMockResponseID(msg.response_id, index);
+      msg.response_id = idMapping[msg.response_id];
     }
   });
-  if (importedIndices.length === 0) {
+  if (Object.keys(idMapping).length === 0) {
     return {
       newMessages: result,
       idMapping: {},
     };
   }
-
-  const idMapping: Record<string, string> = {};
-
-  // 1. Update IDs for imported messages and record mapping
-  importedIndices.forEach((index) => {
-    const oldId = result[index].response_id;
-    const newId = wrapMockResponseID(oldId, index);
-
-    result[index].response_id = newId;
-    idMapping[oldId] = newId;
-  });
 
   result.forEach((msg) => {
     if (msg.previous_response_id && idMapping[msg.previous_response_id]) {
@@ -60,27 +54,38 @@ export function convertImportedMessages(
       );
     }
   });
+  Object.keys(idMapping).forEach((oldId) => {
+    const newId = idMapping[oldId];
+    const msgs = result.filter((m) => m.response_id === newId);
+    msgs.forEach((msg) => {
+      const msgIndex = result.indexOf(msg);
+      if (msgIndex === -1) return;
+      // Connect with previous
+      if (msgIndex > 0) {
+        const prevMsg = result[msgIndex - 1];
+        if (prevMsg.response_id === msg.response_id) {
+          msg.previous_response_id = undefined;
+        } else {
+          msg.previous_response_id = prevMsg.response_id;
+          prevMsg.next_response_ids = [msg.response_id];
+        }
+      } else {
+        msg.previous_response_id = undefined;
+      }
 
-  importedIndices.forEach((index) => {
-    const msg = result[index];
-
-    // Connect with previous
-    if (index > 0) {
-      const prevMsg = result[index - 1];
-      msg.previous_response_id = prevMsg.response_id;
-      prevMsg.next_response_ids = [msg.response_id];
-    } else {
-      msg.previous_response_id = undefined;
-    }
-
-    // Connect with next
-    if (index < result.length - 1) {
-      const nextMsg = result[index + 1];
-      msg.next_response_ids = [nextMsg.response_id];
-      nextMsg.previous_response_id = msg.response_id;
-    } else {
-      msg.next_response_ids = [];
-    }
+      // Connect with next
+      if (msgIndex < result.length - 1) {
+        const nextMsg = result[msgIndex + 1];
+        if (nextMsg.response_id === msg.response_id) {
+          msg.next_response_ids = [];
+          return;
+        }
+        msg.next_response_ids = [nextMsg.response_id];
+        nextMsg.previous_response_id = msg.response_id;
+      } else {
+        msg.next_response_ids = [];
+      }
+    });
   });
 
   return {
