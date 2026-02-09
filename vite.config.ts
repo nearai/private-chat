@@ -33,9 +33,29 @@ export default defineConfig({
           /^\/health$/,
           /^\/api-docs(\/|$)/,
         ],
-        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf}"],
+        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf,webp}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin, request }) => {
+              const isApi =
+                url.pathname.startsWith("/v1/") ||
+                url.pathname.startsWith("/docs") ||
+                url.pathname.startsWith("/health") ||
+                url.pathname.startsWith("/api-docs");
+              return sameOrigin && !isApi && request.mode === "navigate";
+            },
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-pages",
+              expiration: {
+                maxAgeSeconds: 600, // 10 minutes
+              },
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
           {
             urlPattern: ({ url, sameOrigin }) => {
               const isApi =
@@ -43,22 +63,25 @@ export default defineConfig({
                 url.pathname.startsWith("/docs") ||
                 url.pathname.startsWith("/health") ||
                 url.pathname.startsWith("/api-docs");
-                return (
-                  sameOrigin &&
-                  !isApi &&
-                  (url.pathname.endsWith(".html") ||
-                    url.pathname.endsWith(".js") ||
-                    url.pathname.endsWith(".css") ||
-                    url.pathname.endsWith(".png") ||
-                    url.pathname.endsWith(".jpg"))
-                );
+              return (
+                sameOrigin &&
+                !isApi &&
+                (url.pathname.endsWith(".js") ||
+                  url.pathname.endsWith(".css") ||
+                  url.pathname.endsWith(".png") ||
+                  url.pathname.endsWith(".svg") ||
+                  url.pathname.endsWith(".jpg") ||
+                  url.pathname.endsWith(".webp") ||
+                  url.pathname.endsWith(".woff") ||
+                  url.pathname.endsWith(".woff2"))
+              );
             },
             handler: "CacheFirst",
             options: {
               cacheName: "static-resources",
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 86400,
+                maxEntries: 500,
+                maxAgeSeconds: 604800, // 7 days
               },
               cacheableResponse: {
                 statuses: [200],
