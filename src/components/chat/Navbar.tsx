@@ -8,7 +8,6 @@ import SidebarIcon from "@/assets/icons/sidebar.svg?react";
 import { useViewStore } from "@/stores/useViewStore";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "../ui/button";
-import ChatOptions from "./ChatOptions";
 import ModelSelector from "./ModelSelector";
 import ShareConversationDialog from "./ShareConversationDialog";
 
@@ -115,7 +114,6 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
                   {hasShares && <span className="-top-0.5 -right-0.5 absolute size-3 rounded-full bg-green-500" />}
                 </div>
               )}
-              {chatId && <ChatOptions chatId={chatId} />}
               {!isRightSidebarOpen && (
                 <Button
                   variant="ghost"

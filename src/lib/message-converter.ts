@@ -1,7 +1,7 @@
 
 import type { Conversation, ConversationItem } from "@/types";
 import { wrapMockResponseID } from "./utils/mock";
-import { isImportedMessage } from "./utils/imported-message";
+import { isImportedMessage } from "./utils/message";
 
 export function convertImportedMessages(
   conversation: Conversation,
@@ -10,11 +10,7 @@ export function convertImportedMessages(
   newMessages: ConversationItem[];
   idMapping?: Record<string, string>;
 } {
-  let importedAtStr = conversation.metadata?.imported_at;
-  const cloneFromId = conversation.metadata?.cloned_from_id;
-  if (cloneFromId) {
-    importedAtStr = conversation.created_at.toString();
-  }
+  const importedAtStr = conversation.metadata?.imported_at;
 
   if (!importedAtStr) {
     return {
