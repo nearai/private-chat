@@ -1,7 +1,7 @@
 import { APP_NAME } from "@/api/constants";
 
 const AboutSettings = () => {
-  const commitHash = import.meta.env.VITE_GIT_COMMIT_HASH;
+  const commitHash = __GIT_COMMIT_HASH__;
 
   return (
     <div className="flex h-full flex-col justify-between text-sm">

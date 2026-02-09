@@ -146,7 +146,7 @@ export default defineConfig({
     },
   },
   define: {
-    "import.meta.env.VITE_GIT_COMMIT_HASH": JSON.stringify(getGitCommitHash()),
+    __GIT_COMMIT_HASH__: JSON.stringify(getGitCommitHash()),
   },
   build: {
     sourcemap: true,
