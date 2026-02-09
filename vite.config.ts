@@ -5,6 +5,7 @@ import { defineConfig, type PluginOption } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 import svgr from "vite-plugin-svgr";
+import { version } from './package.json';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -121,5 +122,11 @@ export default defineConfig({
         "@tauri-apps/plugin-process",
       ],
     },
+  },
+  define: {
+    __PROJECT__: JSON.stringify({
+      version,
+      buildTime: new Date().toISOString(),
+    }),
   },
 });

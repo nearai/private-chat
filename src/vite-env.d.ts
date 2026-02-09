@@ -13,3 +13,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface ProjectInfo {
+  version: string;
+  buildTime: string;
+}
+
+declare const __PROJECT__: ProjectInfo;

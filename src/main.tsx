@@ -9,6 +9,10 @@ import { ThemeProvider } from "./components/common/ThemeProvider";
 import { initI18n } from "./i18n";
 import { initPosthog } from "./lib/posthog.ts";
 
+if (typeof window !== 'undefined') {
+  (window as any).__PROJECT__ = __PROJECT__;
+}
+
 initPosthog();
 initI18n(localStorage?.locale);
 
