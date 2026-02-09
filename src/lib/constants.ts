@@ -27,7 +27,7 @@ export const IMPORTED_MESSAGE_SIGNATURE_TIP = "Verification is not available for
 export const MOCK_MESSAGE_RESPONSE_ID_PREFIX = "mock_resp_";
 export const RESPONSE_MESSAGE_CLASSNAME = "chat-response-message";
 export const USER_MESSAGE_CLASSNAME = "chat-user-message";
-export const IMPORT_TIMESTAMP_TOLERANCE_SECONDS = 59;
+export const IMPORT_TIMESTAMP_TOLERANCE_SECONDS = 30;
 
 export const SUPPORTED_TEXT_EXTENSIONS = [
   ".txt", ".text", ".log", ".md", ".markdown", ".mdx", ".rst", ".adoc", ".asciidoc", ".org", ".wiki",
