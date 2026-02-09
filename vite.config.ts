@@ -9,11 +9,11 @@ import svgr from "vite-plugin-svgr";
 
 // Get git commit hash at build time
 function getGitCommitHash(): string {
-	try {
-		return execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
-	} catch {
-		return "unknown";
-	}
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+  } catch {
+    return "unknown";
+  }
 }
 
 // https://vite.dev/config/
