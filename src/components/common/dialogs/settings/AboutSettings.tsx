@@ -13,7 +13,14 @@ const AboutSettings = () => {
           {commitHash && commitHash !== "unknown" && (
             <div className="mt-3 text-xs">
               <span className="text-muted-foreground">Code Hash: </span>
-              <span className="font-mono text-foreground">{commitHash}</span>
+              <a
+                href={`https://github.com/nearai/private-chat/commit/${commitHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-foreground transition-colors hover:text-muted-foreground hover:underline"
+              >
+                {commitHash}
+              </a>
             </div>
           )}
         </div>
