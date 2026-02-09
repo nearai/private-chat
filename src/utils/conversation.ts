@@ -4,3 +4,8 @@ export const checkIsImportedConversation = (conversation?: Conversation | Conver
 	if (!conversation) return false;
 	return !!conversation.metadata?.imported_at || !!conversation.metadata?.cloned_from_id;
 };
+
+export const checkIsClonedConversation = (conversation?: Conversation | ConversationInfo) => {
+	if (!conversation) return false;
+	return !!conversation.metadata?.cloned_from_id;
+};

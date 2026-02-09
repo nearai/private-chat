@@ -32,7 +32,8 @@ import MessageSkeleton from "../MessageSkeleton";
 import Citations from "./Citations";
 import { MarkDown } from "./MarkdownTokens";
 import { unwrapMockResponseID } from "@/lib/utils/mock";
-import { checkIsImportedConversation } from "@/utils/conversation";
+import { checkIsClonedConversation, checkIsImportedConversation } from "@/utils/conversation";
+import { isClonedMessage } from "@/lib/utils/message";
 
 interface ResponseMessageProps {
   history: { messages: Record<string, CombinedResponse> };
@@ -65,6 +66,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { models } = useChatStore();
   const { data: conversationData } = useGetConversation(chatId);
   const isImportedConversation = checkIsImportedConversation(conversationData);
+  const isClonedConversation = checkIsClonedConversation(conversationData);
 
   const batch = history.messages[batchId];
 
@@ -109,6 +111,12 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
           return "imported";
         }
       }
+      if (isClonedConversation) {
+        const msg = Object.values(allMessages).find((m) => m.response_id === messageId);
+        if (isClonedMessage(conversationData, msg)) {
+          return "imported";
+        }
+      }
       if (signatureError) return "failed";
       return "verifying";
     }
@@ -119,7 +127,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
     } catch {
       return "failed";
     }
-  }, [signature, signatureError, isMessageFinished, isImportedConversation, isBatchCompleted, messageId]);
+  }, [signature, signatureError, isMessageFinished, isImportedConversation, isClonedConversation, isBatchCompleted, messageId]);
 
   const outputMessages = batch.outputMessagesIds.map((id) => allMessages[id] as ConversationModelOutput);
 
