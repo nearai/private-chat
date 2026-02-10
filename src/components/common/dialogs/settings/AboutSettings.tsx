@@ -1,7 +1,15 @@
 import { APP_NAME } from "@/api/constants";
 
+function getCommitHash(): string | null {
+  const commitHash = import.meta.env.VITE_GIT_COMMIT_HASH ?? __GIT_COMMIT_HASH__;
+  if (commitHash && commitHash !== "unknown") {
+    return commitHash.length > 7 ? commitHash.substring(0, 7) : commitHash;
+  }
+  return null;
+}
+
 const AboutSettings = () => {
-  const commitHash = __GIT_COMMIT_HASH__;
+  const commitHash: string | null = getCommitHash();
 
   return (
     <div className="flex h-full flex-col justify-between text-sm">
@@ -10,7 +18,7 @@ const AboutSettings = () => {
           <div className="mb-2.5 flex items-center space-x-2 font-medium text-sm">
             <div>{APP_NAME}</div>
           </div>
-          {commitHash && commitHash !== "unknown" && (
+          {commitHash && (
             <div className="mt-3 text-xs">
               <span className="text-muted-foreground">Code Hash: </span>
               <a
