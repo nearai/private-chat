@@ -3,7 +3,7 @@ import { APP_NAME } from "@/api/constants";
 function getCommitHash(): string | null {
   const commitHash = import.meta.env.VITE_GIT_COMMIT_HASH ?? __GIT_COMMIT_HASH__;
   if (commitHash && commitHash !== "unknown") {
-    return commitHash.length > 7 ? commitHash.substring(0, 7) : commitHash;
+    return commitHash.substring(0, 7);
   }
   return null;
 }
