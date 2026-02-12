@@ -2,6 +2,8 @@ name: Release Tauri (macOS)
 
 on:
   push:
+    branches:
+      - ci/build-macos-app
     tags:
       - "v*"
 
@@ -15,19 +17,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: 'pnpm'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: true
+      - name: Install pnpm dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install Rust targets for universal build
+        run: |
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
+
+      # - name: Import Apple Developer Certificate
+      #   env:
+      #     APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      #     APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      #     KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      #   run: |
+      #     echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+      #     security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+      #     security default-keychain -s build.keychain
+      #     security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+      #     security set-keychain-settings -t 3600 -u build.keychain
+      #     security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+      #     security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+      #     security find-identity -v -p codesigning build.keychain
+      #     rm -f certificate.p12
 
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
@@ -41,10 +70,13 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          VITE_CHAT_API_URL: ${{ vars.VITE_CHAT_API_URL }}
+          VITE_PUBLIC_POSTHOG_KEY: ${{ secrets.VITE_PUBLIC_POSTHOG_KEY }}
+          VITE_PUBLIC_POSTHOG_HOST: ${{ secrets.VITE_PUBLIC_POSTHOG_HOST }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Private Chat ${{ github.ref_name }}"
           releaseBody: "See the assets to download this version."
-          releaseDraft: false
-          prerelease: false
+          releaseDraft: true
+          prerelease: true
           args: "--target universal-apple-darwin"
