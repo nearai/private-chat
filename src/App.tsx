@@ -3,11 +3,13 @@ import { Route, Routes, useLocation, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import PWAUpdateBanner from "@/components/common/PWAUpdateBanner";
 import AdminLayout from "@/components/layout/AdminLayot";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppInitialization } from "@/hooks/useAppInitialization";
+import { usePWAUpdate } from "@/hooks/usePWAUpdate";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/admin";
 import AdminSettingsPage from "@/pages/admin/Settings";
@@ -38,6 +40,7 @@ function App() {
   const isOnline = useIsOnline();
   const canFetchAuthenticatedData = hasAuthToken && isOnline;
   const { isSettingsLoading } = useInitRemoteSettings(canFetchAuthenticatedData);
+  const { needRefresh, updateSW, dismissUpdate } = usePWAUpdate();
 
   const {
     isFetching: isRemoteConfigFetching,
@@ -76,10 +79,21 @@ function App() {
     return <LoadingScreen />;
   }
 
+  const handleRefresh = () => {
+    updateSW(true);
+  };
+
+  const handleDismiss = () => {
+    dismissUpdate();
+  };
+
   return (
     <Suspense fallback={<LoadingScreen />}>
       <div className="relative h-screen">
         <Toaster />
+        {needRefresh && (
+          <PWAUpdateBanner onRefresh={handleRefresh} onDismiss={handleDismiss} />
+        )}
         <Routes>
           {/* Protected routes - require authentication */}
           <Route
