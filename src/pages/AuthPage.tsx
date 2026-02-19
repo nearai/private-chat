@@ -311,7 +311,7 @@ const AuthPage: React.FC = () => {
 
       const nonce = generateNonce();
       const recipient = window.location.host;
-      const message = `Sign in to ${config.name}`;
+      const message = config.signInMessage;
 
       const signedMessage = await near.signMessage({ message, recipient, nonce });
       const response = await authClient.sendNearAuth(signedMessage, { message, nonce, recipient });
