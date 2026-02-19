@@ -45,7 +45,7 @@ const NearLogin = () => {
         
         const nonce = generateNonce();
         const recipient = new URL(CHAT_API_BASE_URL).host;
-        const message = `Sign in to ${config.name}`;
+        const message = config.signInMessage;
 
         // console.log("NEAR Login: Requesting signature for message:", message, "to recipient:", recipient);
         const signedMessage = await near.signMessage({ message, recipient, nonce });

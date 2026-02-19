@@ -16,6 +16,7 @@ class ConfigClient extends ApiClient {
     const localConfig: Config = {
       status: true,
       name: "NEAR AI Private Chat",
+      signInMessage: "Sign in to NEAR AI",
       version: "1.0.0",
       default_locale: "en",
       oauth: {

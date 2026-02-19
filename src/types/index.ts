@@ -530,6 +530,8 @@ export type UpdateUserSettingsRequest = UserSettingsPayload;
 export interface Config {
   status?: boolean;
   name: string;
+  /** Message shown in NEAR wallet for NEP-413 signature; separate from app name for configurability */
+  signInMessage: string;
   version: string;
   default_locale?: string;
   oauth?: {
