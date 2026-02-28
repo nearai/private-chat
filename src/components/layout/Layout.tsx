@@ -1,8 +1,9 @@
 import type React from "react";
 import { Outlet } from "react-router";
 import ChatVerifier from "@/components/chat/verifier/ChatVerifier";
-import LeftSidebar from "@/components/sidebar";
 import ImportGuideBanner from "@/components/common/ImportGuideBanner";
+import IronClawBanner from "@/components/common/IronClawBanner";
+import LeftSidebar from "@/components/sidebar";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -16,7 +17,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {children ?? <Outlet />}
       </div>
       <ChatVerifier />
-      <ImportGuideBanner />
+      <div className="pointer-events-none fixed right-6 bottom-6 z-40 flex flex-col items-end gap-4">
+        <ImportGuideBanner />
+        <IronClawBanner />
+      </div>
     </div>
   );
 };

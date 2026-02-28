@@ -2,11 +2,12 @@ export const LOCAL_STORAGE_KEYS = {
   TOKEN: "sessionToken",
   SESSION: "sessionId",
   CONVERSATIONS: "conversations",
-  USER_DATA: "userData",
+  USER_DATA: "userData", 
   SIGNATURES: "messageSignatures",
   AGREED_TERMS: "agreedTerms",
   WELCOME_PAGE_PROMPT: "welcomePagePrompt",
   IMPORT_GUIDE_BANNER_CLOSED: "importGuideBannerClosed",
+  IRONCLAW_BANNER_CLOSED: "ironclawBannerClosed",
   REDIRECT_AFTER_LOGIN: "redirectAfterLogin",
 };
 

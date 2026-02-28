@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
 import { ArrowUpOnSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import ImportGuideDialog from "./ImportGuideDialog";
+import { useEffect, useState } from "react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import ImportGuideDialog from "./ImportGuideDialog";
 
 const ImportGuideBanner = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -23,7 +23,7 @@ const ImportGuideBanner = () => {
 
   return (
     <>
-      <div className="fixed right-6 bottom-6 z-40 max-w-sm">
+      <div className="pointer-events-auto w-full max-w-sm">
         <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
           <button
             onClick={() => setIsDialogOpen(true)}
@@ -57,4 +57,3 @@ const ImportGuideBanner = () => {
 };
 
 export default ImportGuideBanner;
-
