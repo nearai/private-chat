@@ -7,6 +7,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { IRONCLAW_URL } from "@/lib/constants";
 import { eventEmitter } from "@/lib/event";
 import { useEffect, useState } from "react";
 
@@ -25,7 +26,7 @@ export function PaymentRequiredDialog() {
   }, []);
 
   const handleConfirm = () => {
-    window.open("https://www.ironclaw.com/", "_blank");
+    window.open(IRONCLAW_URL, "_blank");
     setOpen(false);
   };
 

@@ -1,14 +1,10 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import IronclawLogo from "@/assets/images/ironclaw.ico";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { IRONCLAW_URL, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 const IronClawBanner = () => {
-  const [isClosed, setIsClosed] = useState(false);
-
-  useEffect(() => {
-    setIsClosed(localStorage.getItem(LOCAL_STORAGE_KEYS.IRONCLAW_BANNER_CLOSED) === "true");
-  }, []);
+  const [isClosed, setIsClosed] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.IRONCLAW_BANNER_CLOSED) === "true");
 
   if (isClosed) {
     return null;
@@ -25,7 +21,7 @@ const IronClawBanner = () => {
     <div className="fade-in slide-in-from-bottom-4 pointer-events-auto w-full max-w-sm animate-in duration-500">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xl transition-transform hover:scale-[1.02]">
         <a
-          href="https://www.ironclaw.com/"
+          href={IRONCLAW_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="group flex w-full items-center gap-4 p-4 pr-12 text-left transition-colors hover:bg-secondary/10"
