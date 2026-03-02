@@ -36,7 +36,7 @@ const IronClawBanner = () => {
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-medium text-foreground text-sm leading-snug">
-              Unleash Your AI Agent with <span className="font-bold text-[#FF5A5F]">IronClaw</span>
+              Unleash Your AI Agent with <span className="font-bold text-blue-400">IronClaw</span>
             </div>
             <div className="mt-0.5 text-muted-foreground text-xs">Check out the release 🚀</div>
           </div>
