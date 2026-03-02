@@ -408,6 +408,9 @@ export class ApiClient {
         if (response.status === 401) {
           eventEmitter.emit("logout");
         }
+        if (response.status === 402) {
+          eventEmitter.emit("payment_required");
+        }
         throw error;
       }
 

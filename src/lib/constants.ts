@@ -6,7 +6,7 @@ export const LOCAL_STORAGE_KEYS = {
   SIGNATURES: "messageSignatures",
   AGREED_TERMS: "agreedTerms",
   WELCOME_PAGE_PROMPT: "welcomePagePrompt",
-  IMPORT_GUIDE_BANNER_CLOSED: "importGuideBannerClosed",
+  IRONCLAW_BANNER_CLOSED: "ironclawBannerClosed",
   REDIRECT_AFTER_LOGIN: "redirectAfterLogin",
 };
 
@@ -57,3 +57,5 @@ export const SUPPORTED_TEXT_EXTENSIONS = [
 
 export const ACCEPTED_FILE_TYPES = SUPPORTED_TEXT_EXTENSIONS.join(",");
 // export const ACCEPTED_FILE_TYPES = [".pdf", ...SUPPORTED_TEXT_EXTENSIONS].join(",");
+
+export const IRONCLAW_URL = "https://www.ironclaw.com";

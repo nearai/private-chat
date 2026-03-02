@@ -27,6 +27,7 @@ import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
 import { offlineCache } from "./lib/offlineCache";
 import { useIsOnline } from "./hooks/useIsOnline";
+import { PaymentRequiredDialog } from "./components/common/dialogs/PaymentRequiredDialog";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -80,6 +81,7 @@ function App() {
     <Suspense fallback={<LoadingScreen />}>
       <div className="relative h-screen">
         <Toaster />
+        <PaymentRequiredDialog />
         <Routes>
           {/* Protected routes - require authentication */}
           <Route
