@@ -4,7 +4,9 @@ import IronclawLogo from "@/assets/images/ironclaw.ico";
 import { IRONCLAW_URL, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 const IronClawBanner = () => {
-  const [isClosed, setIsClosed] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.IRONCLAW_BANNER_CLOSED) === "true");
+  const [isClosed, setIsClosed] = useState(
+    () => localStorage.getItem(LOCAL_STORAGE_KEYS.IRONCLAW_BANNER_CLOSED) === "true"
+  );
 
   if (isClosed) {
     return null;
@@ -28,15 +30,7 @@ const IronClawBanner = () => {
         >
           <div className="shrink-0">
             <div className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-              <img
-                src={IronclawLogo}
-                alt="IronClaw"
-                className="size-8 rounded-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                  e.currentTarget.parentElement?.classList.add("bg-primary/20");
-                }}
-              />
+              <img src={IronclawLogo} alt="IronClaw" className="size-8 rounded-full object-cover" />
               <span className="hidden font-bold text-primary text-xs">IC</span>
             </div>
           </div>
