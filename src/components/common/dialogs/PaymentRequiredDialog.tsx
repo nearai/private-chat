@@ -36,7 +36,7 @@ export function PaymentRequiredDialog() {
         <AlertDialogHeader>
           <AlertDialogTitle>Subscription Expired</AlertDialogTitle>
           <AlertDialogDescription>
-            Your token has been exhausted. Please renew your subscription to continue using the service.
+            Your tokens have been exhausted. Please renew your subscription to continue using the service.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
