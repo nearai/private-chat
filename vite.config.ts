@@ -23,7 +23,7 @@ export default defineConfig({
     tailwindcss(),
     svgr(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: [
         "favicon.ico",
         "apple-touch-icon-180x180.png",
