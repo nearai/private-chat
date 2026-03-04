@@ -33,6 +33,11 @@ export function PaymentRequiredDialog() {
     setOpen(false);
   };
 
+  const handleDeployAgent = () => {
+    window.open(AGENT_URL, "_blank");
+    setOpen(false);
+  };
+
   const handleLinkClick = () => {
     setOpen(false);
   };
@@ -70,7 +75,7 @@ export function PaymentRequiredDialog() {
                   >
                     agent.near.ai
                   </a>{" "}
-                  and deploy your own private and secure AI agents.
+                  to get more credits. You will also be able to deploy your own private and secure AI agents.
                 </p>
               )}
             </div>
