@@ -1,6 +1,4 @@
 import type {
-  GetSubscriptionsResponse,
-  Subscription,
   UpdateUserSettingsRequest,
   User,
   UserRole,
@@ -57,12 +55,6 @@ class UsersClient extends ApiClient {
 
   async getUserData(): Promise<User> {
     return this.get<User>("/users/me", { apiVersion: "v2" });
-  }
-
-  /** GET /v1/subscriptions - used for basic plan low-balance check */
-  async getSubscriptions(): Promise<Subscription[]> {
-    const res = await this.get<GetSubscriptionsResponse>("/subscriptions", { apiVersion: "v2" });
-    return res?.subscriptions ?? [];
   }
 
   async updateUserInfo(info: unknown): Promise<void> {

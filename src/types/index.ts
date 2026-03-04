@@ -526,26 +526,6 @@ export interface UserSettingsResponse {
 
 export type UpdateUserSettingsRequest = UserSettingsPayload;
 
-/** Subscription from GET /v1/subscriptions */
-export interface Subscription {
-  subscription_id: string;
-  user_id: string;
-  plan: string;
-  provider: string;
-  status: string;
-  current_period_end: string;
-  cancel_at_period_end: boolean;
-  created_at: string;
-  updated_at: string;
-  /** When true and plan is "basic", show low balance warning (API may send is_low_balance or isLowBalance) */
-  is_low_balance?: boolean;
-  isLowBalance?: boolean;
-}
-
-export interface GetSubscriptionsResponse {
-  subscriptions: Subscription[];
-}
-
 // Config types
 export interface Config {
   status?: boolean;

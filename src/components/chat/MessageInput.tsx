@@ -20,7 +20,8 @@ import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
 import { ACCEPTED_FILE_TYPES, SUPPORTED_TEXT_EXTENSIONS } from "@/lib/constants";
 import { useIsOnline } from "@/hooks/useIsOnline";
-import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
+import { useLowBalance } from "@/hooks/useLowBalance";
+import { MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 // import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -101,15 +102,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [isUploading, setIsUploading] = useState(false);
-  const { isLowBalanceAndBasicPlan, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
+  const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useLowBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
   const isOnline = useIsOnline();
 
   useEffect(() => {
-    if (isLowBalanceAndBasicPlan) {
+    if (isLowBalance) {
       setShowLowBalanceAlert(true);
     }
-  }, [isLowBalanceAndBasicPlan]);
+  }, [isLowBalance]);
 
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
@@ -199,8 +200,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const disabledSendButton = useMemo(() => {
     if (isConversationStreamActive) return true;
-    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalanceAndBasicPlan;
-  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalanceAndBasicPlan]);
+    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance;
+  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalance]);
 
   const inputFilesHandler = useCallback(
     async (inputFiles: File[]) => {
@@ -594,7 +595,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 hidden
                 multiple
                 accept={ACCEPTED_FILE_TYPES}
-                disabled={isLowBalanceAndBasicPlan}
+                disabled={isLowBalance}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
@@ -611,7 +612,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 className="flex w-full gap-1.5"
                 onSubmit={handleSubmit}
                 onClick={() => {
-                  if (isLowBalanceAndBasicPlan) {
+                  if (isLowBalance) {
                     setShowLowBalanceAlert(true);
                     return;
                   }
@@ -731,7 +732,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             : placeholder || t("How can I help you today?")
                         }
                         value={prompt}
-                        disabled={isLowBalanceAndBasicPlan || !isOnline}
+                        disabled={isLowBalance || !isOnline}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}

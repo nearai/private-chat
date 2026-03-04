@@ -10,6 +10,7 @@ const SHARE_KEY = "conversationShare";
 const SHARE_GROUP_KEY = "shareGroup";
 const CONVERSATION_KEY = "conversation";
 const CONVERSATIONS_KEY = "conversations";
+const SUBSCRIPTIONS_KEY = "subscriptions";
 
 export const queryKeys = {
   conversation: {
@@ -76,5 +77,9 @@ export const queryKeys = {
   },
   sharing: {
     sharedWithMe: ["sharing", "sharedWithMe"],
+  },
+  subscriptions: {
+    list: [SUBSCRIPTIONS_KEY, "list"],
+    plans: [SUBSCRIPTIONS_KEY, "plans"],
   },
 } as const;
