@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useActiveSubscription } from "@/hooks/useActiveSubscription";
-import { AGENT_BILLING_URL, AGENT_URL } from "@/lib/constants";
+import { AGENT_BILLING_URL, AGENT_HOST, AGENT_URL } from "@/api/constants";
 import { eventEmitter } from "@/lib/event";
 import { useEffect, useState } from "react";
 
@@ -54,7 +54,7 @@ export function PaymentRequiredDialog() {
                     className="underline hover:no-underline"
                     onClick={handleLinkClick}
                   >
-                    agent.near.ai/billing
+                    {`${AGENT_HOST}/billing`}
                   </a>{" "}
                   to upgrade your subscription plan or add more credits.
                 </p>
@@ -68,7 +68,7 @@ export function PaymentRequiredDialog() {
                     className="underline hover:no-underline"
                     onClick={handleLinkClick}
                   >
-                    agent.near.ai
+                    {AGENT_HOST}
                   </a>{" "}
                   to get more credits. You will also be able to deploy your own private and secure AI agents.
                 </p>

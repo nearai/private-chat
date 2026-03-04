@@ -59,6 +59,3 @@ export const ACCEPTED_FILE_TYPES = SUPPORTED_TEXT_EXTENSIONS.join(",");
 // export const ACCEPTED_FILE_TYPES = [".pdf", ...SUPPORTED_TEXT_EXTENSIONS].join(",");
 
 export const IRONCLAW_URL = "https://www.ironclaw.com";
-
-export const AGENT_BILLING_URL = "https://agent.near.ai/billing";
-export const AGENT_URL = "https://agent.near.ai";
