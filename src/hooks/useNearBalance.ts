@@ -68,7 +68,7 @@ export const useNearBalance = () => {
       const accountId = userData.name;
       const [balanceResult, subscriptions] = await Promise.all([
         getNearBalance(accountId),
-        usersClient.getSubscriptions().catch(() => [] as Awaited<ReturnType<typeof usersClient.getSubscriptions>>),
+        usersClient.getSubscriptions().catch(() => []),
       ]);
 
       setBalance(balanceResult);
