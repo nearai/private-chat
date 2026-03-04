@@ -74,7 +74,7 @@ export const useNearBalance = () => {
       setBalance(balanceResult);
       const lowByBalance = balanceResult < toYoctoNear(MIN_NEAR_BALANCE);
       const basicWithLowBalance = subscriptions.some(
-        (s) => s.plan === "basic" && (s.is_low_balance === true || s.isLowBalance === true)
+        (s) => s.plan === "basic" && (s.is_low_balance || s.isLowBalance)
       );
       setIsLowBalanceAndBasicPlan(lowByBalance || basicWithLowBalance);
       return !lowByBalance && !basicWithLowBalance;
