@@ -10,11 +10,21 @@ import { getPlan, isFreePlan } from "@/lib/plans";
  */
 export function useLowBalance() {
   const { activeSubscription } = useActiveSubscription();
-  const { data: apiPlans } = usePlans();
-  const requiresNearBalance = useMemo(
-    () => !activeSubscription || isFreePlan(getPlan(apiPlans, activeSubscription?.plan)),
-    [activeSubscription, apiPlans]
-  );
+  const { data: plans } = usePlans();
+  // Conservative: treat unknown/missing plans as requiring NEAR so freemium gating is reliable
+  const requiresNearBalance = useMemo(() => {
+    if (!activeSubscription) {
+      return true;
+    }
+    if (!plans) {
+      return true;
+    }
+    const plan = getPlan(plans, activeSubscription.plan);
+    if (!plan) {
+      return true;
+    }
+    return isFreePlan(plan);
+  }, [activeSubscription, plans]);
   const { isBalanceLow, refetch, loading } = useNearBalance({ enabled: requiresNearBalance });
   const isLowBalance = useMemo(
     () => requiresNearBalance && isBalanceLow,
