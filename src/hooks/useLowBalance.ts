@@ -13,17 +13,12 @@ export function useLowBalance() {
   const { data: plans } = usePlans();
   // Conservative: treat unknown/missing plans as requiring NEAR so freemium gating is reliable
   const requiresNearBalance = useMemo(() => {
-    if (!activeSubscription) {
-      return true;
-    }
-    if (!plans) {
+    if (!activeSubscription || !plans) {
       return true;
     }
     const plan = getPlan(plans, activeSubscription.plan);
-    if (!plan) {
-      return true;
-    }
-    return isFreePlan(plan);
+    // If plan is not found, or if it is a free plan, it requires NEAR balance.
+    return !plan || isFreePlan(plan);
   }, [activeSubscription, plans]);
   const { isBalanceLow, refetch, loading } = useNearBalance({ enabled: requiresNearBalance });
   const isLowBalance = useMemo(

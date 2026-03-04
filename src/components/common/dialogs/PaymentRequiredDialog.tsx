@@ -33,11 +33,6 @@ export function PaymentRequiredDialog() {
     setOpen(false);
   };
 
-  const handleDeployAgent = () => {
-    window.open(AGENT_URL, "_blank");
-    setOpen(false);
-  };
-
   const handleLinkClick = () => {
     setOpen(false);
   };
