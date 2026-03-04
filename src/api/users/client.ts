@@ -1,4 +1,6 @@
 import type {
+  Plan,
+  Subscription,
   UpdateUserSettingsRequest,
   User,
   UserRole,
@@ -55,6 +57,20 @@ class UsersClient extends ApiClient {
 
   async getUserData(): Promise<User> {
     return this.get<User>("/users/me", { apiVersion: "v2" });
+  }
+
+  async getPlans(): Promise<Plan[]> {
+    const res = await this.get<{ plans: Plan[] }>("/subscriptions/plans", { apiVersion: "v2" });
+    return res?.plans ?? [];
+  }
+
+  async getSubscriptions(includeInactive = false): Promise<Subscription[]> {
+    const query = includeInactive ? "?include_inactive=true" : "";
+    const res = await this.get<{ subscriptions: Subscription[] }>(
+      `/subscriptions${query}`,
+      { apiVersion: "v2" }
+    );
+    return res?.subscriptions ?? [];
   }
 
   async updateUserInfo(info: unknown): Promise<void> {

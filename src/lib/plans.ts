@@ -1,7 +1,4 @@
-export interface Plan {
-  name: string;
-  price?: number;
-}
+import type { Plan } from "@/types";
 
 export function getPlan(
   plans: Plan[] | undefined,

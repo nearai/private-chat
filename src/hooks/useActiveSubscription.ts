@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useSubscriptions } from "@/api/subscriptions/queries/useSubscriptions";
-import type { Subscription } from "@/api/subscriptions/client";
+import { useSubscriptions } from "@/api/users/queries/useSubscriptions";
+import type { Subscription } from "@/types";
 
 function isActiveStatus(status: string) {
   return status === "active" || status === "trialing";

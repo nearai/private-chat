@@ -526,6 +526,28 @@ export interface UserSettingsResponse {
 
 export type UpdateUserSettingsRequest = UserSettingsPayload;
 
+/** Plan from GET /v1/subscriptions/plans */
+export interface Plan {
+  name: string;
+  price?: number;
+  trial_period_days?: number;
+  agent_instances?: { max: number };
+  monthly_tokens?: { max: number };
+}
+
+/** Subscription from GET /v1/subscriptions */
+export interface Subscription {
+  subscription_id: string;
+  user_id: string;
+  plan: string;
+  provider: string;
+  status: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Config types
 export interface Config {
   status?: boolean;

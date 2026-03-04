@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { usePlans } from "@/api/subscriptions/queries/usePlans";
+import { usePlans } from "@/api/users/queries/usePlans";
 import { useActiveSubscription } from "@/hooks/useActiveSubscription";
 import { useNearBalance } from "@/hooks/useNearBalance";
 import { getPlan, isFreePlan } from "@/lib/plans";
