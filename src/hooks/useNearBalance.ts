@@ -61,16 +61,26 @@ export const useNearBalance = () => {
     if (!userInfo || !isOnline) return false;
     const userData = userInfo.user;
     const nearAccount = userInfo.linked_accounts?.find((a) => a.provider === "near");
-    if (!nearAccount) return false;
 
     setLoading(true);
     try {
-      const accountId = userData.name;
-      const [balanceResult, subscriptions] = await Promise.all([
-        getNearBalance(accountId),
-        usersClient.getSubscriptions().catch(() => []),
-      ]);
+      const subscriptions = await usersClient.getSubscriptions();
+      const isBasicPlan = subscriptions.some((s) => s.plan === "basic");
 
+      if (!isBasicPlan) {
+        setBalance(null);
+        setIsLowBalanceAndBasicPlan(false);
+        return true;
+      }
+
+      if (!nearAccount) {
+        setBalance(null);
+        setIsLowBalanceAndBasicPlan(false);
+        return false;
+      }
+
+      const accountId = userData.name;
+      const balanceResult = await getNearBalance(accountId);
       setBalance(balanceResult);
       const lowByBalance = balanceResult < toYoctoNear(MIN_NEAR_BALANCE);
       const basicWithLowBalance = subscriptions.some(
