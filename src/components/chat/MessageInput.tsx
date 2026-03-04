@@ -101,15 +101,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [isUploading, setIsUploading] = useState(false);
-  const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
+  const { isLowBalanceAndBasicPlan, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
   const isOnline = useIsOnline();
 
   useEffect(() => {
-    if (isLowBalance) {
+    if (isLowBalanceAndBasicPlan) {
       setShowLowBalanceAlert(true);
     }
-  }, [isLowBalance]);
+  }, [isLowBalanceAndBasicPlan]);
 
   const { isLeftSidebarOpen, isMobile } = useViewStore();
   const filesInputRef = useRef<HTMLInputElement>(null);
@@ -199,8 +199,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const disabledSendButton = useMemo(() => {
     if (isConversationStreamActive) return true;
-    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalance;
-  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalance]);
+    return isMessageCompleted && prompt === "" && files.length === 0 || isLowBalanceAndBasicPlan;
+  }, [isMessageCompleted, isConversationStreamActive, prompt, files, isLowBalanceAndBasicPlan]);
 
   const inputFilesHandler = useCallback(
     async (inputFiles: File[]) => {
@@ -594,7 +594,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 hidden
                 multiple
                 accept={ACCEPTED_FILE_TYPES}
-                disabled={isLowBalance}
+                disabled={isLowBalanceAndBasicPlan}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const inputFiles = Array.from(e.target.files);
@@ -611,7 +611,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 className="flex w-full gap-1.5"
                 onSubmit={handleSubmit}
                 onClick={() => {
-                  if (isLowBalance) {
+                  if (isLowBalanceAndBasicPlan) {
                     setShowLowBalanceAlert(true);
                     return;
                   }
@@ -731,7 +731,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                             : placeholder || t("How can I help you today?")
                         }
                         value={prompt}
-                        disabled={isLowBalance || !isOnline}
+                        disabled={isLowBalanceAndBasicPlan || !isOnline}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}

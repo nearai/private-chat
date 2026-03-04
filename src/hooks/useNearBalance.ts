@@ -54,7 +54,7 @@ export const useNearBalance = () => {
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isLowBalance, setIsLowBalance] = useState(false);
+  const [isLowBalanceAndBasicPlan, setIsLowBalanceAndBasicPlan] = useState(false);
   const isOnline = useIsOnline();
 
   const checkBalance = useCallback(async (): Promise<boolean> => {
@@ -66,16 +66,22 @@ export const useNearBalance = () => {
     setLoading(true);
     try {
       const accountId = userData.name;
-      const balance = await getNearBalance(accountId);
+      const [balanceResult, subscriptions] = await Promise.all([
+        getNearBalance(accountId),
+        usersClient.getSubscriptions().catch(() => [] as Awaited<ReturnType<typeof usersClient.getSubscriptions>>),
+      ]);
 
-      setBalance(balance);
-      const status = balance >= toYoctoNear(MIN_NEAR_BALANCE);
-      setIsLowBalance(!status);
-      return status;
+      setBalance(balanceResult);
+      const lowByBalance = balanceResult < toYoctoNear(MIN_NEAR_BALANCE);
+      const basicWithLowBalance = subscriptions.some(
+        (s) => s.plan === "basic" && (s.is_low_balance === true || s.isLowBalance === true)
+      );
+      setIsLowBalanceAndBasicPlan(lowByBalance || basicWithLowBalance);
+      return !lowByBalance && !basicWithLowBalance;
     } catch (error) {
       console.error("Failed to fetch NEAR balance:", error);
       setBalance(null);
-      setIsLowBalance(false);
+      setIsLowBalanceAndBasicPlan(false);
       return false;
     } finally {
       setLoading(false);
@@ -101,5 +107,5 @@ export const useNearBalance = () => {
     checkBalance();
   }, [checkBalance, isOnline]);
 
-  return { balance, isLowBalance, loading, refetch: checkBalance };
+  return { balance, isLowBalanceAndBasicPlan, loading, refetch: checkBalance };
 };
