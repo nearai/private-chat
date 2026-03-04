@@ -20,7 +20,8 @@ import Spinner from "@/components/common/Spinner";
 import { cn } from "@/lib";
 import { ACCEPTED_FILE_TYPES, SUPPORTED_TEXT_EXTENSIONS } from "@/lib/constants";
 import { useIsOnline } from "@/hooks/useIsOnline";
-import { useNearBalance, MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
+import { useLowBalance } from "@/hooks/useLowBalance";
+import { MIN_NEAR_BALANCE } from "@/hooks/useNearBalance";
 // import { compressImage } from "@/lib/image";
 import { useChatStore } from "@/stores/useChatStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -101,7 +102,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [files, setFiles] = useState<FileContentItem[]>(initialFiles);
   const [selectedToolIds, setSelectedToolIds] = useState(initialSelectedToolIds);
   const [isUploading, setIsUploading] = useState(false);
-  const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useNearBalance();
+  const { isLowBalance, refetch: refetchBalance, loading: checkingBalance } = useLowBalance();
   const [showLowBalanceAlert, setShowLowBalanceAlert] = useState(false);
   const isOnline = useIsOnline();
 

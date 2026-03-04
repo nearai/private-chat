@@ -1,4 +1,6 @@
 export * from "./useDeleteUser";
+export * from "./usePlans";
+export * from "./useSubscriptions";
 export * from "./useUpdateUserRole";
 export * from "./useUpdateUserSettings";
 export * from "./useUserSettings";

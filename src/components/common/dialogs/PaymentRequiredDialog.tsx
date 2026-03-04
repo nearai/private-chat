@@ -1,18 +1,21 @@
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { IRONCLAW_URL } from "@/lib/constants";
+import { useActiveSubscription } from "@/hooks/useActiveSubscription";
+import { AGENT_BILLING_URL, AGENT_HOST, AGENT_URL } from "@/api/constants";
 import { eventEmitter } from "@/lib/event";
 import { useEffect, useState } from "react";
 
 export function PaymentRequiredDialog() {
   const [open, setOpen] = useState(false);
+  const { activeSubscription } = useActiveSubscription();
 
   useEffect(() => {
     const handlePaymentRequired = () => {
@@ -26,7 +29,11 @@ export function PaymentRequiredDialog() {
   }, []);
 
   const handleConfirm = () => {
-    window.open(IRONCLAW_URL, "_blank");
+    window.open(activeSubscription ? AGENT_BILLING_URL : AGENT_URL, "_blank");
+    setOpen(false);
+  };
+
+  const handleLinkClick = () => {
     setOpen(false);
   };
 
@@ -34,14 +41,45 @@ export function PaymentRequiredDialog() {
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Subscription Expired</AlertDialogTitle>
-          <AlertDialogDescription>
-            Your tokens have been exhausted. Please renew your subscription to continue using the service.
+          <AlertDialogTitle>Not Enough Credits</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2">
+              {activeSubscription ? (
+                <p>
+                  You don't have enough credits. Please visit{" "}
+                  <a
+                    href={AGENT_BILLING_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:no-underline"
+                    onClick={handleLinkClick}
+                  >
+                    {`${AGENT_HOST}/billing`}
+                  </a>{" "}
+                  to upgrade your subscription plan or add more credits.
+                </p>
+              ) : (
+                <p>
+                  To continue using Private Chat, subscribe to a plan at{" "}
+                  <a
+                    href={AGENT_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:no-underline"
+                    onClick={handleLinkClick}
+                  >
+                    {AGENT_HOST}
+                  </a>{" "}
+                  to get more credits. You will also be able to deploy your own private and secure AI agents.
+                </p>
+              )}
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
+          <AlertDialogCancel>Close</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm}>
-            Renew Subscription
+            {activeSubscription ? "Upgrade Plan" : "Subscribe Now"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { usersClient } from "@/api/users/client";
 import type { User } from "@/types";
@@ -50,37 +50,46 @@ export function toYoctoNear(amount: number) {
   return BigInt(amount) * 10n ** 24n;
 }
 
-export const useNearBalance = () => {
+export interface UseNearBalanceOptions {
+  /** When false, skips fetching. Use when user doesn't need NEAR (e.g. paid plan). */
+  enabled?: boolean;
+}
+
+export const useNearBalance = (options: UseNearBalanceOptions = {}) => {
+  const { enabled = true } = options;
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isLowBalance, setIsLowBalance] = useState(false);
   const isOnline = useIsOnline();
 
-  const checkBalance = useCallback(async (): Promise<boolean> => {
-    if (!userInfo || !isOnline) return false;
-    const userData = userInfo.user;
+  const isNearLinked = useMemo(() => {
+    if (!userInfo) return false;
     const nearAccount = userInfo.linked_accounts?.find((a) => a.provider === "near");
-    if (!nearAccount) return false;
+    return !!nearAccount;
+  }, [userInfo]);
+
+  const isBalanceLow = useMemo(
+    () => balance !== null && balance < toYoctoNear(MIN_NEAR_BALANCE),
+    [balance]
+  );
+
+  const checkBalance = useCallback(async (): Promise<boolean> => {
+    if (!userInfo || !isOnline || !isNearLinked) return false;
 
     setLoading(true);
     try {
-      const accountId = userData.name;
-      const balance = await getNearBalance(accountId);
-
-      setBalance(balance);
-      const status = balance >= toYoctoNear(MIN_NEAR_BALANCE);
-      setIsLowBalance(!status);
-      return status;
+      const accountId = userInfo.user.name;
+      const balanceResult = await getNearBalance(accountId);
+      setBalance(balanceResult);
+      return balanceResult >= toYoctoNear(MIN_NEAR_BALANCE);
     } catch (error) {
       console.error("Failed to fetch NEAR balance:", error);
       setBalance(null);
-      setIsLowBalance(false);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [userInfo, isOnline]);
+  }, [userInfo, isOnline, isNearLinked]);
 
   useEffect(() => {
     if (!isOnline) return;
@@ -97,9 +106,9 @@ export const useNearBalance = () => {
   }, [isOnline]);
 
   useEffect(() => {
-    if (!isOnline) return;
+    if (!enabled || !isOnline || balance !== null || !isNearLinked) return;
     checkBalance();
-  }, [checkBalance, isOnline]);
+  }, [enabled, checkBalance, isOnline, balance, isNearLinked]);
 
-  return { balance, isLowBalance, loading, refetch: checkBalance };
+  return { balance, isBalanceLow, loading, refetch: checkBalance };
 };
