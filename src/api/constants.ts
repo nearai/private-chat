@@ -40,5 +40,16 @@ export const NEAR_RPC_URL = import.meta.env.VITE_NEAR_RPC_URL || "https://free.r
 export const NEAR_AI_CLOUD_MODELS_URL = "https://cloud.near.ai/models";
 
 export const AGENT_HOST = "agent.near.ai";
-export const AGENT_URL = `https://${AGENT_HOST}`;
-export const AGENT_BILLING_URL = `https://${AGENT_HOST}/billing`;
+
+const UTM_SOURCE = "private_chat";
+const UTM_MEDIUM = "web";
+
+function withUtm(url: string) {
+  const u = new URL(url);
+  if (!u.searchParams.get("utm_source")) u.searchParams.set("utm_source", UTM_SOURCE);
+  if (!u.searchParams.get("utm_medium")) u.searchParams.set("utm_medium", UTM_MEDIUM);
+  return u.toString();
+}
+
+export const AGENT_URL = withUtm(`https://${AGENT_HOST}`);
+export const AGENT_BILLING_URL = withUtm(`https://${AGENT_HOST}/billing`);
