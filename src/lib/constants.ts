@@ -1,3 +1,5 @@
+import { withUtm } from "@/lib/utm";
+
 export const LOCAL_STORAGE_KEYS = {
   TOKEN: "sessionToken",
   SESSION: "sessionId",
