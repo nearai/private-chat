@@ -1,3 +1,5 @@
+import { withUtm } from "@/lib/utm";
+
 export const LOCAL_STORAGE_KEYS = {
   TOKEN: "sessionToken",
   SESSION: "sessionId",
@@ -58,4 +60,4 @@ export const SUPPORTED_TEXT_EXTENSIONS = [
 export const ACCEPTED_FILE_TYPES = SUPPORTED_TEXT_EXTENSIONS.join(",");
 // export const ACCEPTED_FILE_TYPES = [".pdf", ...SUPPORTED_TEXT_EXTENSIONS].join(",");
 
-export const IRONCLAW_URL = "https://www.ironclaw.com";
+export const IRONCLAW_URL = withUtm("https://www.ironclaw.com/");

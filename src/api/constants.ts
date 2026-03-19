@@ -1,3 +1,5 @@
+import { withUtm } from "@/lib/utm";
+
 export const APP_NAME = "NEAR AI Private Chat";
 // TODO: remove DEPRECATED_API_BASE_URL from the project as there's no dependency on the legacy Private Chat any more
 export const DEPRECATED_API_BASE_URL = (import.meta.env.VITE_DEPRECATED_API_URL || "https://private-chat-legacy.near.ai").replace(
@@ -40,5 +42,6 @@ export const NEAR_RPC_URL = import.meta.env.VITE_NEAR_RPC_URL || "https://free.r
 export const NEAR_AI_CLOUD_MODELS_URL = "https://cloud.near.ai/models";
 
 export const AGENT_HOST = "agent.near.ai";
-export const AGENT_URL = `https://${AGENT_HOST}`;
-export const AGENT_BILLING_URL = `https://${AGENT_HOST}/billing`;
+
+export const AGENT_URL = withUtm(`https://${AGENT_HOST}`);
+export const AGENT_BILLING_URL = withUtm(`https://${AGENT_HOST}/billing`);
