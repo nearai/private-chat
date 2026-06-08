@@ -418,15 +418,17 @@ export class ApiClient {
         // before the backend change ships.
         const isModelNotAllowed =
           response.status === 403 &&
-          (error?.code === "model_not_allowed_in_plan" ||
-            /not available in your plan/i.test(error?.error ?? error?.detail ?? ""));
+          error &&
+          typeof error === "object" &&
+          (error.code === "model_not_allowed_in_plan" ||
+            /not available in your plan/i.test(error.error ?? error.detail ?? ""));
         if (isModelNotAllowed) {
           // Normalize the code so downstream handlers can detect this case
           // with a single check regardless of which signal matched.
           error.code = "model_not_allowed_in_plan";
           eventEmitter.emit("model_not_allowed", {
-            model: (body as { model?: string })?.model ?? error?.model ?? "",
-            plan: error?.plan,
+            model: (body as { model?: string })?.model ?? error.model ?? "",
+            plan: error.plan,
           });
         }
         throw error;
@@ -811,6 +813,14 @@ export class ApiClient {
       console.error(err);
       const errMsg = (err as any)?.detail || err || "An unknown error occurred";
       updateFailedMessage(typeof errMsg === "string" ? errMsg : String(errMsg));
+      // Preserve the gated-model marker through the re-throw so callers can
+      // suppress the generic "failed to respond" toast (ModelNotAllowedDialog
+      // handles this case). `errMsg` would otherwise drop the `code`.
+      if ((err as any)?.code === "model_not_allowed_in_plan") {
+        const gatedError = new Error(typeof errMsg === "string" ? errMsg : String(errMsg));
+        (gatedError as any).code = "model_not_allowed_in_plan";
+        throw gatedError;
+      }
       // biome-ignore lint/suspicious/noExplicitAny: explanation
       throw errMsg;
     }

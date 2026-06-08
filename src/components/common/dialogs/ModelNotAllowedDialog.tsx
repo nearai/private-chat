@@ -31,7 +31,11 @@ export function ModelNotAllowedDialog() {
   }, []);
 
   const handleConfirm = () => {
-    window.open(activeSubscription ? AGENT_BILLING_URL : AGENT_URL, "_blank");
+    window.open(
+      activeSubscription ? AGENT_BILLING_URL : AGENT_URL,
+      "_blank",
+      "noopener,noreferrer"
+    );
     setOpen(false);
   };
 
