@@ -411,6 +411,24 @@ export class ApiClient {
         if (response.status === 402) {
           eventEmitter.emit("payment_required");
         }
+        // The model the user picked is gated behind a higher subscription
+        // plan. Surface a dedicated "upgrade your plan" prompt instead of the
+        // generic "model failed to respond" toast. We key off the stable
+        // backend `code`, falling back to the message text so this still works
+        // before the backend change ships.
+        const isModelNotAllowed =
+          response.status === 403 &&
+          (error?.code === "model_not_allowed_in_plan" ||
+            /not available in your plan/i.test(error?.error ?? error?.detail ?? ""));
+        if (isModelNotAllowed) {
+          // Normalize the code so downstream handlers can detect this case
+          // with a single check regardless of which signal matched.
+          error.code = "model_not_allowed_in_plan";
+          eventEmitter.emit("model_not_allowed", {
+            model: (body as { model?: string })?.model ?? error?.model ?? "",
+            plan: error?.plan,
+          });
+        }
         throw error;
       }
 
