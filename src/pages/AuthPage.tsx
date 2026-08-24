@@ -24,7 +24,7 @@ import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
 import { NEAR_LOGIN_URL } from "@/api/constants";
 
-const TERMS_VERSION = "V1";
+const TERMS_VERSION = "V2";
 
 type OAuthCompleteEvent = {
   token: string;
@@ -278,7 +278,7 @@ const AuthPage: React.FC = () => {
         const channelId = crypto.randomUUID();
         await startOAuthChannelListener(channelId);
         const callbackUrl = await getDesktopOAuthCallbackUrl();
-        
+
         // Construct the URL for the new NearLogin page
         const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, NEAR_LOGIN_URL);
         nearLoginUrl.searchParams.set("frontend_callback", callbackUrl);
@@ -473,7 +473,7 @@ const AuthPage: React.FC = () => {
                   {"By signing in, I agree to the "}
                   <a
                     className="underline hover:text-blue-600"
-                    href="https://near.ai/terms-of-service/"
+                    href="/docs/tos.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
