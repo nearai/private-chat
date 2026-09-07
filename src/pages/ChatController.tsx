@@ -202,7 +202,12 @@ export default function ChatController({ children }: { children?: React.ReactNod
         } catch (error: any) {
           if (error?.name !== "AbortError") {
             console.error("Stream error:", error);
-            toast.error(`Model ${model} failed to respond`);
+            // A gated-model error is handled by ModelNotAllowedDialog (an
+            // "upgrade your plan" prompt), so suppress the misleading generic
+            // "failed to respond" toast in that case.
+            if (error?.code !== "model_not_allowed_in_plan") {
+              toast.error(`Model ${model} failed to respond`);
+            }
 
             updateConversation((draft) => {
               if (!draft.conversation) return draft;
