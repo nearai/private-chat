@@ -1,5 +1,5 @@
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams, useLocation } from "react-router";
 import { ShareIcon } from "@heroicons/react/24/outline";
@@ -19,6 +19,7 @@ import type { ConversationInfo } from "@/types";
 import { APP_ROUTES } from "@/pages/routes";
 import { Button } from "../ui/button";
 import ChatItem from "./ChatItem";
+import ConversationSearchDialog from "./ConversationSearchDialog";
 import UserMenu from "./UserMenu";
 
 type CrispCommand = [string, string];
@@ -58,6 +59,7 @@ const LeftSidebar: React.FC = () => {
 
   const [isPinnedOpen, setIsPinnedOpen] = useState(true);
   const [isChatsOpen, setIsChatsOpen] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { pinned, unpinned } = useMemo(() => {
     const pinned = (conversations || []).filter((c) => !!c.metadata?.pinned_at && !c.metadata?.archived_at);
@@ -89,6 +91,24 @@ const LeftSidebar: React.FC = () => {
     return Object.entries(grouped)
       .sort(([, chatsA], [, chatsB]) => getTimestamp(chatsB[0]) - getTimestamp(chatsA[0]));
   }, [unpinned]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (!(event.metaKey || event.ctrlKey) || key !== "k") return;
+      const target = event.target as HTMLElement | null;
+      const isEditable =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+      if (isEditable) return;
+      event.preventDefault();
+      setIsSearchOpen(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <nav className="top-0 left-0 z-50 shrink-0 overflow-x-hidden text-sidebar-foreground text-sm">
@@ -235,9 +255,15 @@ const LeftSidebar: React.FC = () => {
 
         <div className="flex flex-col items-start gap-6">
           <div className="w-full border border-primary border-t opacity-20" />
-          <UserMenu />
+          <UserMenu onSearchOpen={() => setIsSearchOpen(true)} />
         </div>
       </div>
+
+      <ConversationSearchDialog
+        open={isSearchOpen}
+        onOpenChange={setIsSearchOpen}
+        onNavigate={handleMobileNavigation}
+      />
     </nav>
   );
 };
