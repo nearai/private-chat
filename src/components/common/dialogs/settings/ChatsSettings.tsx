@@ -1,11 +1,13 @@
-import { ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
+import { ArrowDownTrayIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
+import dayjs from "dayjs";
+import FileSaver from "file-saver";
 import type { ResponseInputItem } from "openai/resources/responses/responses.mjs";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { chatClient } from "@/api/chat/client";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { type Conversation, historiesToConversations } from "@/lib/utils/transform-chat-history";
-import dayjs from "dayjs";
 
 interface ImportConversationResult {
   success: boolean;
@@ -18,10 +20,46 @@ interface ChatsSettingsProps {
 
 const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const exportingRef = useRef(false);
 
   const [importing, setImporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ completed: number; total: number } | null>(null);
   const { refetch } = useGetConversations();
   const { createConversation, addItemsToConversation } = useConversation();
+
+  const handleExport = async () => {
+    if (exportingRef.current) return;
+    exportingRef.current = true;
+
+    const loadingId = toast.loading("Preparing conversations for export...");
+    setExportProgress({ completed: 0, total: 0 });
+
+    try {
+      const conversations = await chatClient.getConversationsForExport((completed, total) => {
+        setExportProgress({ completed, total });
+        toast.loading(`Exporting conversations (${completed}/${total})...`, { id: loadingId });
+      });
+
+      const blob = new Blob([JSON.stringify(conversations, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      FileSaver.saveAs(blob, `private-chat-export-${dayjs().format("YYYY-MM-DD-HHmmss")}.json`);
+      toast.success(
+        conversations.length === 1
+          ? "1 conversation exported successfully"
+          : `${conversations.length} conversations exported successfully`,
+        { id: loadingId }
+      );
+    } catch (error) {
+      console.error("Failed to export conversations:", error);
+      toast.error(`Failed to export conversations: ${error instanceof Error ? error.message : String(error)}`, {
+        id: loadingId,
+      });
+    } finally {
+      exportingRef.current = false;
+      setExportProgress(null);
+    }
+  };
 
   const handleImportConversation = async (conv: Conversation): Promise<ImportConversationResult> => {
     try {
@@ -94,7 +132,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
       const errors: string[] = [];
       const newConversations: string[] = [];
-      
+
       loadingId = toast.loading("Importing conversations...");
       setImporting(true);
 
@@ -140,10 +178,29 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
         <li
           className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-secondary/30"
           onClick={() => {
-            if (!importing) {
+            if (!exportProgress && !importing) {
+              void handleExport();
+            }
+          }}
+          aria-disabled={!!exportProgress || importing}
+        >
+          <ArrowDownTrayIcon className="h-4 w-4" />
+          <span className="ml-2">
+            {exportProgress
+              ? exportProgress.total > 0
+                ? `Exporting Chats (${exportProgress.completed}/${exportProgress.total})`
+                : "Preparing Export..."
+              : "Export Chats"}
+          </span>
+        </li>
+        <li
+          className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-secondary/30"
+          onClick={() => {
+            if (!importing && !exportProgress) {
               inputRef.current?.click();
             }
           }}
+          aria-disabled={importing || !!exportProgress}
         >
           <ArrowUpOnSquareIcon className="h-4 w-4" />
           <span className="ml-2">Import Chats</span>

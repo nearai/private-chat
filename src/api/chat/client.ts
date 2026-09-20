@@ -7,6 +7,7 @@ import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
 import { DEFAULT_SIGNING_ALGO, LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { getTimeRange } from "@/lib/time";
+import type { ConversationStoreState } from "@/stores/useConversationStore";
 import type {
   Chat,
   ChatInfo,
@@ -24,7 +25,6 @@ import type {
   UpdateShareGroupRequest,
 } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
-import type { ConversationStoreState } from "@/stores/useConversationStore";
 
 export interface UploadError {
   error: {
@@ -167,8 +167,24 @@ class ChatClient extends ApiClient {
    * @param id - Conversation ID
    * @param options.requiresAuth - Set to false for public conversations (default: true)
    */
-  getConversationItems(id: string, options?: { requiresAuth?: boolean }) {
-    return this.get<ConversationItemsResponse>(`/conversations/${id}/items`, {
+  getConversationItems(
+    id: string,
+    options?: {
+      requiresAuth?: boolean;
+      after?: string;
+      limit?: number;
+      order?: "asc" | "desc";
+    }
+  ) {
+    const searchParams = new URLSearchParams();
+    if (options?.after) searchParams.set("after", options.after);
+    if (options?.limit) searchParams.set("limit", String(options.limit));
+    if (options?.order) searchParams.set("order", options.order);
+
+    const query = searchParams.toString();
+    const endpoint = `/conversations/${id}/items${query ? `?${query}` : ""}`;
+
+    return this.get<ConversationItemsResponse>(endpoint, {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
     });
@@ -184,9 +200,71 @@ class ChatClient extends ApiClient {
   }
 
   async getConversations() {
-    return this.get<Conversation[]>(`/conversations`, {
+    return this.get<ConversationInfo[]>(`/conversations`, {
       apiVersion: "v2",
     });
+  }
+
+  async getConversationsForExport(onProgress?: (completed: number, total: number) => void): Promise<Conversation[]> {
+    const conversationList = await this.getConversations();
+    const conversations: Conversation[] = [];
+    onProgress?.(0, conversationList.length);
+
+    // Keep this sequential so a large account does not fan out into hundreds
+    // of simultaneous requests against the conversations API.
+    for (const [index, conversationInfo] of conversationList.entries()) {
+      try {
+        const conversation = await this.getConversation(conversationInfo.id);
+        const items = await this.getAllConversationItems(conversationInfo.id);
+
+        conversations.push({
+          ...conversationInfo,
+          ...conversation,
+          ...items,
+        });
+        onProgress?.(index + 1, conversationList.length);
+      } catch (error) {
+        const title = conversationInfo.metadata?.title || conversationInfo.id;
+        throw new Error(`Failed to export conversation "${title}": ${String(error)}`);
+      }
+    }
+
+    return conversations;
+  }
+
+  private async getAllConversationItems(conversationId: string): Promise<ConversationItemsResponse> {
+    const data: ConversationItem[] = [];
+    let after: string | undefined;
+    let firstId = "";
+    let lastId = "";
+    let object: ConversationItemsResponse["object"] = "list";
+
+    while (true) {
+      const page = await this.getConversationItems(conversationId, {
+        after,
+        limit: 100,
+        order: "asc",
+      });
+
+      if (!firstId) firstId = page.first_id;
+      data.push(...page.data);
+      lastId = page.last_id;
+      object = page.object;
+
+      if (!page.has_more) break;
+      if (!page.last_id || page.last_id === after) {
+        throw new Error("Conversation items pagination did not advance");
+      }
+      after = page.last_id;
+    }
+
+    return {
+      data,
+      first_id: firstId,
+      has_more: false,
+      last_id: lastId,
+      object,
+    };
   }
 
   async deleteConversation(id: string) {
@@ -381,7 +459,7 @@ class ChatClient extends ApiClient {
     onUserResponseCreated,
   }: StartStreamProps & {
     onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
-    onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void
+    onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void;
   }) {
     const input = Array.isArray(content)
       ? [{ role, content }]
