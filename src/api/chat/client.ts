@@ -1,3 +1,4 @@
+import { assertConversationWritesEnabled } from "@/lib/read-only";
 import type {
   ConversationCreateParams,
   ConversationUpdateParams,
@@ -59,6 +60,7 @@ class ChatClient extends ApiClient {
 
   //TODO: or use createNewChat
   createChat(title: string = "New Chat"): ChatInfo {
+    assertConversationWritesEnabled();
     return {
       id: `chat-${Date.now()}`,
       title,
@@ -74,6 +76,7 @@ class ChatClient extends ApiClient {
     model: string = "openai/gpt-oss-120b",
     conversation: string
   ) {
+    assertConversationWritesEnabled();
     return this.post<Responses.Response>(
       "/responses",
       {
@@ -89,6 +92,7 @@ class ChatClient extends ApiClient {
   }
 
   generateChatTitle(prompt: string, model: string = "openai/gpt-oss-120b") {
+    assertConversationWritesEnabled();
     return this.post<Responses.Response>(
       "/responses",
       {
@@ -107,12 +111,14 @@ class ChatClient extends ApiClient {
   }
 
   createConversation(conversation: ConversationCreateParams) {
+    assertConversationWritesEnabled();
     return this.post<OpenAIConversation>("/conversations", conversation, {
       apiVersion: "v2",
     });
   }
 
   addItemsToConversation(conversationId: string, items: Responses.ResponseInputItem[]) {
+    assertConversationWritesEnabled();
     return this.post<Responses.ResponseInputItem[]>(
       `/conversations/${conversationId}/items`,
       { items },
@@ -135,6 +141,7 @@ class ChatClient extends ApiClient {
   }
 
   updateConversation(conversationId: string, metadata: ConversationUpdateParams["metadata"]) {
+    assertConversationWritesEnabled();
     return this.post<ConversationUpdateParams>(
       `/conversations/${conversationId}`,
       {
@@ -175,6 +182,7 @@ class ChatClient extends ApiClient {
   }
 
   async importChat(chat: object, meta: object | null, pinned?: boolean, folderId?: string | null) {
+    assertConversationWritesEnabled();
     return this.post<Chat>("/chats/import", {
       chat: chat,
       meta: meta ?? {},
@@ -190,6 +198,7 @@ class ChatClient extends ApiClient {
   }
 
   async deleteConversation(id: string) {
+    assertConversationWritesEnabled();
     return this.delete<void>(`/conversations/${id}`, {
       apiVersion: "v2",
     });
@@ -286,50 +295,61 @@ class ChatClient extends ApiClient {
   }
 
   async pinConversationById(id: string) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/conversations/${id}/pin`, {}, { apiVersion: "v2" });
   }
 
   async unpinConversationById(id: string) {
+    assertConversationWritesEnabled();
     return this.delete<Chat>(`/conversations/${id}/pin`, { apiVersion: "v2" });
   }
 
   async cloneChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/conversations/${id}/clone`, {}, { apiVersion: "v2" });
   }
 
   async cloneSharedChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/chats/${id}/clone/shared`);
   }
 
   async shareChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/chats/${id}/share`);
   }
 
   async updateChatFolderIdById(id: string, folderId?: string) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/chats/${id}/folder`, {
       folder_id: folderId,
     });
   }
 
   async archiveChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/conversations/${id}/archive`, {}, { apiVersion: "v2" });
   }
 
   async unarchiveChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.delete<Chat>(`/conversations/${id}/archive`, { apiVersion: "v2" });
   }
 
   async deleteSharedChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.delete<Chat>(`/chats/${id}/share`);
   }
 
   async updateChatById(id: string, chat: object) {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/chats/${id}`, {
       chat: chat,
     });
   }
 
   async deleteChatById(id: string) {
+    assertConversationWritesEnabled();
     return this.delete<Chat>(`/conversations/${id}`, { apiVersion: "v2" });
   }
 
@@ -341,12 +361,14 @@ class ChatClient extends ApiClient {
   }
 
   async addTagById(id: string, tagName: string) {
+    assertConversationWritesEnabled();
     return this.post<Tag>(`/chats/${id}/tags`, {
       name: tagName,
     });
   }
 
   async deleteTagById(id: string, tagName: string) {
+    assertConversationWritesEnabled();
     return this.delete<Tag>(`/chats/${id}/tags`, {
       body: JSON.stringify({
         name: tagName,
@@ -355,14 +377,17 @@ class ChatClient extends ApiClient {
   }
 
   async deleteTagsById(id: string) {
+    assertConversationWritesEnabled();
     return this.delete<Tag>(`/chats/${id}/tags/all`);
   }
 
   async deleteAllChats() {
+    assertConversationWritesEnabled();
     return this.delete<Chat>(`/chats/`);
   }
 
   async archiveAllChats() {
+    assertConversationWritesEnabled();
     return this.post<Chat>(`/chats/archive/all`);
   }
 
@@ -383,6 +408,7 @@ class ChatClient extends ApiClient {
     onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
     onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void
   }) {
+    assertConversationWritesEnabled();
     const input = Array.isArray(content)
       ? [{ role, content }]
       : [{ role, content: [{ type: "input_text", text: content }] }];
@@ -434,6 +460,7 @@ class ChatClient extends ApiClient {
 
   //https://platform.openai.com/docs/api-reference/files/create?lang=node.js
   async uploadFile(file: File) {
+    assertConversationWritesEnabled();
     const formData = new FormData();
     formData.append("file", file);
     formData.append("purpose", "user_data");
@@ -447,6 +474,7 @@ class ChatClient extends ApiClient {
   }
 
   async deleteFile(id: string) {
+    assertConversationWritesEnabled();
     return this.delete(`/files/${id}`, { apiVersion: "v2" });
   }
 
@@ -457,12 +485,14 @@ class ChatClient extends ApiClient {
   }
 
   async createConversationShare(conversationId: string, payload: CreateConversationShareRequest) {
+    assertConversationWritesEnabled();
     return this.post<ConversationShareInfo[]>(`/conversations/${conversationId}/shares`, payload, {
       apiVersion: "v2",
     });
   }
 
   async deleteConversationShare(conversationId: string, shareId: string) {
+    assertConversationWritesEnabled();
     return this.delete<void>(`/conversations/${conversationId}/shares/${shareId}`, {
       apiVersion: "v2",
     });
@@ -475,18 +505,21 @@ class ChatClient extends ApiClient {
   }
 
   async createShareGroup(payload: CreateShareGroupRequest) {
+    assertConversationWritesEnabled();
     return this.post<ShareGroup>(`/share-groups`, payload, {
       apiVersion: "v2",
     });
   }
 
   async updateShareGroup(groupId: string, payload: UpdateShareGroupRequest) {
+    assertConversationWritesEnabled();
     return this.patch<ShareGroup>(`/share-groups/${groupId}`, payload, {
       apiVersion: "v2",
     });
   }
 
   async deleteShareGroup(groupId: string) {
+    assertConversationWritesEnabled();
     return this.delete<void>(`/share-groups/${groupId}`, {
       apiVersion: "v2",
     });

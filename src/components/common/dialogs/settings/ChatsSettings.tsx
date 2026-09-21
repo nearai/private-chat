@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED, READ_ONLY_MESSAGE } from "@/lib/read-only";
 import { ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
 import type { ResponseInputItem } from "openai/resources/responses/responses.mjs";
 import { useRef, useState } from "react";
@@ -87,6 +88,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   };
 
   const handleImport = async (json: unknown) => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     let loadingId: string | number = "";
     try {
       const conversions = historiesToConversations(json);
@@ -136,37 +138,40 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
   return (
     <div className="flex h-full flex-col text-sm">
+      {!CONVERSATION_WRITES_ENABLED && <p className="px-3.5 py-2 text-muted-foreground">{READ_ONLY_MESSAGE}</p>}
       <ul className="flex flex-col gap-2">
-        <li
-          className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-secondary/30"
-          onClick={() => {
-            if (!importing) {
-              inputRef.current?.click();
-            }
-          }}
-        >
-          <ArrowUpOnSquareIcon className="h-4 w-4" />
-          <span className="ml-2">Import Chats</span>
-          <input
-            type="file"
-            accept="application/json"
-            className="hidden"
-            ref={inputRef}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const text = await file.text();
-              try {
-                const json = JSON.parse(text);
-                handleImport(json);
-              } catch (err) {
-                console.error("Invalid JSON format", err);
-                toast.error("Invalid JSON format");
+        {CONVERSATION_WRITES_ENABLED && (
+          <li
+            className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-secondary/30"
+            onClick={() => {
+              if (!importing) {
+                inputRef.current?.click();
               }
-              e.target.value = "";
             }}
-          />
-        </li>
+          >
+            <ArrowUpOnSquareIcon className="h-4 w-4" />
+            <span className="ml-2">Import Chats</span>
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              ref={inputRef}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const text = await file.text();
+                try {
+                  const json = JSON.parse(text);
+                  handleImport(json);
+                } catch (err) {
+                  console.error("Invalid JSON format", err);
+                  toast.error("Invalid JSON format");
+                }
+                e.target.value = "";
+              }}
+            />
+          </li>
+        )}
       </ul>
     </div>
   );

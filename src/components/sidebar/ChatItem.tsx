@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
@@ -34,6 +35,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
   const isRenaming = updateConversation.isPending || isReloadingConversations;
 
   const confirmRename = () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     updateConversation.mutate(
       {
         conversationId: chat.id,
@@ -59,6 +61,7 @@ const ChatItem = ({ chat, isCurrentChat, isPinned, handleDeleteSuccess, onNaviga
   };
 
   const handleRename = async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     setShowRename(true);
     startEditingChatName(chat.id);
     await new Promise((resolve) => setTimeout(resolve, 100));

@@ -1,3 +1,4 @@
+import { assertConversationWritesEnabled } from "@/lib/read-only";
 import type {
   Plan,
   Subscription,
@@ -48,6 +49,7 @@ class UsersClient extends ApiClient {
   }
 
   async updateUserSettings(settings: UpdateUserSettingsRequest): Promise<UserSettingsResponse> {
+    assertConversationWritesEnabled();
     return this.post<UserSettingsResponse>("/users/me/settings", settings, { apiVersion: "v2" });
   }
 

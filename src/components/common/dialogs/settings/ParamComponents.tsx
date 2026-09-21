@@ -194,11 +194,13 @@ export const SwitchParam = ({
   value,
   onChange,
   description,
+  disabled = false,
 }: {
   label: string;
   value: boolean;
   onChange: (value: boolean) => void;
   description?: string;
+  disabled?: boolean;
 }) => {
   return (
     <div className="flex w-full items-center justify-between py-0.5">
@@ -206,7 +208,7 @@ export const SwitchParam = ({
         {label}
         {description && <div className="font-light text-sm">{description}</div>}
       </div>
-      <Switch checked={value} onCheckedChange={onChange} />
+      <Switch disabled={disabled} checked={value} onCheckedChange={disabled ? undefined : onChange} />
     </div>
   );
 };
@@ -216,12 +218,14 @@ export const SelectParam = ({
   value,
   onChange,
   description,
+  disabled = false,
   options,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   description?: string;
+  disabled?: boolean;
   options: { value: string; label: string }[];
 }) => {
   return (
@@ -230,7 +234,7 @@ export const SelectParam = ({
         {label}
         {description && <div className="font-light text-sm">{description}</div>}
       </div>
-      <Select value={value} onValueChange={onChange}>
+      <Select disabled={disabled} value={value} onValueChange={disabled ? undefined : onChange}>
         <SelectTrigger>
           <SelectValue placeholder={value} />
         </SelectTrigger>

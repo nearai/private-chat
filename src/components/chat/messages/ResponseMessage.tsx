@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { XCircleIcon } from "@heroicons/react/24/outline";
 import type React from "react";
 import { useCallback, useMemo } from "react";
@@ -141,6 +142,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const { model, createdTimestamp } = getModelAndCreatedTimestamp(batch, allMessages);
 
   const handleRegenerateResponse = useCallback(async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const userPrompt = allMessages[batch.userPromptId as string] as ConversationUserInput;
     // Need fix for files that will display input_file correctly
     let prevResponseId = batch?.parentResponseId || undefined;
@@ -427,7 +429,7 @@ const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 </svg>
               </Button>
 
-              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && !readOnly && (
+              {batch?.parentResponseId && verificationStatus !== "imported" && !prevMessageIsImported && CONVERSATION_WRITES_ENABLED && !readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"

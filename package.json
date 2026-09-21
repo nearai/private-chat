@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:read-only": "node --test tests/read-only.test.cjs",
     "lint": "pnpm run typecheck && biome lint --fix",
     "check": "biome check --fix",
     "format": "biome format --write && pnpm run check",

@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -69,7 +70,7 @@ interface MessageInputProps {
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
-const MessageInput: React.FC<MessageInputProps> = ({
+const WritableMessageInput: React.FC<MessageInputProps> = ({
   messages,
   allMessages,
   createMessagePair = () => {},
@@ -855,5 +856,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
     </>
   );
 };
+
+// Do not mount upload, paste, drop, or keyboard handlers in read-only mode.
+const MessageInput: React.FC<MessageInputProps> = (props) =>
+  CONVERSATION_WRITES_ENABLED ? <WritableMessageInput {...props} /> : null;
 
 export default MessageInput;

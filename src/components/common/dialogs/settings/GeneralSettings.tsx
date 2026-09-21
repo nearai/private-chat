@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -133,6 +134,7 @@ const GeneralSettings = () => {
   }, [remoteSettings]);
 
   const toggleNotification = async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const permission = await Notification.requestPermission();
 
     if (permission === "granted") {
@@ -149,16 +151,19 @@ const GeneralSettings = () => {
   };
 
   const toggleRequestFormat = () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const newFormat = requestFormat === null ? "json" : null;
     setRequestFormat(newFormat);
   };
 
   const handleLanguageChange = (newLang: string) => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     setLang(newLang);
     changeLanguage(newLang);
   };
 
   const handleSave = async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
     // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
@@ -251,6 +256,7 @@ const GeneralSettings = () => {
   };
 
   const handleParamsChange = (newParams: NonNullable<Settings["params"]>) => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     setParams(newParams);
   };
 
@@ -264,6 +270,7 @@ const GeneralSettings = () => {
           <div className="font-bold text-base">{t("General")}</div>
 
           <SelectParam
+            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Language")}
             value={lang}
             onChange={(value) => handleLanguageChange(value)}
@@ -271,6 +278,7 @@ const GeneralSettings = () => {
           />
 
           <SelectParam
+            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Appearance")}
             value={formAppearance}
             onChange={(value) => setFormAppearance(value as Theme)}
@@ -282,6 +290,7 @@ const GeneralSettings = () => {
           />
 
           <SwitchParam
+            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Notifications")}
             description={t("Notifications Description")}
             value={notificationEnabled}
@@ -289,6 +298,7 @@ const GeneralSettings = () => {
           />
 
           <SwitchParam
+            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Web Search")}
             value={formWebSearchEnabled}
             description={t("Web Search Description")}
@@ -303,6 +313,7 @@ const GeneralSettings = () => {
               <div className="font-light text-sm">{t("System Prompt Description")}</div>
             </div>
             <textarea
+              readOnly={!CONVERSATION_WRITES_ENABLED}
               value={system}
               onChange={(e) => setSystem(e.target.value)}
               className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-border bg-input p-4 font-['Inter'] font-normal text-sm placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
@@ -320,6 +331,7 @@ const GeneralSettings = () => {
             <div>
               <div className="my-2.5 font-medium text-sm">{t("System Prompt")}</div>
               <textarea
+                readOnly={!CONVERSATION_WRITES_ENABLED}
                 value={system}
                 onChange={(e) => setSystem(e.target.value)}
                 className="w-full resize-none rounded-md border border-border bg-input p-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
@@ -337,12 +349,14 @@ const GeneralSettings = () => {
 
               {showAdvanced && (
                 <>
-                  <AdvancedParams admin={isAdmin} params={params} onChange={handleParamsChange} />
+                  <div inert={!CONVERSATION_WRITES_ENABLED}>
+                    <AdvancedParams admin={isAdmin} params={params} onChange={handleParamsChange} />
+                  </div>
 
                   <hr className="border-border" />
 
                   {/* Keep Alive */}
-                  <div className="w-full">
+                  <div className="w-full" inert={!CONVERSATION_WRITES_ENABLED}>
                     <ParamControl
                       label={t("Keep Alive")}
                       tooltip="Control how long the model stays loaded in memory. Set to '5m' for 5 minutes, '1h' for 1 hour, or '-1' to keep loaded indefinitely."
@@ -358,7 +372,7 @@ const GeneralSettings = () => {
                   </div>
 
                   {/* Request Format */}
-                  <div>
+                  <div inert={!CONVERSATION_WRITES_ENABLED}>
                     <ParamControl
                       label={t("Request Mode")}
                       tooltip="Enable JSON mode to force the model to respond with valid JSON. You can also provide a JSON schema to constrain the response format."
@@ -368,6 +382,7 @@ const GeneralSettings = () => {
                     >
                       <div className="mt-0.5 flex">
                         <textarea
+                          readOnly={!CONVERSATION_WRITES_ENABLED}
                           className="w-full rounded-md border border-border bg-input p-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
                           placeholder={t('e.g. "json" or a JSON schema')}
                           value={requestFormat || ""}
@@ -385,11 +400,13 @@ const GeneralSettings = () => {
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-3 font-medium text-sm">
-        <Button disabled={isUpdatingSettings} size="small" onClick={handleSave}>
-          {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
-        </Button>
-      </div>
+      {CONVERSATION_WRITES_ENABLED && (
+        <div className="flex justify-end pt-3 font-medium text-sm">
+          <Button disabled={isUpdatingSettings} size="small" onClick={handleSave}>
+            {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

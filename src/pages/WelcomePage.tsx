@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import type React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -48,8 +49,8 @@ const WelcomePage: React.FC = () => {
             align="start"
           >
             <div className="flex flex-col gap-y-3">
-              <h5 className="font-semibold text-lg">Chat with private AI models for free.</h5>
-              <p>Get access to your personal AI models without worrying leaking private information.</p>
+              <h5 className="font-semibold text-lg">View your Private Chat conversations.</h5>
+              <p>Sign in to read and export your existing conversations.</p>
 
               <button
                 type="button"
@@ -71,18 +72,24 @@ const WelcomePage: React.FC = () => {
         </button>
       </div>
 
-      <ChatPlaceholder inputValue={inputValue} setInputValue={handleInputChange}>
-        <MessageInput
-          messages={[]}
-          onSubmit={gotoAuth}
-          showUserProfile={false}
-          prompt={inputValue}
-          fullWidth={false}
-          setPrompt={handleInputChange}
-          toolsDisabled={true}
-          autoFocusKey="welcome"
-        />
-      </ChatPlaceholder>
+      {CONVERSATION_WRITES_ENABLED ? (
+        <ChatPlaceholder inputValue={inputValue} setInputValue={handleInputChange}>
+          <MessageInput
+            messages={[]}
+            onSubmit={gotoAuth}
+            showUserProfile={false}
+            prompt={inputValue}
+            fullWidth={false}
+            setPrompt={handleInputChange}
+            toolsDisabled={true}
+            autoFocusKey="welcome"
+          />
+        </ChatPlaceholder>
+      ) : (
+        <p className="m-auto px-6 text-center text-muted-foreground">
+          Private Chat is read-only. Sign in to view and export your conversations.
+        </p>
+      )}
 
       <style>{`
 				@keyframes fadeInUp {

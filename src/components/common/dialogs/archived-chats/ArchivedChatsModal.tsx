@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import {
   ArrowUpOnSquareIcon,
   MagnifyingGlassIcon,
@@ -102,6 +103,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
   const handleUnarchive = useCallback(
     async (id: string) => {
+      if (!CONVERSATION_WRITES_ENABLED) return;
       const rollback = optimisticUpdate((old) =>
         old.map((c) =>
           c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
@@ -121,6 +123,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (!CONVERSATION_WRITES_ENABLED) return;
       const rollback = optimisticUpdate((old) => old.filter((c) => c.id !== id));
 
       try {
@@ -135,6 +138,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
   );
 
   const handleUnarchiveAll = useCallback(async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const rollback = optimisticUpdate((old) =>
       old.map((c) =>
         c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
@@ -165,17 +169,19 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
   return (
     <>
-      <ConfirmDialog
-        open={showUnarchiveAllConfirmDialog}
-        title={t("Unarchive All")}
-        description={t("Are you sure you want to unarchive all archived chats?")}
-        confirmText={t("Unarchive All")}
-        onConfirm={() => {
-          setShowUnarchiveAllConfirmDialog(false);
-          handleUnarchiveAll();
-        }}
-        onCancel={() => setShowUnarchiveAllConfirmDialog(false)}
-      />
+      {CONVERSATION_WRITES_ENABLED && (
+        <ConfirmDialog
+          open={showUnarchiveAllConfirmDialog}
+          title={t("Unarchive All")}
+          description={t("Are you sure you want to unarchive all archived chats?")}
+          confirmText={t("Unarchive All")}
+          onConfirm={() => {
+            setShowUnarchiveAllConfirmDialog(false);
+            handleUnarchiveAll();
+          }}
+          onCancel={() => setShowUnarchiveAllConfirmDialog(false)}
+        />
+      )}
 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] sm:max-w-4xl">
@@ -258,23 +264,21 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
                         <TableCell className="px-3 py-1 text-right">
                           <div className="flex justify-end gap-2">
-                            <CompactTooltip content={t("Unarchive Chat")}>
-                              <button
-                                className="rounded-xl p-2"
-                                onClick={() => handleUnarchive(chat.id)}
-                              >
-                                <ArrowUpOnSquareIcon className="size-4" />
-                              </button>
-                            </CompactTooltip>
+                            {CONVERSATION_WRITES_ENABLED && (
+                              <CompactTooltip content={t("Unarchive Chat")}>
+                                <button className="rounded-xl p-2" onClick={() => handleUnarchive(chat.id)}>
+                                  <ArrowUpOnSquareIcon className="size-4" />
+                                </button>
+                              </CompactTooltip>
+                            )}
 
-                            <CompactTooltip content={t("Delete Chat")}>
-                              <button
-                                className="rounded-xl p-2"
-                                onClick={() => handleDelete(chat.id)}
-                              >
-                                <TrashIcon className="size-4" />
-                              </button>
-                            </CompactTooltip>
+                            {CONVERSATION_WRITES_ENABLED && (
+                              <CompactTooltip content={t("Delete Chat")}>
+                                <button className="rounded-xl p-2" onClick={() => handleDelete(chat.id)}>
+                                  <TrashIcon className="size-4" />
+                                </button>
+                              </CompactTooltip>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -284,13 +288,15 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
               </div>
               {/* Buttons */}
               <div className="mt-2 flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
-                <Button
-                  variant="secondary"
-                  className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
-                  onClick={() => setShowUnarchiveAllConfirmDialog(true)}
-                >
-                  {t("Unarchive All Archived Chats")}
-                </Button>
+                {CONVERSATION_WRITES_ENABLED && (
+                  <Button
+                    variant="secondary"
+                    className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
+                    onClick={() => setShowUnarchiveAllConfirmDialog(true)}
+                  >
+                    {t("Unarchive All Archived Chats")}
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
