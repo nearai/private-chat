@@ -210,7 +210,7 @@ class ChatClient extends ApiClient {
   }
 
   async getConversationsForExport(
-    onProgress?: (completed: number, total: number) => void,
+    onProgress?: (completed: number, total: number, itemsRead?: number) => void,
     signal?: AbortSignal
   ): Promise<Conversation[]> {
     signal?.throwIfAborted();
@@ -226,7 +226,9 @@ class ChatClient extends ApiClient {
         signal?.throwIfAborted();
         const conversation = await this.getConversation(conversationInfo.id, { signal });
         signal?.throwIfAborted();
-        const items = await this.getAllConversationItems(conversationInfo.id, signal);
+        const items = await this.getAllConversationItems(conversationInfo.id, signal, (itemsRead) => {
+          onProgress?.(index, conversationList.length, itemsRead);
+        });
         signal?.throwIfAborted();
 
         conversations.push({
@@ -247,7 +249,8 @@ class ChatClient extends ApiClient {
 
   private async getAllConversationItems(
     conversationId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onItemsProgress?: (itemsRead: number) => void
   ): Promise<ConversationItemsResponse> {
     const data: ConversationItem[] = [];
     let after: string | undefined;
@@ -267,6 +270,7 @@ class ChatClient extends ApiClient {
 
       if (!firstId) firstId = page.first_id;
       data.push(...page.data);
+      onItemsProgress?.(data.length);
       lastId = page.last_id;
       object = page.object;
 

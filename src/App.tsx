@@ -2,6 +2,8 @@ import { Suspense, useCallback, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import AdminProtectedRoute from "@/components/AdminProtectRoute";
+import { ExportProgressNotification } from "@/components/common/ExportProgress";
+import { useExportStore } from "@/stores/useExportStore";
 import LoadingScreen from "@/components/common/LoadingScreen";
 import AdminLayout from "@/components/layout/AdminLayot";
 import Layout from "@/components/layout/Layout";
@@ -59,6 +61,7 @@ function App() {
   }, [location.pathname]);
 
   const handleLogout = useCallback(() => {
+    useExportStore.getState().stop();
     setUser(null);
     posthogReset();
     localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
@@ -81,6 +84,7 @@ function App() {
     <Suspense fallback={<LoadingScreen />}>
       <div className="relative h-screen">
         <Toaster />
+        <ExportProgressNotification />
         <PaymentRequiredDialog />
         <Routes>
           {/* Protected routes - require authentication */}

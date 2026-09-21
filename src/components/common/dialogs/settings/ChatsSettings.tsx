@@ -1,14 +1,13 @@
-import { ArrowDownTrayIcon, ArrowUpOnSquareIcon, StopIcon } from "@heroicons/react/24/solid";
+import { ArrowDownTrayIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
 import dayjs from "dayjs";
-import FileSaver from "file-saver";
 import type { ResponseInputItem } from "openai/resources/responses/responses.mjs";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { chatClient } from "@/api/chat/client";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
-import { Button } from "@/components/ui/button";
+import { ExportProgress } from "@/components/common/ExportProgress";
 import { type Conversation, historiesToConversations } from "@/lib/utils/transform-chat-history";
+import { useExportStore } from "@/stores/useExportStore";
 
 interface ImportConversationResult {
   success: boolean;
@@ -21,56 +20,12 @@ interface ChatsSettingsProps {
 
 const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const exportControllerRef = useRef<AbortController | null>(null);
 
   const [importing, setImporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState<{ completed: number; total: number } | null>(null);
+  const exportProgress = useExportStore((state) => state.progress);
+  const handleExport = useExportStore((state) => state.start);
   const { refetch } = useGetConversations();
   const { createConversation, addItemsToConversation } = useConversation();
-  const exportPercent =
-    exportProgress && exportProgress.total > 0
-      ? Math.round((exportProgress.completed / exportProgress.total) * 100)
-      : null;
-
-  const handleExport = async () => {
-    if (exportControllerRef.current) return;
-    const controller = new AbortController();
-    exportControllerRef.current = controller;
-
-    const loadingId = toast.loading("Preparing conversations for export...");
-    setExportProgress({ completed: 0, total: 0 });
-
-    try {
-      const conversations = await chatClient.getConversationsForExport((completed, total) => {
-        setExportProgress({ completed, total });
-        toast.loading(`Exporting conversations (${completed}/${total})...`, { id: loadingId });
-      }, controller.signal);
-      controller.signal.throwIfAborted();
-
-      const blob = new Blob([JSON.stringify(conversations, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
-      FileSaver.saveAs(blob, `private-chat-export-${dayjs().format("YYYY-MM-DD-HHmmss")}.json`);
-      toast.success(
-        conversations.length === 1
-          ? "1 conversation exported successfully"
-          : `${conversations.length} conversations exported successfully`,
-        { id: loadingId }
-      );
-    } catch (error) {
-      if (controller.signal.aborted) {
-        toast.info("Export stopped. No file was downloaded.", { id: loadingId });
-        return;
-      }
-      console.error("Failed to export conversations:", error);
-      toast.error(`Failed to export conversations: ${error instanceof Error ? error.message : String(error)}`, {
-        id: loadingId,
-      });
-    } finally {
-      exportControllerRef.current = null;
-      setExportProgress(null);
-    }
-  };
 
   const handleImportConversation = async (conv: Conversation): Promise<ImportConversationResult> => {
     try {
@@ -194,47 +149,11 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
             disabled={!!exportProgress || importing}
           >
             <ArrowDownTrayIcon className="h-4 w-4" />
-            <span className="ml-2 flex-1">
-              {exportProgress
-                ? exportProgress.total > 0
-                  ? `Exporting Chats (${exportProgress.completed}/${exportProgress.total})`
-                  : "Preparing Export..."
-                : "Export Chats"}
-            </span>
-            {exportPercent !== null && <span className="ml-2 tabular-nums">{exportPercent}%</span>}
+            <span className="ml-2 flex-1">Export Chats</span>
           </button>
           {exportProgress && (
-            <div className="flex items-center gap-3 px-3.5 pb-2">
-              <div
-                role="progressbar"
-                aria-label="Exporting conversations"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={exportPercent ?? undefined}
-                aria-valuetext={
-                  exportPercent === null
-                    ? "Preparing export"
-                    : `${exportProgress.completed} of ${exportProgress.total} conversations`
-                }
-                className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
-              >
-                <div
-                  className={
-                    exportPercent === null
-                      ? "h-full w-1/3 animate-pulse rounded-full bg-primary motion-reduce:animate-none"
-                      : "h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
-                  }
-                  style={exportPercent === null ? undefined : { width: `${exportPercent}%` }}
-                />
-              </div>
-              <Button
-                variant="secondary"
-                size="icon"
-                aria-label="Stop export"
-                onClick={() => exportControllerRef.current?.abort()}
-              >
-                <StopIcon className="size-3" aria-hidden="true" />
-              </Button>
+            <div className="px-3.5 pb-2">
+              <ExportProgress />
             </div>
           )}
         </li>
