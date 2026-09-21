@@ -24,8 +24,8 @@ export default function SunsetBanner() {
     >
       <p className="font-semibold">Private Chat is shutting down. Data available until November 15.</p>
       <p className="mt-1">
-        Read-only from September 28. On November 15, private.near.ai shuts down and all legacy conversation data will be
-        permanently deleted.
+        From September 28, you can view and export conversations, but not create new ones. On November 15,
+        private.near.ai shuts down and all legacy conversation data will be permanently deleted.
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
         <ExternalLink href={PLAYGROUND_URL}>Explore NEAR AI Cloud Playground</ExternalLink>
@@ -43,7 +43,7 @@ export default function SunsetBanner() {
             <div className="space-y-4 text-foreground text-sm leading-relaxed">
               <ul className="list-disc space-y-2 pl-5">
                 <li>
-                  <strong>September 28:</strong> Private Chat becomes read-only. You’ll be able to view your
+                  <strong>September 28:</strong> Private Chat becomes read-only. You’ll be able to view and export your
                   conversations, but not create new ones.
                 </li>
                 <li>
