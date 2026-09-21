@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -24,36 +25,33 @@ export const PublicAccessSection = ({
         <GlobeAltIcon className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-sm">
-          {publicShare ? t("Public access enabled") : t("Make public")}
-        </p>
+        <p className="font-medium text-sm">{publicShare ? t("Public access enabled") : t("Public access disabled", { defaultValue: "Public access disabled" })}</p>
         <p className="truncate text-muted-foreground text-xs">
-          {publicShare
-            ? t("Anyone with the link can view without signing in")
-            : t("Allow anyone to view without signing in")}
+          {publicShare ? t("Anyone with the link can view without signing in") : t("Only people with access can view", { defaultValue: "Only people with access can view" })}
         </p>
       </div>
-      {publicShare ? (
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={onRemovePublicLink}
-          disabled={isPending}
-          className="h-8 rounded-lg px-3 font-medium text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive"
-        >
-          {t("Disable")}
-        </Button>
-      ) : (
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={onCreatePublicLink}
-          disabled={isPending}
-          className="h-8 rounded-lg border border-border/60 transition-all hover:border-foreground/30 hover:bg-foreground/5"
-        >
-          {t("Enable")}
-        </Button>
-      )}
+      {CONVERSATION_WRITES_ENABLED &&
+        (publicShare ? (
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={onRemovePublicLink}
+            disabled={isPending}
+            className="h-8 rounded-lg px-3 font-medium text-muted-foreground text-xs hover:bg-destructive/10 hover:text-destructive"
+          >
+            {t("Disable")}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={onCreatePublicLink}
+            disabled={isPending}
+            className="h-8 rounded-lg border border-border/60 transition-all hover:border-foreground/30 hover:bg-foreground/5"
+          >
+            {t("Enable")}
+          </Button>
+        ))}
     </div>
   );
 };

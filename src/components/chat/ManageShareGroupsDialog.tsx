@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { TrashIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -58,9 +59,9 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
 
   const isFormValid = useMemo(() => {
     if (!name.trim()) return false;
-    const activeMembers = members.filter(m => m.value.trim().length > 0);
+    const activeMembers = members.filter((m) => m.value.trim().length > 0);
     if (!activeMembers.length) return false;
-    return activeMembers.every(member => {
+    return activeMembers.every((member) => {
       const value = member.value.trim();
       if (member.kind === "email") return isValidEmail(value);
       if (member.kind === "near_account") return isValidNearAccount(value);
@@ -79,6 +80,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
   }, [editingGroup]);
 
   const handleSubmit = async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     setErrors({});
 
     const payloadMembers = members
@@ -151,6 +153,7 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
   };
 
   const handleDeleteGroup = async (groupId: string) => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     await deleteGroup.mutateAsync(groupId);
     toast.success("Group deleted");
     if (editingGroup?.id === groupId) {
@@ -166,15 +169,21 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto lg:max-w-lg">
         <DialogHeader className="pb-2">
-          <DialogTitle className="font-bold text-xl tracking-tight">Manage Share Groups</DialogTitle>
+          <DialogTitle className="font-bold text-xl tracking-tight">
+            {CONVERSATION_WRITES_ENABLED ? "Manage Share Groups" : "Share Groups"}
+          </DialogTitle>
           <DialogDescription className="w-full text-muted-foreground/80">
-            Create and organize reusable groups for easier sharing.
+            {CONVERSATION_WRITES_ENABLED
+              ? "Create and organize reusable groups for easier sharing."
+              : "View existing groups and their members. Sharing settings are read-only."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 md:grid-cols-[320px,1fr]">
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <p className="pl-1 font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wider">Your Groups</p>
+              <p className="pl-1 font-semibold text-[11px] text-muted-foreground/70 uppercase tracking-wider">
+                Your Groups
+              </p>
               {isLoading && <Spinner className="size-3" />}
             </div>
             <div className="max-h-[50vh] space-y-2 overflow-y-auto rounded-2xl border border-border/40 bg-background/50 p-2">
@@ -185,7 +194,9 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                   </div>
                   <h3 className="mb-1 font-medium text-foreground text-sm">No share groups</h3>
                   <p className="max-w-[220px] text-muted-foreground text-xs leading-relaxed">
-                    Create a group to easily share chats with your team or friends.
+                    {CONVERSATION_WRITES_ENABLED
+                      ? "Create a group to easily share chats with your team or friends."
+                      : "There are no existing share groups."}
                   </p>
                 </div>
               )}
@@ -203,66 +214,88 @@ export const ManageShareGroupsDialog = ({ open, onOpenChange, onGroupSelected }:
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium">{group.name}</p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleDeleteGroup(group.id);
-                      }}
-                      disabled={isDeleting}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <TrashIcon className="size-4" />
-                    </Button>
+                    {CONVERSATION_WRITES_ENABLED && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteGroup(group.id);
+                        }}
+                        disabled={isDeleting}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <TrashIcon className="size-4" />
+                      </Button>
+                    )}
                   </div>
                   <p className="text-muted-foreground text-xs">{group.members.length} member(s)</p>
                 </button>
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-border/40 p-4">
-            <div className="space-y-3">
-              <div>
-                <label className="ml-1 font-medium text-muted-foreground text-xs" htmlFor="group-name">
-                  {editingGroup ? "Edit Group Name" : "Group Name"}
-                </label>
-                <input
-                  id="group-name"
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="My collaborators"
-                  className="mt-1.5 w-full rounded-xl border border-border/40 bg-background px-3 py-2 text-sm shadow-xs outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/20 focus:ring-2 focus:ring-primary/5"
-                />
-              </div>
-              <div className="pt-2">
-                <p className="mb-2 ml-1 font-medium text-muted-foreground text-xs">Members</p>
-                <ShareRecipientInputs recipients={members} onChange={setMembers} allowMultiple errors={errors} />
-              </div>
-            </div>
-            <DialogFooter className="mt-6 border-border/20 border-t pt-4">
-              {editingGroup && (
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => setEditingGroup(null)}
-                  className="rounded-xl px-4 text-muted-foreground hover:bg-foreground/5"
-                >
-                  Cancel
-                </Button>
+          {!CONVERSATION_WRITES_ENABLED ? (
+            <div className="rounded-2xl border border-border/40 p-4">
+              {editingGroup ? (
+                <>
+                  <h3 className="font-medium">{editingGroup.name}</h3>
+                  <p className="mt-3 text-muted-foreground text-xs">Members</p>
+                  <ul className="mt-2 space-y-2 text-sm">
+                    {editingGroup.members.map((member) => (
+                      <li key={`${member.kind}:${member.value}`} className="break-words">
+                        {member.value}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">Select a group to view its members.</p>
               )}
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSaving || !isFormValid}
-                className="rounded-xl px-8 font-semibold shadow-sm transition-all active:scale-[0.98]"
-              >
-                {editingGroup ? "Save Changes" : "Create Group"}
-              </Button>
-            </DialogFooter>
-          </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border/40 p-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="ml-1 font-medium text-muted-foreground text-xs" htmlFor="group-name">
+                    {editingGroup ? "Edit Group Name" : "Group Name"}
+                  </label>
+                  <input
+                    id="group-name"
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="My collaborators"
+                    className="mt-1.5 w-full rounded-xl border border-border/40 bg-background px-3 py-2 text-sm shadow-xs outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/20 focus:ring-2 focus:ring-primary/5"
+                  />
+                </div>
+                <div className="pt-2">
+                  <p className="mb-2 ml-1 font-medium text-muted-foreground text-xs">Members</p>
+                  <ShareRecipientInputs recipients={members} onChange={setMembers} allowMultiple errors={errors} />
+                </div>
+              </div>
+              <DialogFooter className="mt-6 border-border/20 border-t pt-4">
+                {editingGroup && (
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setEditingGroup(null)}
+                    className="rounded-xl px-4 text-muted-foreground hover:bg-foreground/5"
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSaving || !isFormValid}
+                  className="rounded-xl px-8 font-semibold shadow-sm transition-all active:scale-[0.98]"
+                >
+                  {editingGroup ? "Save Changes" : "Create Group"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

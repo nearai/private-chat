@@ -120,3 +120,24 @@ test('settings updates are blocked while existing settings remain readable', asy
   await usersClient.getUserSettings();
   assert.deepEqual(requests, [['get', '/users/me/settings']]);
 });
+
+for (const publicShare of [undefined, { id: 'public-share' }]) {
+  test(`public access status remains visible without write controls (${!!publicShare})`, () => {
+    const { renderToStaticMarkup } = require('react-dom/server');
+    const { createElement } = require('react');
+    const { PublicAccessSection } = load('src/components/chat/share/PublicAccessSection.tsx', {
+      '@/lib/read-only': policy,
+      'react/jsx-runtime': require('react/jsx-runtime'),
+      'react-i18next': { useTranslation: () => ({ t: (value) => value }) },
+      '@heroicons/react/24/outline': { GlobeAltIcon: () => null },
+      '@/components/ui/button': { Button: () => { throw new Error('Write control rendered'); } },
+    });
+    const html = renderToStaticMarkup(createElement(PublicAccessSection, {
+      publicShare,
+      isPending: false,
+      onCreatePublicLink: () => { throw new Error('Unexpected write'); },
+      onRemovePublicLink: () => { throw new Error('Unexpected write'); },
+    }));
+    assert.ok(html.includes(publicShare ? 'Public access enabled' : 'Public access disabled'));
+  });
+}

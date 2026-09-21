@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -32,9 +33,7 @@ export const PeopleWithAccessSection = ({
 
   return (
     <div className="space-y-3">
-      <h3 className="font-medium text-muted-foreground text-sm">
-        {t("People with access")}
-      </h3>
+      <h3 className="font-medium text-muted-foreground text-sm">{t("People with access")}</h3>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -72,57 +71,41 @@ export const PeopleWithAccessSection = ({
           {peopleShares.map((share) => {
             const info = getShareDisplayInfo(share, groupsById);
             const isDeleting = pendingDeleteId === share.id;
-            const isCurrentUser = share.share_type === "direct" &&
-              share.recipient?.value?.toLowerCase() === currentUserEmail;
+            const isCurrentUser =
+              share.share_type === "direct" && share.recipient?.value?.toLowerCase() === currentUserEmail;
 
             if (!info) return null;
 
             return (
               <div
                 key={share.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl p-2 transition-colors",
-                  "group hover:bg-muted/10",
-                )}
+                className={cn("flex items-center gap-3 rounded-xl p-2 transition-colors", "group hover:bg-muted/10")}
               >
-                <ShareAvatar
-                  name={info.name}
-                  iconType={"iconType" in info ? info.iconType : undefined}
-                />
+                <ShareAvatar name={info.name} iconType={"iconType" in info ? info.iconType : undefined} />
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-sm">
                     {info.name}
-                    {isCurrentUser && (
-                      <span className="ml-1.5 text-muted-foreground">
-                        {t("(you)")}
-                      </span>
-                    )}
+                    {isCurrentUser && <span className="ml-1.5 text-muted-foreground">{t("(you)")}</span>}
                   </p>
-                  <p className="text-muted-foreground text-xs">
-                    {info.subtitle}
-                  </p>
+                  <p className="text-muted-foreground text-xs">{info.subtitle}</p>
                 </div>
 
                 <span className="rounded-md bg-foreground/5 px-2 py-1 text-muted-foreground text-xs">
                   {share.permission === "write" ? t("Can edit") : t("Can view")}
                 </span>
 
-                {isOwner && (
+                {CONVERSATION_WRITES_ENABLED && isOwner && (
                   <Button
                     variant="destructive"
                     size="icon"
                     onClick={() => onRemoveAccess(share)}
                     disabled={isDeleting}
                     className={cn(
-                      "size-7 rounded-lg bg-destructive/10 text-destructive/80 hover:bg-destructive/20 hover:text-destructive",
+                      "size-7 rounded-lg bg-destructive/10 text-destructive/80 hover:bg-destructive/20 hover:text-destructive"
                     )}
                   >
-                    {isDeleting ? (
-                      <Spinner className="size-4" />
-                    ) : (
-                      <XMarkIcon className="size-4" />
-                    )}
+                    {isDeleting ? <Spinner className="size-4" /> : <XMarkIcon className="size-4" />}
                   </Button>
                 )}
               </div>
