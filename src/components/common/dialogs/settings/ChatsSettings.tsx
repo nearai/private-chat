@@ -23,6 +23,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
   const [importing, setImporting] = useState(false);
   const exportProgress = useExportStore((state) => state.progress);
+  const exportResult = useExportStore((state) => state.result);
   const handleExport = useExportStore((state) => state.start);
   const { refetch } = useGetConversations();
   const { createConversation, addItemsToConversation } = useConversation();
@@ -151,7 +152,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
             <ArrowDownTrayIcon className="h-4 w-4" />
             <span className="ml-2 flex-1">Export Chats</span>
           </button>
-          {exportProgress && (
+          {(exportProgress || exportResult) && (
             <div className="px-3.5 pb-2">
               <ExportProgress />
             </div>

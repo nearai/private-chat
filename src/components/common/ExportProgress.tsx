@@ -1,15 +1,41 @@
-import { StopIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon, StopIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { Button } from "@/components/ui/button";
 import { EXPORT_RETRY_LIMIT } from "@/lib/export-retry";
 import { useExportStore } from "@/stores/useExportStore";
 
 export function ExportProgress() {
   const progress = useExportStore((state) => state.progress);
+  const result = useExportStore((state) => state.result);
+  const dismissResult = useExportStore((state) => state.dismissResult);
   const retry = useExportStore((state) => state.start);
   const stop = useExportStore((state) => state.stop);
+  if (result) {
+    return (
+      <div className="flex items-start gap-3 text-sm">
+        <CheckCircleIcon className="mt-0.5 size-5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+        <div role="status" className="min-w-0 flex-1 space-y-1">
+          <p className="font-medium">Export complete</p>
+          <p>
+            {result.count} {result.count === 1 ? "conversation" : "conversations"} exported. Check your downloads for
+            the file.
+          </p>
+          <p className="break-all text-muted-foreground text-xs">{result.filename}</p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Dismiss export notification"
+          onClick={dismissResult}
+        >
+          <XMarkIcon className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    );
+  }
   if (!progress) return null;
 
-  const { phase, completed, total, itemsRead, retryAttempt, error } = progress;
+  const { phase, completed, total, retryAttempt, error } = progress;
   const percent = phase === "reading" && total > 0 ? Math.round((completed / total) * 100) : null;
   const label = error
     ? "Export paused"
@@ -27,11 +53,6 @@ export function ExportProgress() {
         <span role="status">{label}</span>
         {percent !== null && <span className="tabular-nums">{percent}%</span>}
       </div>
-      {phase === "reading" && completed < total && (
-        <p className="text-muted-foreground text-xs">
-          Conversation {completed + 1} of {total}: {itemsRead} items read
-        </p>
-      )}
       {error && (
         <p role="alert" className="break-words text-destructive text-xs">
           {error} Your progress is saved for this session. Retry to continue.
@@ -72,7 +93,7 @@ export function ExportProgress() {
 }
 
 export function ExportProgressNotification() {
-  const active = useExportStore((state) => state.progress !== null);
+  const active = useExportStore((state) => state.progress !== null || state.result !== null);
   if (!active) return null;
 
   return (
