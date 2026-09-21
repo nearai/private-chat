@@ -6,6 +6,7 @@ import type {
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
 import { DEFAULT_SIGNING_ALGO, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { getExportErrorMessage, retryExportRequest } from "@/lib/export-retry";
 import { getTimeRange } from "@/lib/time";
 import type { ConversationStoreState } from "@/stores/useConversationStore";
 import type {
@@ -25,6 +26,16 @@ import type {
   UpdateShareGroupRequest,
 } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
+
+export interface ExportCheckpoint {
+  list?: ConversationInfo[];
+  conversations: Conversation[];
+  current?: {
+    conversation: Conversation;
+    items: ConversationItemsResponse;
+    after?: string;
+  };
+}
 
 export interface UploadError {
   error: {
@@ -127,11 +138,15 @@ class ChatClient extends ApiClient {
    * @param id - Conversation ID
    * @param options.requiresAuth - Set to false for public conversations (default: true)
    */
-  getConversation(id: string, options?: { requiresAuth?: boolean; signal?: AbortSignal }) {
+  getConversation(
+    id: string,
+    options?: { requiresAuth?: boolean; signal?: AbortSignal; preserveErrorDetails?: boolean }
+  ) {
     return this.get<Conversation>(`/conversations/${id}`, {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
       signal: options?.signal,
+      preserveErrorDetails: options?.preserveErrorDetails,
     });
   }
 
@@ -176,6 +191,7 @@ class ChatClient extends ApiClient {
       limit?: number;
       order?: "asc" | "desc";
       signal?: AbortSignal;
+      preserveErrorDetails?: boolean;
     }
   ) {
     const searchParams = new URLSearchParams();
@@ -190,6 +206,7 @@ class ChatClient extends ApiClient {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
       signal: options?.signal,
+      preserveErrorDetails: options?.preserveErrorDetails,
     });
   }
 
@@ -202,92 +219,80 @@ class ChatClient extends ApiClient {
     });
   }
 
-  async getConversations(signal?: AbortSignal) {
+  async getConversations(signal?: AbortSignal, preserveErrorDetails = false) {
     return this.get<ConversationInfo[]>(`/conversations`, {
       apiVersion: "v2",
       signal,
+      preserveErrorDetails,
     });
   }
 
   async getConversationsForExport(
     onProgress?: (completed: number, total: number, itemsRead?: number) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    checkpoint: ExportCheckpoint = { conversations: [] },
+    onRetry?: (attempt: number) => void
   ): Promise<Conversation[]> {
     signal?.throwIfAborted();
-    const conversationList = await this.getConversations(signal);
+    checkpoint.list ??= await retryExportRequest(() => this.getConversations(signal, true), signal, onRetry);
     signal?.throwIfAborted();
-    const conversations: Conversation[] = [];
-    onProgress?.(0, conversationList.length);
+    const { list, conversations } = checkpoint;
+    onProgress?.(conversations.length, list.length, checkpoint.current?.items.data.length);
 
-    // Keep this sequential so a large account does not fan out into hundreds
-    // of simultaneous requests against the conversations API.
-    for (const [index, conversationInfo] of conversationList.entries()) {
+    // Retain successful requests so retry resumes at the failed conversation or page.
+    while (conversations.length < list.length) {
+      const conversationInfo = list[conversations.length];
       try {
         signal?.throwIfAborted();
-        const conversation = await this.getConversation(conversationInfo.id, { signal });
-        signal?.throwIfAborted();
-        const items = await this.getAllConversationItems(conversationInfo.id, signal, (itemsRead) => {
-          onProgress?.(index, conversationList.length, itemsRead);
-        });
-        signal?.throwIfAborted();
-
-        conversations.push({
-          ...conversationInfo,
-          ...conversation,
-          ...items,
-        });
-        onProgress?.(index + 1, conversationList.length);
+        if (!checkpoint.current) {
+          const conversation = await retryExportRequest(
+            () => this.getConversation(conversationInfo.id, { signal, preserveErrorDetails: true }),
+            signal,
+            onRetry
+          );
+          checkpoint.current = {
+            conversation,
+            items: { data: [], first_id: "", last_id: "", has_more: true, object: "list" },
+          };
+        }
+        const current = checkpoint.current;
+        while (current.items.has_more) {
+          const page = await retryExportRequest(
+            () =>
+              this.getConversationItems(conversationInfo.id, {
+                after: current.after,
+                limit: 100,
+                order: "asc",
+                signal,
+                preserveErrorDetails: true,
+              }),
+            signal,
+            onRetry
+          );
+          // Validate before changing the checkpoint, so retry cannot duplicate a page.
+          if (page.has_more && (!page.last_id || page.last_id === current.after)) {
+            throw new Error("Conversation items pagination did not advance");
+          }
+          if (!current.items.first_id) current.items.first_id = page.first_id;
+          current.items.data.push(...page.data);
+          current.items.last_id = page.last_id;
+          current.items.has_more = page.has_more;
+          current.items.object = page.object;
+          current.after = page.last_id;
+          onProgress?.(conversations.length, list.length, current.items.data.length);
+          signal?.throwIfAborted();
+        }
+        conversations.push({ ...conversationInfo, ...current.conversation, ...current.items });
+        checkpoint.current = undefined;
+        onProgress?.(conversations.length, list.length);
       } catch (error) {
         signal?.throwIfAborted();
         const title = conversationInfo.metadata?.title || conversationInfo.id;
-        throw new Error(`Failed to export conversation "${title}": ${String(error)}`);
+        const message = getExportErrorMessage(error);
+        throw new Error(`Failed to export conversation "${title}": ${message}`, { cause: error });
       }
     }
-
     return conversations;
-  }
-
-  private async getAllConversationItems(
-    conversationId: string,
-    signal?: AbortSignal,
-    onItemsProgress?: (itemsRead: number) => void
-  ): Promise<ConversationItemsResponse> {
-    const data: ConversationItem[] = [];
-    let after: string | undefined;
-    let firstId = "";
-    let lastId = "";
-    let object: ConversationItemsResponse["object"] = "list";
-
-    while (true) {
-      signal?.throwIfAborted();
-      const page = await this.getConversationItems(conversationId, {
-        after,
-        limit: 100,
-        order: "asc",
-        signal,
-      });
-      signal?.throwIfAborted();
-
-      if (!firstId) firstId = page.first_id;
-      data.push(...page.data);
-      onItemsProgress?.(data.length);
-      lastId = page.last_id;
-      object = page.object;
-
-      if (!page.has_more) break;
-      if (!page.last_id || page.last_id === after) {
-        throw new Error("Conversation items pagination did not advance");
-      }
-      after = page.last_id;
-    }
-
-    return {
-      data,
-      first_id: firstId,
-      has_more: false,
-      last_id: lastId,
-      object,
-    };
   }
 
   async deleteConversation(id: string) {
