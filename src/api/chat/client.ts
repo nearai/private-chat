@@ -127,10 +127,11 @@ class ChatClient extends ApiClient {
    * @param id - Conversation ID
    * @param options.requiresAuth - Set to false for public conversations (default: true)
    */
-  getConversation(id: string, options?: { requiresAuth?: boolean }) {
+  getConversation(id: string, options?: { requiresAuth?: boolean; signal?: AbortSignal }) {
     return this.get<Conversation>(`/conversations/${id}`, {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
+      signal: options?.signal,
     });
   }
 
@@ -174,6 +175,7 @@ class ChatClient extends ApiClient {
       after?: string;
       limit?: number;
       order?: "asc" | "desc";
+      signal?: AbortSignal;
     }
   ) {
     const searchParams = new URLSearchParams();
@@ -187,6 +189,7 @@ class ChatClient extends ApiClient {
     return this.get<ConversationItemsResponse>(endpoint, {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
+      signal: options?.signal,
     });
   }
 
@@ -199,14 +202,20 @@ class ChatClient extends ApiClient {
     });
   }
 
-  async getConversations() {
+  async getConversations(signal?: AbortSignal) {
     return this.get<ConversationInfo[]>(`/conversations`, {
       apiVersion: "v2",
+      signal,
     });
   }
 
-  async getConversationsForExport(onProgress?: (completed: number, total: number) => void): Promise<Conversation[]> {
-    const conversationList = await this.getConversations();
+  async getConversationsForExport(
+    onProgress?: (completed: number, total: number) => void,
+    signal?: AbortSignal
+  ): Promise<Conversation[]> {
+    signal?.throwIfAborted();
+    const conversationList = await this.getConversations(signal);
+    signal?.throwIfAborted();
     const conversations: Conversation[] = [];
     onProgress?.(0, conversationList.length);
 
@@ -214,8 +223,11 @@ class ChatClient extends ApiClient {
     // of simultaneous requests against the conversations API.
     for (const [index, conversationInfo] of conversationList.entries()) {
       try {
-        const conversation = await this.getConversation(conversationInfo.id);
-        const items = await this.getAllConversationItems(conversationInfo.id);
+        signal?.throwIfAborted();
+        const conversation = await this.getConversation(conversationInfo.id, { signal });
+        signal?.throwIfAborted();
+        const items = await this.getAllConversationItems(conversationInfo.id, signal);
+        signal?.throwIfAborted();
 
         conversations.push({
           ...conversationInfo,
@@ -224,6 +236,7 @@ class ChatClient extends ApiClient {
         });
         onProgress?.(index + 1, conversationList.length);
       } catch (error) {
+        signal?.throwIfAborted();
         const title = conversationInfo.metadata?.title || conversationInfo.id;
         throw new Error(`Failed to export conversation "${title}": ${String(error)}`);
       }
@@ -232,7 +245,10 @@ class ChatClient extends ApiClient {
     return conversations;
   }
 
-  private async getAllConversationItems(conversationId: string): Promise<ConversationItemsResponse> {
+  private async getAllConversationItems(
+    conversationId: string,
+    signal?: AbortSignal
+  ): Promise<ConversationItemsResponse> {
     const data: ConversationItem[] = [];
     let after: string | undefined;
     let firstId = "";
@@ -240,11 +256,14 @@ class ChatClient extends ApiClient {
     let object: ConversationItemsResponse["object"] = "list";
 
     while (true) {
+      signal?.throwIfAborted();
       const page = await this.getConversationItems(conversationId, {
         after,
         limit: 100,
         order: "asc",
+        signal,
       });
+      signal?.throwIfAborted();
 
       if (!firstId) firstId = page.first_id;
       data.push(...page.data);
