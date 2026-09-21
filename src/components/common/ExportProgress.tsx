@@ -13,7 +13,7 @@ export function ExportProgress() {
     return (
       <div className="flex items-start gap-3 text-sm">
         <CheckCircleIcon className="mt-0.5 size-5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
-        <div role="status" className="min-w-0 flex-1 space-y-1">
+        <div role="status" className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="font-medium">Export complete</p>
           <p>
             {result.count} {result.count === 1 ? "conversation" : "conversations"} exported. Check your downloads for
