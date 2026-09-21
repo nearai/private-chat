@@ -5,6 +5,7 @@ import ChevronDown from "@/assets/icons/chevron-welcome.svg?react";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import ChatPlaceholder from "@/components/chat/ChatPlaceholder";
 import MessageInput from "@/components/chat/MessageInput";
+import SunsetBanner from "@/components/common/SunsetBanner";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogSignupStarted } from "@/lib/posthog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
@@ -33,7 +34,8 @@ const WelcomePage: React.FC = () => {
 
   return (
     <div className="flex h-screen max-h-dvh w-full max-w-full flex-col">
-      <div className="absolute top-0 left-0 flex w-full items-center justify-between p-4">
+      <SunsetBanner />
+      <div className="flex w-full shrink-0 items-center justify-between p-4">
         <DropdownMenu>
           <DropdownMenuTrigger className="outline-none">
             <div className="flex cursor-pointer items-center">
@@ -71,18 +73,20 @@ const WelcomePage: React.FC = () => {
         </button>
       </div>
 
-      <ChatPlaceholder inputValue={inputValue} setInputValue={handleInputChange}>
-        <MessageInput
-          messages={[]}
-          onSubmit={gotoAuth}
-          showUserProfile={false}
-          prompt={inputValue}
-          fullWidth={false}
-          setPrompt={handleInputChange}
-          toolsDisabled={true}
-          autoFocusKey="welcome"
-        />
-      </ChatPlaceholder>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <ChatPlaceholder inputValue={inputValue} setInputValue={handleInputChange}>
+          <MessageInput
+            messages={[]}
+            onSubmit={gotoAuth}
+            showUserProfile={false}
+            prompt={inputValue}
+            fullWidth={false}
+            setPrompt={handleInputChange}
+            toolsDisabled={true}
+            autoFocusKey="welcome"
+          />
+        </ChatPlaceholder>
+      </div>
 
       <style>{`
 				@keyframes fadeInUp {
