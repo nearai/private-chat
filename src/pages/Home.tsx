@@ -48,7 +48,7 @@ const Home = ({
 
   // Get permission info for shared conversations
   const { data: sharesData } = useConversationShares(chatId);
-  const canWrite = CONVERSATION_WRITES_ENABLED && (sharesData?.can_write ?? false);
+  const canWrite = CONVERSATION_WRITES_ENABLED && (sharesData?.can_write ?? true);
 
   // Show author names when conversation has multiple users:
   // - You're not the owner (it's been shared with you), OR

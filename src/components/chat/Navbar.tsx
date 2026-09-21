@@ -102,7 +102,7 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
                   {isCopying ? <Spinner className="size-4" /> : <DocumentDuplicateIcon className="size-4.5" />}
                 </Button>
               )}
-              {CONVERSATION_WRITES_ENABLED && chatId && (
+              {chatId && (
                 <div className="relative">
                   <Button
                     variant="ghost"
@@ -131,7 +131,7 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
             </div>
           </div>
         </div>
-        {CONVERSATION_WRITES_ENABLED && chatId && (
+        {chatId && (
           <ShareConversationDialog conversationId={chatId} open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen} />
         )}
       </nav>
