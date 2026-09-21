@@ -123,6 +123,7 @@ export class ApiClient {
       withoutHeaders?: boolean;
       requiresAuth?: boolean;
       ignore401Error?: boolean;
+      preserveErrorDetails?: boolean;
     } = {}
   ): Promise<T> {
     try {
@@ -189,6 +190,19 @@ export class ApiClient {
           }
         }
 
+        if (options.preserveErrorDetails) {
+          const detail = (error as { detail?: unknown })?.detail;
+          const retryAfter = response.headers.get("retry-after");
+          const retryAfterMs = retryAfter
+            ? /^\d+$/.test(retryAfter)
+              ? Number(retryAfter) * 1000
+              : Math.max(0, Date.parse(retryAfter) - Date.now())
+            : undefined;
+          throw Object.assign(new Error(typeof detail === "string" ? detail : response.statusText), {
+            status: response.status,
+            retryAfterMs,
+          });
+        }
         throw error;
       }
 
@@ -206,6 +220,7 @@ export class ApiClient {
         return { detail: fallbackText || response.statusText } as T;
       }
     } catch (err) {
+      if (options.preserveErrorDetails) throw err;
       if (!isOfflineError(err)) {
         console.error(err);
       }
@@ -258,7 +273,7 @@ export class ApiClient {
 
   protected async get<T>(
     endpoint: string,
-    options: RequestInit & { apiVersion?: "v1" | "v2"; requiresAuth?: boolean } = {}
+    options: RequestInit & { apiVersion?: "v1" | "v2"; requiresAuth?: boolean; preserveErrorDetails?: boolean } = {}
   ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,

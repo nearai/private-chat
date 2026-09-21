@@ -1,11 +1,13 @@
-import { ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
+import { ArrowDownTrayIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
+import dayjs from "dayjs";
 import type { ResponseInputItem } from "openai/resources/responses/responses.mjs";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useConversation } from "@/api/chat/queries/useConversation";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
+import { ExportProgress } from "@/components/common/ExportProgress";
 import { type Conversation, historiesToConversations } from "@/lib/utils/transform-chat-history";
-import dayjs from "dayjs";
+import { useExportStore } from "@/stores/useExportStore";
 
 interface ImportConversationResult {
   success: boolean;
@@ -20,6 +22,9 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [importing, setImporting] = useState(false);
+  const exportProgress = useExportStore((state) => state.progress);
+  const exportResult = useExportStore((state) => state.result);
+  const handleExport = useExportStore((state) => state.start);
   const { refetch } = useGetConversations();
   const { createConversation, addItemsToConversation } = useConversation();
 
@@ -94,7 +99,7 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
 
       const errors: string[] = [];
       const newConversations: string[] = [];
-      
+
       loadingId = toast.loading("Importing conversations...");
       setImporting(true);
 
@@ -137,13 +142,30 @@ const ChatsSettings = ({ onImportFinish }: ChatsSettingsProps) => {
   return (
     <div className="flex h-full flex-col text-sm">
       <ul className="flex flex-col gap-2">
+        <li>
+          <button
+            type="button"
+            className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 text-left transition hover:bg-secondary/30 disabled:cursor-default"
+            onClick={() => void handleExport()}
+            disabled={!!exportProgress || importing}
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            <span className="ml-2 flex-1">Export Chats</span>
+          </button>
+          {(exportProgress || exportResult) && (
+            <div className="px-3.5 pb-2">
+              <ExportProgress />
+            </div>
+          )}
+        </li>
         <li
           className="flex w-full cursor-pointer items-center rounded-md px-3.5 py-2 transition hover:bg-secondary/30"
           onClick={() => {
-            if (!importing) {
+            if (!importing && !exportProgress) {
               inputRef.current?.click();
             }
           }}
+          aria-disabled={importing || !!exportProgress}
         >
           <ArrowUpOnSquareIcon className="h-4 w-4" />
           <span className="ml-2">Import Chats</span>

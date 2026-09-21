@@ -6,7 +6,9 @@ import type {
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { ApiClient } from "@/api/base-client";
 import { DEFAULT_SIGNING_ALGO, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { getExportErrorMessage, retryExportRequest } from "@/lib/export-retry";
 import { getTimeRange } from "@/lib/time";
+import type { ConversationStoreState } from "@/stores/useConversationStore";
 import type {
   Chat,
   ChatInfo,
@@ -24,7 +26,16 @@ import type {
   UpdateShareGroupRequest,
 } from "@/types";
 import type { FileOpenAIResponse, FilesOpenaiResponse } from "@/types/openai";
-import type { ConversationStoreState } from "@/stores/useConversationStore";
+
+export interface ExportCheckpoint {
+  list?: ConversationInfo[];
+  conversations: Conversation[];
+  current?: {
+    conversation: Conversation;
+    items: ConversationItemsResponse;
+    after?: string;
+  };
+}
 
 export interface UploadError {
   error: {
@@ -127,10 +138,15 @@ class ChatClient extends ApiClient {
    * @param id - Conversation ID
    * @param options.requiresAuth - Set to false for public conversations (default: true)
    */
-  getConversation(id: string, options?: { requiresAuth?: boolean }) {
+  getConversation(
+    id: string,
+    options?: { requiresAuth?: boolean; signal?: AbortSignal; preserveErrorDetails?: boolean }
+  ) {
     return this.get<Conversation>(`/conversations/${id}`, {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
+      signal: options?.signal,
+      preserveErrorDetails: options?.preserveErrorDetails,
     });
   }
 
@@ -167,10 +183,30 @@ class ChatClient extends ApiClient {
    * @param id - Conversation ID
    * @param options.requiresAuth - Set to false for public conversations (default: true)
    */
-  getConversationItems(id: string, options?: { requiresAuth?: boolean }) {
-    return this.get<ConversationItemsResponse>(`/conversations/${id}/items`, {
+  getConversationItems(
+    id: string,
+    options?: {
+      requiresAuth?: boolean;
+      after?: string;
+      limit?: number;
+      order?: "asc" | "desc";
+      signal?: AbortSignal;
+      preserveErrorDetails?: boolean;
+    }
+  ) {
+    const searchParams = new URLSearchParams();
+    if (options?.after) searchParams.set("after", options.after);
+    if (options?.limit) searchParams.set("limit", String(options.limit));
+    if (options?.order) searchParams.set("order", options.order);
+
+    const query = searchParams.toString();
+    const endpoint = `/conversations/${id}/items${query ? `?${query}` : ""}`;
+
+    return this.get<ConversationItemsResponse>(endpoint, {
       apiVersion: "v2",
       requiresAuth: options?.requiresAuth,
+      signal: options?.signal,
+      preserveErrorDetails: options?.preserveErrorDetails,
     });
   }
 
@@ -183,10 +219,80 @@ class ChatClient extends ApiClient {
     });
   }
 
-  async getConversations() {
-    return this.get<Conversation[]>(`/conversations`, {
+  async getConversations(signal?: AbortSignal, preserveErrorDetails = false) {
+    return this.get<ConversationInfo[]>(`/conversations`, {
       apiVersion: "v2",
+      signal,
+      preserveErrorDetails,
     });
+  }
+
+  async getConversationsForExport(
+    onProgress?: (completed: number, total: number, itemsRead?: number) => void,
+    signal?: AbortSignal,
+    checkpoint: ExportCheckpoint = { conversations: [] },
+    onRetry?: (attempt: number) => void
+  ): Promise<Conversation[]> {
+    signal?.throwIfAborted();
+    checkpoint.list ??= await retryExportRequest(() => this.getConversations(signal, true), signal, onRetry);
+    signal?.throwIfAborted();
+    const { list, conversations } = checkpoint;
+    onProgress?.(conversations.length, list.length, checkpoint.current?.items.data.length);
+
+    // Retain successful requests so retry resumes at the failed conversation or page.
+    while (conversations.length < list.length) {
+      const conversationInfo = list[conversations.length];
+      try {
+        signal?.throwIfAborted();
+        if (!checkpoint.current) {
+          const conversation = await retryExportRequest(
+            () => this.getConversation(conversationInfo.id, { signal, preserveErrorDetails: true }),
+            signal,
+            onRetry
+          );
+          checkpoint.current = {
+            conversation,
+            items: { data: [], first_id: "", last_id: "", has_more: true, object: "list" },
+          };
+        }
+        const current = checkpoint.current;
+        while (current.items.has_more) {
+          const page = await retryExportRequest(
+            () =>
+              this.getConversationItems(conversationInfo.id, {
+                after: current.after,
+                limit: 100,
+                order: "asc",
+                signal,
+                preserveErrorDetails: true,
+              }),
+            signal,
+            onRetry
+          );
+          // Validate before changing the checkpoint, so retry cannot duplicate a page.
+          if (page.has_more && (!page.last_id || page.last_id === current.after)) {
+            throw new Error("Conversation items pagination did not advance");
+          }
+          if (!current.items.first_id) current.items.first_id = page.first_id;
+          current.items.data.push(...page.data);
+          current.items.last_id = page.last_id;
+          current.items.has_more = page.has_more;
+          current.items.object = page.object;
+          current.after = page.last_id;
+          onProgress?.(conversations.length, list.length, current.items.data.length);
+          signal?.throwIfAborted();
+        }
+        conversations.push({ ...conversationInfo, ...current.conversation, ...current.items });
+        checkpoint.current = undefined;
+        onProgress?.(conversations.length, list.length);
+      } catch (error) {
+        signal?.throwIfAborted();
+        const title = conversationInfo.metadata?.title || conversationInfo.id;
+        const message = getExportErrorMessage(error);
+        throw new Error(`Failed to export conversation "${title}": ${message}`, { cause: error });
+      }
+    }
+    return conversations;
   }
 
   async deleteConversation(id: string) {
@@ -381,7 +487,7 @@ class ChatClient extends ApiClient {
     onUserResponseCreated,
   }: StartStreamProps & {
     onReaderReady?: (reader: ReadableStreamDefaultReader<Uint8Array>, abortController: AbortController) => void;
-    onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void
+    onUserResponseCreated?: (draft: ConversationStoreState, userMsg: ConversationItem) => void;
   }) {
     const input = Array.isArray(content)
       ? [{ role, content }]
