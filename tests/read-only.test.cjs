@@ -37,6 +37,7 @@ function setup() {
   const { chatClient } = load('src/api/chat/client.ts', {
     '@/api/base-client': { ApiClient },
     '@/lib/read-only': policy,
+    '@/lib/export-retry': load('src/lib/export-retry.ts', {}),
     '@/lib/constants': { LOCAL_STORAGE_KEYS: {}, DEFAULT_SIGNING_ALGO: 'ecdsa' },
     '@/lib/time': { getTimeRange: () => 'Today' },
   });
@@ -141,3 +142,58 @@ for (const publicShare of [undefined, { id: 'public-share' }]) {
     assert.ok(html.includes(publicShare ? 'Public access enabled' : 'Public access disabled'));
   });
 }
+
+for (const exporting of [false, true]) {
+  test(`chat settings keep export available and import hidden (exporting: ${exporting})`, () => {
+    const React = require('react');
+    const { renderToStaticMarkup } = require('react-dom/server');
+    const { default: ChatsSettings } = load('src/components/common/dialogs/settings/ChatsSettings.tsx', {
+      'react': React,
+      'react/jsx-runtime': require('react/jsx-runtime'),
+      '@heroicons/react/24/solid': { ArrowDownTrayIcon: () => null, ArrowUpOnSquareIcon: () => null },
+      'dayjs': require('dayjs'),
+      'sonner': { toast: {} },
+      '@/api/chat/queries/useConversation': { useConversation: () => ({}) },
+      '@/api/chat/queries/useGetConversations': { useGetConversations: () => ({}) },
+      '@/components/common/ExportProgress': { ExportProgress: () => React.createElement('span', null, 'Export progress') },
+      '@/lib/read-only': policy,
+      '@/lib/utils/transform-chat-history': {},
+      '@/stores/useExportStore': {
+        useExportStore: (selector) => selector({ progress: exporting ? {} : null, result: null, start: () => {} }),
+      },
+    });
+    const html = renderToStaticMarkup(React.createElement(ChatsSettings, {}));
+    assert.ok(html.includes(policy.READ_ONLY_MESSAGE));
+    assert.ok(html.includes('Export Chats'));
+    assert.equal(html.includes('disabled=""'), exporting);
+    assert.equal(html.includes('Export progress'), exporting);
+    assert.ok(!html.includes('Import Chats'));
+    assert.ok(!html.includes('type="file"'));
+  });
+}
+
+test('welcome page keeps the shutdown notice and read-only message without mounting a composer', () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const Container = ({ children }) => React.createElement('div', null, children);
+  const { default: WelcomePage } = load('src/pages/WelcomePage.tsx', {
+    'react': React,
+    'react/jsx-runtime': require('react/jsx-runtime'),
+    'react-router': { useNavigate: () => () => {} },
+    '@/assets/icons/chevron-welcome.svg?react': { default: () => null },
+    '@/assets/icons/near-ai.svg?react': { default: () => null },
+    '@/components/chat/ChatPlaceholder': { default: () => { throw new Error('Prompt suggestions rendered'); } },
+    '@/components/chat/MessageInput': { default: () => { throw new Error('Composer rendered'); } },
+    '@/components/common/SunsetBanner': { default: () => React.createElement('aside', null, 'Shutdown notice') },
+    '@/lib/read-only': policy,
+    '@/lib/constants': { LOCAL_STORAGE_KEYS: {} },
+    '@/lib/posthog': {},
+    '../components/ui/dropdown-menu': {
+      DropdownMenu: Container, DropdownMenuContent: Container, DropdownMenuTrigger: Container,
+    },
+    './routes': { APP_ROUTES: {} },
+  });
+  const html = renderToStaticMarkup(React.createElement(WelcomePage));
+  assert.ok(html.includes('Shutdown notice'));
+  assert.ok(html.includes('Private Chat is read-only. Sign in to view and export your conversations.'));
+});

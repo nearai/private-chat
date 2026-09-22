@@ -1,7 +1,7 @@
 import type React from "react";
 import { Outlet } from "react-router";
 import ChatVerifier from "@/components/chat/verifier/ChatVerifier";
-import IronClawBanner from "@/components/common/IronClawBanner";
+import SunsetBanner from "@/components/common/SunsetBanner";
 import LeftSidebar from "@/components/sidebar";
 
 interface LayoutProps {
@@ -12,13 +12,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen w-full flex-row">
       <LeftSidebar />
-      <div className="flex h-screen max-h-dvh w-full max-w-full flex-col transition-width duration-200 ease-in-out">
-        {children ?? <Outlet />}
+      <div className="flex h-screen max-h-dvh w-full min-w-0 max-w-full flex-col transition-width duration-200 ease-in-out">
+        <SunsetBanner />
+        <div className="min-h-0 flex-1 overflow-y-auto">{children ?? <Outlet />}</div>
       </div>
       <ChatVerifier />
-      <div className="pointer-events-none fixed right-6 bottom-6 z-40 flex flex-col items-end gap-4">
-        <IronClawBanner />
-      </div>
     </div>
   );
 };
