@@ -123,22 +123,28 @@ test('composer allows local typing but keeps sending and upload handlers unavail
   assert.ok(!html.includes('type="file"'));
 });
 
-test('settings updates are blocked while existing settings remain readable', async () => {
+test('user settings remain readable and writable while conversations are read-only', async () => {
   const requests = [];
   class ApiClient {
-    get(path) { requests.push(['get', path]); return Promise.resolve({ settings: {} }); }
-    post(path) { requests.push(['post', path]); return Promise.resolve({}); }
+    get(...args) { requests.push(['get', ...args]); return Promise.resolve({ settings: {} }); }
+    post(...args) { requests.push(['post', ...args]); return Promise.resolve({}); }
   }
   const { usersClient } = load('src/api/users/client.ts', {
     '../base-client': { ApiClient },
-    '@/lib/read-only': policy,
   });
-  await assert.rejects(() => usersClient.updateUserSettings({ system_prompt: 'changed' }), {
-    message: policy.READ_ONLY_MESSAGE,
-  });
-  assert.deepEqual(requests, []);
+  const settings = {
+    system_prompt: 'changed',
+    appearance: 'Light',
+    notification: true,
+    web_search: false,
+  };
+  await usersClient.updateUserSettings(settings);
   await usersClient.getUserSettings();
-  assert.deepEqual(requests, [['get', '/users/me/settings']]);
+  // Normalize objects created inside the TypeScript loader's VM context.
+  assert.deepEqual(JSON.parse(JSON.stringify(requests)), [
+    ['post', '/users/me/settings', settings, { apiVersion: 'v2' }],
+    ['get', '/users/me/settings', { apiVersion: 'v2' }],
+  ]);
 });
 
 for (const publicShare of [undefined, { id: 'public-share' }]) {

@@ -134,7 +134,6 @@ const GeneralSettings = () => {
   }, [remoteSettings]);
 
   const toggleNotification = async () => {
-    if (!CONVERSATION_WRITES_ENABLED) return;
     const permission = await Notification.requestPermission();
 
     if (permission === "granted") {
@@ -157,13 +156,11 @@ const GeneralSettings = () => {
   };
 
   const handleLanguageChange = (newLang: string) => {
-    if (!CONVERSATION_WRITES_ENABLED) return;
     setLang(newLang);
     changeLanguage(newLang);
   };
 
   const handleSave = async () => {
-    if (!CONVERSATION_WRITES_ENABLED) return;
     // let finalRequestFormat: Settings["requestFormat"] = requestFormat;
 
     // if (finalRequestFormat !== null && finalRequestFormat !== "json") {
@@ -270,7 +267,6 @@ const GeneralSettings = () => {
           <div className="font-bold text-base">{t("General")}</div>
 
           <SelectParam
-            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Language")}
             value={lang}
             onChange={(value) => handleLanguageChange(value)}
@@ -278,7 +274,6 @@ const GeneralSettings = () => {
           />
 
           <SelectParam
-            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Appearance")}
             value={formAppearance}
             onChange={(value) => setFormAppearance(value as Theme)}
@@ -290,7 +285,6 @@ const GeneralSettings = () => {
           />
 
           <SwitchParam
-            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Notifications")}
             description={t("Notifications Description")}
             value={notificationEnabled}
@@ -298,7 +292,6 @@ const GeneralSettings = () => {
           />
 
           <SwitchParam
-            disabled={!CONVERSATION_WRITES_ENABLED}
             label={t("Web Search")}
             value={formWebSearchEnabled}
             description={t("Web Search Description")}
@@ -313,7 +306,6 @@ const GeneralSettings = () => {
               <div className="font-light text-sm">{t("System Prompt Description")}</div>
             </div>
             <textarea
-              readOnly={!CONVERSATION_WRITES_ENABLED}
               value={system}
               onChange={(e) => setSystem(e.target.value)}
               className="inline-flex min-h-24 w-full flex-col items-start justify-start gap-4 rounded-2xl border border-border bg-input p-4 font-['Inter'] font-normal text-sm placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
@@ -331,7 +323,6 @@ const GeneralSettings = () => {
             <div>
               <div className="my-2.5 font-medium text-sm">{t("System Prompt")}</div>
               <textarea
-                readOnly={!CONVERSATION_WRITES_ENABLED}
                 value={system}
                 onChange={(e) => setSystem(e.target.value)}
                 className="w-full resize-none rounded-md border border-border bg-input p-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
@@ -400,13 +391,11 @@ const GeneralSettings = () => {
       </div>
 
       {/* Save Button */}
-      {CONVERSATION_WRITES_ENABLED && (
-        <div className="flex justify-end pt-3 font-medium text-sm">
-          <Button disabled={isUpdatingSettings} size="small" onClick={handleSave}>
-            {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-end pt-3 font-medium text-sm">
+        <Button disabled={isUpdatingSettings} size="small" onClick={handleSave}>
+          {saved ? t("Saved") : isUpdatingSettings ? t("Saving...") : t("Save")}
+        </Button>
+      </div>
     </div>
   );
 };
