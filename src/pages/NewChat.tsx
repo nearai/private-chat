@@ -224,55 +224,53 @@ export default function NewChat({
               Private Chat is read-only. Select an existing conversation to view or export.
             </p>
           </div>
+          <MessageInput
+            messages={[]}
+            onSubmit={handleSendMessage}
+            selectedModels={selectedModels}
+            showUserProfile={false}
+            fullWidth={false}
+            prompt={inputValue}
+            setPrompt={setInputValue}
+            stopStream={stopStream}
+            autoFocusKey="new-chat"
+          />
           {CONVERSATION_WRITES_ENABLED && (
-            <>
-              <MessageInput
-                messages={[]}
-                onSubmit={handleSendMessage}
-                selectedModels={selectedModels}
-                showUserProfile={false}
-                fullWidth={false}
-                prompt={inputValue}
-                setPrompt={setInputValue}
-                stopStream={stopStream}
-                autoFocusKey="new-chat"
-              />
-              <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
-                <div className="mx-5">
-                  <div className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
-                    <Bolt className="h-4 w-4" />
-                    Suggested
-                  </div>
-                  <div className="h-40 w-full">
-                    <div role="list" className="scrollbar-none max-h-40 items-start overflow-auto">
-                      {filteredPrompts.map((prompt, idx) => (
-                        <button
-                          key={prompt.content}
-                          role="listitem"
-                          className="waterfall group flex w-full flex-1 shrink-0 flex-col justify-between rounded-xl px-3 py-2 font-normal text-base transition hover:bg-secondary/30"
-                          style={{ animationDelay: `${idx * 60}ms` }}
-                          onClick={() => setInputValue(prompt.content)}
-                        >
-                          <div className="flex flex-col text-left">
-                            {prompt.title && prompt.title[0] !== "" ? (
-                              <>
-                                <div className="line-clamp-1 font-medium transition">{prompt.title[0]}</div>
-                                <div className="line-clamp-1 font-normal text-muted-foreground text-xs">{prompt.title[1]}</div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="line-clamp-1 font-medium transition">{prompt.content}</div>
-                                <div className="line-clamp-1 font-normal text-muted-foreground text-xs">Prompt</div>
-                              </>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+            <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
+              <div className="mx-5">
+                <div className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
+                  <Bolt className="h-4 w-4" />
+                  Suggested
+                </div>
+                <div className="h-40 w-full">
+                  <div role="list" className="scrollbar-none max-h-40 items-start overflow-auto">
+                    {filteredPrompts.map((prompt, idx) => (
+                      <button
+                        key={prompt.content}
+                        role="listitem"
+                        className="waterfall group flex w-full flex-1 shrink-0 flex-col justify-between rounded-xl px-3 py-2 font-normal text-base transition hover:bg-secondary/30"
+                        style={{ animationDelay: `${idx * 60}ms` }}
+                        onClick={() => setInputValue(prompt.content)}
+                      >
+                        <div className="flex flex-col text-left">
+                          {prompt.title && prompt.title[0] !== "" ? (
+                            <>
+                              <div className="line-clamp-1 font-medium transition">{prompt.title[0]}</div>
+                              <div className="line-clamp-1 font-normal text-muted-foreground text-xs">{prompt.title[1]}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="line-clamp-1 font-medium transition">{prompt.content}</div>
+                              <div className="line-clamp-1 font-normal text-muted-foreground text-xs">Prompt</div>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

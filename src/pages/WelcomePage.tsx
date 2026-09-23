@@ -90,9 +90,20 @@ const WelcomePage: React.FC = () => {
           </ChatPlaceholder>
         </div>
       ) : (
-        <p className="m-auto px-6 text-center text-muted-foreground">
-          Private Chat is read-only. Sign in to view and export your conversations.
-        </p>
+        <div className="m-auto flex w-full flex-col items-center gap-3 py-6">
+          <NearAIIcon className="h-6" />
+          <p className="px-6 text-center text-muted-foreground">
+            Private Chat is read-only. Sign in to view and export your conversations.
+          </p>
+          <MessageInput
+            onSubmit={gotoAuth}
+            showUserProfile={false}
+            prompt={inputValue}
+            fullWidth={false}
+            setPrompt={setInputValue}
+            toolsDisabled={true}
+          />
+        </div>
       )}
 
       <style>{`

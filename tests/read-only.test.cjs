@@ -90,10 +90,13 @@ test('read-only tag search still supports its POST transport', async () => {
 });
 
 
-test('composer does not mount hooks, upload handlers, or prompt controls', () => {
+function loadReadOnlyComposer() {
   const dependencies = new Proxy({
     '@/lib/read-only': policy,
     'react/jsx-runtime': require('react/jsx-runtime'),
+    'react-i18next': { useTranslation: () => ({ t: (value) => value }) },
+    '@/assets/icons/send-message.svg?react': { default: () => null },
+    '../ui/button': { Button: (props) => require('react').createElement('button', props) },
   }, {
     has: () => true,
     get: (target, id) => target[id] ?? new Proxy({}, {
@@ -101,7 +104,23 @@ test('composer does not mount hooks, upload handlers, or prompt controls', () =>
     }),
   });
   const { default: MessageInput } = load('src/components/chat/MessageInput.tsx', dependencies);
-  assert.equal(MessageInput({}), null);
+  return MessageInput;
+}
+
+test('composer allows local typing but keeps sending and upload handlers unavailable', () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const MessageInput = loadReadOnlyComposer();
+  const html = renderToStaticMarkup(React.createElement(MessageInput, {
+    prompt: 'Draft message',
+    setPrompt: () => {},
+    onSubmit: () => { throw new Error('Unexpected submission'); },
+  }));
+  assert.match(html, /<textarea[^>]*>Draft message<\/textarea>/);
+  assert.doesNotMatch(html, /<textarea[^>]*disabled/);
+  assert.match(html, /<button[^>]*id="send-message-button"[^>]*disabled=""/);
+  assert.ok(!html.includes('<form'));
+  assert.ok(!html.includes('type="file"'));
 });
 
 test('settings updates are blocked while existing settings remain readable', async () => {
@@ -172,7 +191,7 @@ for (const exporting of [false, true]) {
   });
 }
 
-test('welcome page keeps the shutdown notice and read-only message without mounting a composer', () => {
+test('welcome page keeps the shutdown notice and a composer with sending disabled', () => {
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
   const Container = ({ children }) => React.createElement('div', null, children);
@@ -183,7 +202,7 @@ test('welcome page keeps the shutdown notice and read-only message without mount
     '@/assets/icons/chevron-welcome.svg?react': { default: () => null },
     '@/assets/icons/near-ai.svg?react': { default: () => null },
     '@/components/chat/ChatPlaceholder': { default: () => { throw new Error('Prompt suggestions rendered'); } },
-    '@/components/chat/MessageInput': { default: () => { throw new Error('Composer rendered'); } },
+    '@/components/chat/MessageInput': { default: loadReadOnlyComposer() },
     '@/components/common/SunsetBanner': { default: () => React.createElement('aside', null, 'Shutdown notice') },
     '@/lib/read-only': policy,
     '@/lib/constants': { LOCAL_STORAGE_KEYS: {} },
@@ -196,4 +215,6 @@ test('welcome page keeps the shutdown notice and read-only message without mount
   const html = renderToStaticMarkup(React.createElement(WelcomePage));
   assert.ok(html.includes('Shutdown notice'));
   assert.ok(html.includes('Private Chat is read-only. Sign in to view and export your conversations.'));
+  assert.ok(html.includes('<textarea'));
+  assert.match(html, /<button[^>]*id="send-message-button"[^>]*disabled=""/);
 });
