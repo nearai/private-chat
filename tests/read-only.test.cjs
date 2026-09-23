@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 // Load the real TypeScript client with a recording transport; no network or auth is needed.
-function load(file, dependencies) {
+function load(file, dependencies, globals = {}) {
   const exports = {};
   const { outputText } = ts.transpileModule(readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
@@ -18,6 +18,7 @@ function load(file, dependencies) {
     },
     URLSearchParams,
     AbortController,
+    ...globals,
   });
   return exports;
 }
@@ -481,3 +482,126 @@ test('shared deletion controls retain progress, stop once, and allow a fresh run
   assert.equal(store.getState().controller, next);
   store.getState().finish(next);
 });
+
+function conversationQuery(cached, fetcher) {
+  let options;
+  const persisted = [];
+  const { useGetConversations } = load('src/api/chat/queries/useGetConversations.ts', {
+    '@tanstack/react-query': { useQuery: (value) => { options = value; return {}; } },
+    '@/api/query-keys': { queryKeys: { conversation: { all: ['conversations'] } } },
+    '@/lib/constants': { LOCAL_STORAGE_KEYS: { TOKEN: 'sessionToken' } },
+    '@/lib/offlineCache': { offlineCache: {
+      getConversationList: () => cached,
+      saveConversationList: (value) => persisted.push(value),
+    } },
+    '../client': { chatClient: { getConversations: fetcher } },
+  }, { window: {}, localStorage: { getItem: () => 'test-token' } });
+  useGetConversations();
+  return { options: { ...options, retry: false }, persisted };
+}
+
+for (const cached of [[], [{ id: 'existing', metadata: {} }]]) {
+  test(`persisted conversation list is refreshed immediately on mount (${cached.length} cached)`, async () => {
+    const { QueryClient, QueryObserver } = require('@tanstack/react-query');
+    let requests = 0;
+    const fresh = [{ id: 'archived', metadata: { title: 'Archived conversation', archived_at: '123' } }];
+    const { options, persisted } = conversationQuery(cached, async () => { requests++; return fresh; });
+    const client = new QueryClient();
+    const observer = new QueryObserver(client, options);
+    assert.equal(observer.getCurrentResult().isStale, true);
+    const unsubscribe = observer.subscribe(() => {});
+    const result = await observer.refetch({ cancelRefetch: false });
+    assert.equal(requests, 1);
+    assert.deepEqual(result.data, fresh);
+    assert.deepEqual(persisted, [fresh]);
+    unsubscribe();
+    client.clear();
+  });
+}
+
+for (const cached of [[], [{ id: 'archived', metadata: { archived_at: '123' } }]]) {
+  test(`failed refresh remains an error while retaining cached history (${cached.length} cached)`, async () => {
+    const { QueryClient, QueryObserver } = require('@tanstack/react-query');
+    const { options, persisted } = conversationQuery(cached, async () => { throw new Error('Request failed'); });
+    const client = new QueryClient();
+    const observer = new QueryObserver(client, options);
+    const result = await observer.refetch();
+    assert.equal(result.isError, true);
+    assert.deepEqual(result.data, cached);
+    assert.deepEqual(persisted, []);
+    observer.destroy();
+    client.clear();
+  });
+}
+
+test('cancelled conversation reads do not overwrite the persisted list', async () => {
+  const controller = new AbortController();
+  const { options, persisted } = conversationQuery([], async () => {
+    controller.abort();
+    return [{ id: 'deleted-chat' }];
+  });
+  await assert.rejects(options.queryFn({ signal: controller.signal }), { name: 'AbortError' });
+  assert.deepEqual(persisted, []);
+});
+
+function archivedModal(query) {
+  const React = require('react');
+  const effects = [];
+  const { default: Modal } = load('src/components/common/dialogs/archived-chats/ArchivedChatsModal.tsx', {
+    'react': { ...React, useEffect: (effect) => effects.push(effect) },
+    'react/jsx-runtime': require('react/jsx-runtime'),
+    'react-i18next': { useTranslation: () => ({ t: (value) => value }) },
+    '@/lib/read-only': policy,
+    '@heroicons/react/24/outline': { ArrowUpOnSquareIcon: () => null, MagnifyingGlassIcon: () => null, TrashIcon: () => null },
+    'dayjs': { default: require('dayjs') },
+    'dayjs/plugin/localizedFormat': { default: require('dayjs/plugin/localizedFormat') },
+    'file-saver': { default: { saveAs() {} } },
+    'sonner': { toast: {} },
+    '@/components/ui/button': { Button: ({ children, onClick }) => React.createElement('button', { onClick }, children) },
+    '@/components/ui/dialog': Object.fromEntries(['Dialog', 'DialogContent', 'DialogDescription', 'DialogHeader', 'DialogTitle'].map((key) => [key, ({ children }) => React.createElement('div', null, children)])),
+    '@/components/ui/table': { Table: 'table', TableBody: 'tbody', TableCell: 'td', TableHead: 'th', TableHeader: 'thead', TableRow: 'tr' },
+    '@/components/ui/tooltip': { CompactTooltip: ({ children }) => children },
+    '../ConfirmDialog': { default: () => null },
+    '@tanstack/react-query': { useQueryClient: () => ({}) },
+    '@/api/chat/queries/useGetConversations': { useGetConversations: () => query },
+    '@/api/chat/queries': { useDeleteChat: () => ({}), useUnarchiveChat: () => ({}) },
+    '@/api/query-keys': { queryKeys: {} },
+  });
+  return {
+    render: (open = true) => require('react-dom/server').renderToStaticMarkup(React.createElement(Modal, { open, onOpenChange() {} })),
+    runEffects: () => effects.splice(0).forEach((effect) => effect()),
+  };
+}
+
+test('archived chats refresh on opening and reopening the modal', () => {
+  const calls = [];
+  const modal = archivedModal({ data: [], refetch: (options) => { calls.push(normalize(options)); } });
+  modal.render(false);
+  modal.runEffects();
+  assert.equal(calls.length, 0);
+  modal.render(true);
+  modal.runEffects();
+  modal.render(false);
+  modal.runEffects();
+  modal.render(true);
+  modal.runEffects();
+  assert.deepEqual(calls, [{ cancelRefetch: false }, { cancelRefetch: false }]);
+});
+
+for (const status of ['loading', 'error', 'offline', 'empty', 'cached-error']) {
+  test(`archived chats distinguish ${status} from an empty server result`, () => {
+    const modal = archivedModal({
+      data: status === 'cached-error' ? [{ id: 'archived', metadata: { title: 'Saved history', archived_at: '123' } }] : [],
+      isPending: false,
+      isFetching: status === 'loading',
+      isError: status === 'error' || status === 'cached-error',
+      isPaused: status === 'offline',
+      refetch() {},
+    });
+    const html = modal.render();
+    assert.equal(html.includes('You have no archived conversations.'), status === 'empty');
+    assert.equal(html.includes('role="alert"'), ['error', 'offline', 'cached-error'].includes(status));
+    assert.equal(html.includes('Saved history'), status === 'cached-error');
+    assert.equal(html.includes('Retry'), ['error', 'offline', 'cached-error'].includes(status));
+  });
+}

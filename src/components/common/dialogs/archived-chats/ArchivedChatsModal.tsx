@@ -7,7 +7,7 @@ import {
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import fileSaver from "file-saver";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -69,7 +69,12 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const queryClient = useQueryClient();
-  const { data: conversations, isPending } = useGetConversations();
+  const { data: conversations, isPending, isFetching, isError, isPaused, refetch } = useGetConversations();
+
+  useEffect(() => {
+    // The modal stays mounted while closed; refresh on every open, even during staleTime.
+    if (open) void refetch({ cancelRefetch: false });
+  }, [open, refetch]);
 
   const { mutateAsync: unarchiveChat } = useUnarchiveChat();
   const { mutateAsync: deleteChat } = useDeleteChat();
@@ -204,7 +209,23 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
           <hr className="my-2 border-muted/30" />
 
-          {isPending ? (
+          {!isFetching && (isError || isPaused) && (
+            <div role="alert" className="mb-3 flex items-center justify-between gap-3 text-sm">
+              <p className="text-muted-foreground">
+                {isPaused
+                  ? t("You are offline. Connect to refresh archived chats.")
+                  : t("Could not refresh archived chats. Any displayed history may be out of date.")}
+              </p>
+              <Button variant="secondary" size="small" onClick={() => void refetch({ cancelRefetch: false })}>
+                {t("Retry")}
+              </Button>
+            </div>
+          )}
+          {isFetching && archived.length > 0 && (
+            <p role="status" className="mb-3 text-muted-foreground text-sm">{t("Refreshing archived chats…")}</p>
+          )}
+
+          {(isPending && !isPaused) || (isFetching && archived.length === 0) ? (
             <div className="mb-3 max-h-88 overflow-y-scroll text-sm">
               <Table>
                 <TableHeader>
@@ -303,11 +324,11 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
                 </Button>
               </div>
             </>
-          ) : (
+          ) : !isError && !isPaused ? (
             <div className="mb-8 text-sm">
               {t("You have no archived conversations.")}
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
