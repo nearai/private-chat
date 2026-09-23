@@ -544,9 +544,10 @@ test('cancelled conversation reads do not overwrite the persisted list', async (
   assert.deepEqual(persisted, []);
 });
 
-function archivedModal(query) {
+function archivedModal(query, exportState = { scope: 'all', progress: null, result: null, start() {} }, deleting = 0) {
   const React = require('react');
   const effects = [];
+  const buttons = [];
   const { default: Modal } = load('src/components/common/dialogs/archived-chats/ArchivedChatsModal.tsx', {
     'react': { ...React, useEffect: (effect) => effects.push(effect) },
     'react/jsx-runtime': require('react/jsx-runtime'),
@@ -555,14 +556,18 @@ function archivedModal(query) {
     '@heroicons/react/24/outline': { ArrowUpOnSquareIcon: () => null, MagnifyingGlassIcon: () => null, TrashIcon: () => null },
     'dayjs': { default: require('dayjs') },
     'dayjs/plugin/localizedFormat': { default: require('dayjs/plugin/localizedFormat') },
-    'file-saver': { default: { saveAs() {} } },
     'sonner': { toast: {} },
-    '@/components/ui/button': { Button: ({ children, onClick }) => React.createElement('button', { onClick }, children) },
+    '@/components/ui/button': { Button: ({ children, onClick, disabled }) => {
+      buttons.push({ children, onClick, disabled });
+      return React.createElement('button', { onClick, disabled }, children);
+    } },
+    '@/stores/useExportStore': { useExportStore: (selector) => selector(exportState) },
+    '@/components/common/ExportProgress': { ExportProgress: () => React.createElement('span', null, 'Export progress') },
     '@/components/ui/dialog': Object.fromEntries(['Dialog', 'DialogContent', 'DialogDescription', 'DialogHeader', 'DialogTitle'].map((key) => [key, ({ children }) => React.createElement('div', null, children)])),
     '@/components/ui/table': { Table: 'table', TableBody: 'tbody', TableCell: 'td', TableHead: 'th', TableHeader: 'thead', TableRow: 'tr' },
     '@/components/ui/tooltip': { CompactTooltip: ({ children }) => children },
     '../ConfirmDialog': { default: () => null },
-    '@tanstack/react-query': { useQueryClient: () => ({}) },
+    '@tanstack/react-query': { useQueryClient: () => ({}), useIsMutating: () => deleting },
     '@/api/chat/queries/useGetConversations': { useGetConversations: () => query },
     '@/api/chat/queries': { useDeleteChat: () => ({}), useUnarchiveChat: () => ({}) },
     '@/api/query-keys': { queryKeys: {} },
@@ -570,6 +575,7 @@ function archivedModal(query) {
   return {
     render: (open = true) => require('react-dom/server').renderToStaticMarkup(React.createElement(Modal, { open, onOpenChange() {} })),
     runEffects: () => effects.splice(0).forEach((effect) => effect()),
+    buttons,
   };
 }
 
@@ -605,3 +611,158 @@ for (const status of ['loading', 'error', 'offline', 'empty', 'cached-error']) {
     assert.equal(html.includes('Retry'), ['error', 'offline', 'cached-error'].includes(status));
   });
 }
+
+function archivedExportFixture() {
+  const conversations = [
+    { id: 'active', metadata: { title: 'Active chat' } },
+    { id: 'archived', metadata: { title: 'Archived chat', archived_at: '123' } },
+  ];
+  const { chatClient } = setup({ conversations });
+  const details = [];
+  const pages = [];
+  let failPage = false;
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    id: `message-${index}`, type: 'message', role: index % 2 ? 'assistant' : 'user',
+    content: [{ type: 'input_text', text: `Message content ${index}` }],
+  }));
+  chatClient.getConversation = async (id) => {
+    details.push(id);
+    return conversations.find((conversation) => conversation.id === id);
+  };
+  chatClient.getConversationItems = async (id, options) => {
+    pages.push([id, options.after]);
+    assert.equal(options.order, 'asc');
+    assert.equal(options.limit, 100);
+    if (options.after && failPage) throw new Error('Second page unavailable');
+    return options.after
+      ? { data: [{ id: 'last-message', type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final answer' }] }], first_id: 'last-message', last_id: 'last-message', has_more: false, object: 'list' }
+      : { data: firstPage, first_id: 'message-0', last_id: 'message-99', has_more: true, object: 'list' };
+  };
+  return { chatClient, details, pages, fail: (value) => { failPage = value; } };
+}
+
+function exportStoreFixture(chatClient, deleting = false) {
+  const downloads = [];
+  const notices = [];
+  const { useExportStore } = load('src/stores/useExportStore.ts', {
+    zustand: require('zustand'),
+    dayjs: { default: () => ({ format: () => '2026-09-23-120000' }) },
+    'file-saver': { default: { saveAs: (blob, filename) => downloads.push({ blob, filename }) } },
+    sonner: { toast: { info: (message) => notices.push(message), error: (message) => notices.push(message) } },
+    '@/api/chat/client': { chatClient },
+    '@/lib/export-retry': load('src/lib/export-retry.ts', {}),
+    '@/stores/useDeleteChatsStore': { useDeleteChatsStore: { getState: () => ({ controller: deleting ? {} : null }) } },
+    '@/lib/export-file': { createExportFile: async (conversations, signal) => {
+      signal.throwIfAborted();
+      // Use the real worker serializer to inspect the exact downloadable JSON.
+      let result;
+      const worker = { postMessage: (value) => { result = value; } };
+      load('src/lib/export-file.worker.ts', {}, { self: worker, Blob });
+      worker.onmessage({ data: conversations });
+      if (result.error) throw new Error(result.error);
+      return result.blob;
+    } },
+  }, { console: { error() {} } });
+  return { store: useExportStore, downloads, notices };
+}
+
+test('archived export downloads complete paginated message content and excludes active chats', async () => {
+  const fixture = archivedExportFixture();
+  const { store, downloads } = exportStoreFixture(fixture.chatClient);
+  await store.getState().start('archived');
+  assert.equal(downloads.length, 1);
+  assert.match(downloads[0].filename, /^archived-chat-export-/);
+  const exported = JSON.parse(await downloads[0].blob.text());
+  assert.equal(exported.length, 1);
+  assert.equal(exported[0].id, 'archived');
+  assert.equal(exported[0].metadata.archived_at, '123');
+  assert.equal(exported[0].data.length, 101);
+  assert.equal(exported[0].data[0].content[0].text, 'Message content 0');
+  assert.equal(exported[0].data[100].content[0].text, 'Final answer');
+  assert.equal(exported[0].has_more, false);
+  assert.deepEqual(fixture.details, ['archived']);
+  assert.deepEqual(fixture.pages, [['archived', undefined], ['archived', 'message-99']]);
+  assert.equal(store.getState().result.count, 1);
+  assert.equal(store.getState().progress, null);
+});
+
+test('failed archived export downloads nothing and retries the missing page in the same scope', async () => {
+  const fixture = archivedExportFixture();
+  fixture.fail(true);
+  const { store, downloads } = exportStoreFixture(fixture.chatClient);
+  await store.getState().start('archived');
+  assert.equal(downloads.length, 0);
+  assert.match(store.getState().progress.error, /Second page unavailable/);
+  assert.equal(store.getState().scope, 'archived');
+  await store.getState().start('all');
+  assert.equal(downloads.length, 0);
+  fixture.fail(false);
+  await store.getState().start();
+  assert.equal(downloads.length, 1);
+  const exported = JSON.parse(await downloads[0].blob.text());
+  assert.equal(exported[0].data.length, 101);
+  assert.deepEqual(fixture.details, ['archived']);
+  assert.deepEqual(fixture.pages, [['archived', undefined], ['archived', 'message-99'], ['archived', 'message-99']]);
+  assert.match(downloads[0].filename, /^archived-chat-export-/);
+});
+
+test('a new regular export after archived export includes all conversations', async () => {
+  const fixture = archivedExportFixture();
+  const { store, downloads } = exportStoreFixture(fixture.chatClient);
+  await store.getState().start('archived');
+  await store.getState().start();
+  assert.equal(downloads.length, 2);
+  assert.match(downloads[1].filename, /^private-chat-export-/);
+  assert.deepEqual(JSON.parse(await downloads[1].blob.text()).map((chat) => chat.id), ['active', 'archived']);
+  assert.equal(store.getState().scope, 'all');
+});
+
+test('stopping archived export prevents downloads and clears the checkpoint for the next export', async () => {
+  const fixture = archivedExportFixture();
+  let started;
+  let complete;
+  const reading = new Promise((resolve) => { started = resolve; });
+  const original = fixture.chatClient.getConversationItems;
+  fixture.chatClient.getConversationItems = async (...args) => {
+    started();
+    await new Promise((resolve) => { complete = resolve; });
+    return original(...args);
+  };
+  const { store, downloads } = exportStoreFixture(fixture.chatClient);
+  const run = store.getState().start('archived');
+  await reading;
+  store.getState().stop();
+  complete();
+  await run;
+  assert.equal(downloads.length, 0);
+  assert.equal(store.getState().progress, null);
+  fixture.chatClient.getConversationItems = original;
+  await store.getState().start();
+  assert.equal(downloads.length, 1);
+  assert.equal(JSON.parse(await downloads[0].blob.text()).length, 2);
+});
+
+test('archived export cannot start while bulk deletion is running', async () => {
+  const fixture = archivedExportFixture();
+  const { store, downloads, notices } = exportStoreFixture(fixture.chatClient, true);
+  await store.getState().start('archived');
+  assert.deepEqual(fixture.details, []);
+  assert.equal(downloads.length, 0);
+  assert.match(notices[0], /deletion to finish/);
+});
+
+test('archived export action uses the complete export flow and displays its progress', () => {
+  const calls = [];
+  const query = { data: [{ id: 'archived', metadata: { title: 'Saved history', archived_at: '123' } }], refetch() {} };
+  const state = { scope: 'archived', progress: null, result: null, start: (scope) => calls.push(scope) };
+  const modal = archivedModal(query, state);
+  modal.render();
+  const button = modal.buttons.find((entry) => entry.children === 'Export All Archived Chats');
+  assert.equal(button.disabled, false);
+  button.onClick();
+  assert.deepEqual(calls, ['archived']);
+  state.progress = { phase: 'reading', completed: 0, total: 1 };
+  const active = archivedModal(query, state);
+  assert.match(active.render(), /Export progress/);
+  assert.equal(active.buttons.find((entry) => entry.children === 'Export All Archived Chats').disabled, true);
+});

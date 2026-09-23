@@ -38,6 +38,8 @@ export interface ExportCheckpoint {
   };
 }
 
+export type ExportScope = "all" | "archived";
+
 export interface UploadError {
   error: {
     type: string;
@@ -239,10 +241,14 @@ class ChatClient extends ApiClient {
     onProgress?: (completed: number, total: number, itemsRead?: number) => void,
     signal?: AbortSignal,
     checkpoint: ExportCheckpoint = { conversations: [] },
-    onRetry?: (attempt: number) => void
+    onRetry?: (attempt: number) => void,
+    scope: ExportScope = "all"
   ): Promise<Conversation[]> {
     signal?.throwIfAborted();
-    checkpoint.list ??= await retryExportRequest(() => this.getConversations(signal, true), signal, onRetry);
+    if (!checkpoint.list) {
+      const list = await retryExportRequest(() => this.getConversations(signal, true), signal, onRetry);
+      checkpoint.list = scope === "archived" ? list.filter((conversation) => !!conversation.metadata?.archived_at) : list;
+    }
     signal?.throwIfAborted();
     const { list, conversations } = checkpoint;
     onProgress?.(conversations.length, list.length, checkpoint.current?.items.data.length);

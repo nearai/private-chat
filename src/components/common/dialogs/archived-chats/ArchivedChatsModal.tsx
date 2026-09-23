@@ -6,7 +6,6 @@ import {
 } from "@heroicons/react/24/outline";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import fileSaver from "file-saver";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -28,15 +27,16 @@ import {
 } from "@/components/ui/table";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import ConfirmDialog from "../ConfirmDialog";
+import { ExportProgress } from "@/components/common/ExportProgress";
+import { useExportStore } from "@/stores/useExportStore";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { useDeleteChat, useUnarchiveChat } from "@/api/chat/queries";
 import { queryKeys } from "@/api/query-keys";
 import type { ConversationInfo } from "@/types";
 
 dayjs.extend(localizedFormat);
-const { saveAs } = fileSaver;
 
 function ConversationSkeletonRow() {
   return (
@@ -70,6 +70,11 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
   const queryClient = useQueryClient();
   const { data: conversations, isPending, isFetching, isError, isPaused, refetch } = useGetConversations();
+  const exportProgress = useExportStore((state) => state.progress);
+  const exportResult = useExportStore((state) => state.result);
+  const exportScope = useExportStore((state) => state.scope);
+  const startExport = useExportStore((state) => state.start);
+  const isDeletingAll = useIsMutating({ mutationKey: ["deleteAllConversations"] }) > 0;
 
   useEffect(() => {
     // The modal stays mounted while closed; refresh on every open, even during staleTime.
@@ -159,17 +164,6 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
       toast.error(String(err));
     }
   }, [archived, unarchiveChat, t, optimisticUpdate]);
-
-  const handleExport = () => {
-    try {
-      const blob = new Blob([JSON.stringify(archived, null, 2)], {
-        type: "application/json",
-      });
-      saveAs(blob, `${t("archived-chat-export")}-${Date.now()}.json`);
-    } catch (err) {
-      toast.error(String(err));
-    }
-  };
 
   return (
     <>
@@ -318,7 +312,8 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
                 <Button
                   variant="secondary"
                   className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
-                  onClick={handleExport}
+                  onClick={() => void startExport("archived")}
+                  disabled={!!exportProgress || isDeletingAll}
                 >
                   {t("Export All Archived Chats")}
                 </Button>
@@ -329,6 +324,11 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
               {t("You have no archived conversations.")}
             </div>
           ) : null}
+          {exportScope === "archived" && (exportProgress || exportResult) && (
+            <div className="mt-3">
+              <ExportProgress />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
