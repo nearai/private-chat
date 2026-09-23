@@ -123,7 +123,6 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
   const handleDelete = useCallback(
     async (id: string) => {
-      if (!CONVERSATION_WRITES_ENABLED) return;
       const rollback = optimisticUpdate((old) => old.filter((c) => c.id !== id));
 
       try {
@@ -272,13 +271,11 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
                               </CompactTooltip>
                             )}
 
-                            {CONVERSATION_WRITES_ENABLED && (
-                              <CompactTooltip content={t("Delete Chat")}>
-                                <button className="rounded-xl p-2" onClick={() => handleDelete(chat.id)}>
-                                  <TrashIcon className="size-4" />
-                                </button>
-                              </CompactTooltip>
-                            )}
+                            <CompactTooltip content={t("Delete Chat")}>
+                              <button className="rounded-xl p-2" onClick={() => handleDelete(chat.id)}>
+                                <TrashIcon className="size-4" />
+                              </button>
+                            </CompactTooltip>
                           </div>
                         </TableCell>
                       </TableRow>

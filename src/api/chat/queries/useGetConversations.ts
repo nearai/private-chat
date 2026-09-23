@@ -11,13 +11,15 @@ export const useGetConversations = () => {
 
   return useQuery({
     queryKey: queryKeys.conversation.all,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        const conversations = await chatClient.getConversations();
+        const conversations = await chatClient.getConversations(signal);
+        signal.throwIfAborted();
         const normalized = conversations as unknown as ConversationInfo[];
         offlineCache.saveConversationList(normalized);
         return normalized;
       } catch (error) {
+        signal.throwIfAborted();
         const cached = offlineCache.getConversationList();
         if (cached) {
           console.warn("Using offline conversation list cache due to error:", error);

@@ -17,17 +17,28 @@ function load(file, dependencies) {
       return dependencies[id];
     },
     URLSearchParams,
+    AbortController,
   });
   return exports;
 }
 const policy = load('src/lib/read-only.ts', {});
-function setup() {
+function setup({ conversations = [], failedIds = [], listError } = {}) {
   const requests = [];
   class ApiClient {
-    get(...args) { requests.push(['get', ...args]); return Promise.resolve([]); }
+    get(...args) {
+      requests.push(['get', ...args]);
+      if (args[0] === '/conversations') {
+        return listError ? Promise.reject(listError) : Promise.resolve(conversations);
+      }
+      return Promise.resolve([]);
+    }
     post(...args) { requests.push(['post', ...args]); return Promise.resolve([]); }
     patch(...args) { requests.push(['patch', ...args]); return Promise.resolve([]); }
-    delete(...args) { requests.push(['delete', ...args]); return Promise.resolve([]); }
+    delete(...args) {
+      requests.push(['delete', ...args]);
+      return failedIds.some((id) => args[0] === `/conversations/${id}`)
+        ? Promise.reject(new Error('Deletion failed')) : Promise.resolve([]);
+    }
     stream(...args) { requests.push(['stream', ...args]); return Promise.resolve([]); }
     requestWithoutJson(...args) {
       requests.push(['download', ...args]);
@@ -46,7 +57,7 @@ function setup() {
 
 const writes = [
   'createChat', 'sentPrompt', 'generateChatTitle', 'createConversation', 'addItemsToConversation',
-  'updateConversation', 'importChat', 'deleteConversation', 'pinConversationById', 'unpinConversationById',
+  'updateConversation', 'importChat', 'pinConversationById', 'unpinConversationById',
   'cloneChatById', 'cloneSharedChatById', 'shareChatById', 'updateChatFolderIdById', 'archiveChatById',
   'unarchiveChatById', 'deleteSharedChatById', 'updateChatById', 'deleteChatById', 'addTagById',
   'deleteTagById', 'deleteTagsById', 'deleteAllChats', 'archiveAllChats', 'startStream', 'uploadFile',
@@ -175,11 +186,15 @@ for (const exporting of [false, true]) {
     const { default: ChatsSettings } = load('src/components/common/dialogs/settings/ChatsSettings.tsx', {
       'react': React,
       'react/jsx-runtime': require('react/jsx-runtime'),
-      '@heroicons/react/24/solid': { ArrowDownTrayIcon: () => null, ArrowUpOnSquareIcon: () => null },
+      '@heroicons/react/24/solid': { ArrowDownTrayIcon: () => null, ArrowUpOnSquareIcon: () => null, TrashIcon: () => null },
       'dayjs': require('dayjs'),
       'sonner': { toast: {} },
       '@/api/chat/queries/useConversation': { useConversation: () => ({}) },
       '@/api/chat/queries/useGetConversations': { useGetConversations: () => ({}) },
+      '@/api/chat/queries/useDeleteAllConversations': {
+        useDeleteAllConversations: () => ({ isDeleting: false, progress: { completed: 0, total: 0 } }),
+      },
+      './DeleteAllChatsDialog': { default: () => null },
       '@/components/common/ExportProgress': { ExportProgress: () => React.createElement('span', null, 'Export progress') },
       '@/lib/read-only': policy,
       '@/lib/utils/transform-chat-history': {},
@@ -188,8 +203,9 @@ for (const exporting of [false, true]) {
       },
     });
     const html = renderToStaticMarkup(React.createElement(ChatsSettings, {}));
-    assert.ok(html.includes(policy.READ_ONLY_MESSAGE));
+    assert.ok(html.includes('Chatting is disabled. You can still view, export, or delete your history.'));
     assert.ok(html.includes('Export Chats'));
+    assert.ok(html.includes('Delete Chats'));
     assert.equal(html.includes('disabled=""'), exporting);
     assert.equal(html.includes('Export progress'), exporting);
     assert.ok(!html.includes('Import Chats'));
@@ -223,4 +239,245 @@ test('welcome page keeps the shutdown notice and a composer with sending disable
   assert.ok(html.includes('Private Chat is read-only. Sign in to view and export your conversations.'));
   assert.ok(html.includes('<textarea'));
   assert.match(html, /<button[^>]*id="send-message-button"[^>]*disabled=""/);
+});
+
+const normalize = (value) => JSON.parse(JSON.stringify(value));
+
+test('individual conversation deletion remains available', async () => {
+  const { chatClient, requests } = setup();
+  await chatClient.deleteConversation('owned-id');
+  assert.deepEqual(normalize(requests), [['delete', '/conversations/owned-id', { apiVersion: 'v2' }]]);
+});
+
+test('delete all uses the server list, includes archived chats, and reports progress', async () => {
+  const { chatClient, requests } = setup({ conversations: [
+    { id: 'normal' }, { id: 'archived', metadata: { archived_at: '123' } }, { id: 'normal' },
+  ] });
+  const progress = [];
+  const result = await chatClient.deleteAllConversations((completed, total) => progress.push([completed, total]));
+  assert.deepEqual(normalize(result), { deletedIds: ['normal', 'archived'], failedIds: [], stopped: false });
+  assert.deepEqual(progress, [[0, 2], [1, 2], [2, 2]]);
+  assert.deepEqual(normalize(requests).map(([method, path]) => [method, path]), [
+    ['get', '/conversations'], ['delete', '/conversations/normal'], ['delete', '/conversations/archived'],
+  ]);
+  assert.ok(requests.every((request) => request[2].apiVersion === 'v2'));
+});
+
+test('delete all reports partial failure and continues with the remaining chats', async () => {
+  const { chatClient } = setup({ conversations: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], failedIds: ['b'] });
+  assert.deepEqual(normalize(await chatClient.deleteAllConversations()), {
+    deletedIds: ['a', 'c'], failedIds: ['b'], stopped: false,
+  });
+});
+
+test('delete all never deletes from a stale local list when the server list fails', async () => {
+  const { chatClient, requests } = setup({ listError: new Error('Offline') });
+  await assert.rejects(chatClient.deleteAllConversations(), /Offline/);
+  assert.deepEqual(requests.map((request) => request[0]), ['get']);
+});
+
+test('delete all handles an empty account without delete requests', async () => {
+  const { chatClient, requests } = setup();
+  assert.deepEqual(normalize(await chatClient.deleteAllConversations()), { deletedIds: [], failedIds: [], stopped: false });
+  assert.equal(requests.length, 1);
+});
+
+function descendants(node) {
+  const React = require('react');
+  if (!React.isValidElement(node)) return [];
+  return [node, ...React.Children.toArray(node.props.children).flatMap(descendants)];
+}
+
+test('bulk deletion requires backup acknowledgement and provides export and cancel actions', () => {
+  const React = require('react');
+  let backedUp = false;
+  let confirmations = 0;
+  let exports = 0;
+  let cancellations = 0;
+  let stops = 0;
+  const components = Object.fromEntries([
+    'AlertDialog', 'AlertDialogContent', 'AlertDialogDescription', 'AlertDialogFooter',
+    'AlertDialogHeader', 'AlertDialogTitle',
+  ].map((name) => [name, name]));
+  const { default: Dialog } = load('src/components/common/dialogs/settings/DeleteAllChatsDialog.tsx', {
+    'react': { useState: () => [backedUp, (value) => { backedUp = value; }] },
+    'react/jsx-runtime': require('react/jsx-runtime'),
+    '@/components/ui/alert-dialog': components,
+    '@/components/ui/button': { Button: 'button' },
+  });
+  const render = (isDeleting = false, isStopping = false) => descendants(Dialog({
+    isDeleting, isStopping, progress: { completed: 1, total: 3 },
+    onCancel: () => { cancellations++; }, onExport: () => { exports++; },
+    onConfirm: () => { confirmations++; },
+    onStop: () => { stops++; },
+  }));
+  const button = (nodes, label) => nodes.find((node) => node.type === 'button' && node.props.children === label);
+  const before = render();
+  const warning = before.find((node) => node.type === 'AlertDialogDescription').props.children;
+  assert.match(warning, /Export and save a copy/);
+  assert.match(warning, /including archived chats/);
+  assert.match(warning, /cannot be undone/);
+  assert.equal(button(before, 'Delete all chats').props.disabled, true);
+  button(before, 'Delete all chats').props.onClick();
+  assert.equal(confirmations, 0);
+  button(before, 'Export Chats first').props.onClick();
+  button(before, 'Cancel').props.onClick();
+  assert.equal(exports, 1);
+  assert.equal(cancellations, 1);
+  before.find((node) => node.type === 'input').props.onChange({ target: { checked: true } });
+  const acknowledged = render();
+  assert.equal(button(acknowledged, 'Delete all chats').props.disabled, false);
+  button(acknowledged, 'Delete all chats').props.onClick();
+  assert.equal(confirmations, 1);
+  const pending = render(true);
+  assert.ok(pending.filter((node) => (node.type === 'button' || node.type === 'input') && node.props.children !== 'Stop deleting').every((node) => node.props.disabled));
+  assert.equal(button(pending, 'Stop deleting').props.disabled, false);
+  button(pending, 'Stop deleting').props.onClick();
+  assert.equal(stops, 1);
+  assert.equal(button(render(true, true), 'Stopping…').props.disabled, true);
+  button(pending, 'Deleting…').props.onClick();
+  assert.equal(confirmations, 1);
+});
+
+for (const outcome of ['complete', 'partial', 'stopped', 'stopped-with-failures']) {
+  const incomplete = outcome !== 'complete';
+  const stopped = outcome.startsWith('stopped');
+  const failed = outcome === 'partial' || outcome === 'stopped-with-failures';
+  test(`bulk deletion cleans only successfully deleted conversations (${outcome})`, async () => {
+    const { QueryClient } = require('@tanstack/react-query');
+    const { queryKeys } = load('src/api/query-keys.ts', {});
+    const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+    const conversations = [{ id: 'a' }, { id: 'b' }];
+    queryClient.setQueryData(queryKeys.conversation.all, conversations);
+    queryClient.setQueryData(queryKeys.conversation.byId('a'), { id: 'a' });
+    queryClient.setQueryData(queryKeys.conversation.byId('b'), { id: 'b' });
+    queryClient.setQueryData(queryKeys.users.meSettings, { appearance: 'dark' });
+    let options;
+    let savedList;
+    let reset = false;
+    const cleared = [];
+    const navigations = [];
+    const notices = [];
+    const { useDeleteAllConversations } = load('src/api/chat/queries/useDeleteAllConversations.ts', {
+      '@tanstack/react-query': {
+        useQueryClient: () => queryClient, useIsMutating: () => 0,
+        useMutation: (value) => { options = value; return {}; },
+      },
+      '@/stores/useDeleteChatsStore': { useDeleteChatsStore: () => ({ progress: { completed: 0, total: 0 }, isStopping: false, stop: () => {} }) },
+      'react-router': { useNavigate: () => (...args) => navigations.push(args) },
+      'sonner': { toast: { success: (msg) => notices.push(['success', msg]), error: (msg) => notices.push(['error', msg]), info: (msg) => notices.push(['info', msg]) } },
+      '@/api/query-keys': { queryKeys },
+      '@/lib/offlineCache': { offlineCache: {
+        clearConversationDetail: (id) => cleared.push(id),
+        clearConversationDetails: () => cleared.push('all'),
+        getConversationList: () => conversations,
+        saveConversationList: (list) => { savedList = list; },
+      } },
+      '@/pages/routes': { APP_ROUTES: { HOME: '/' } },
+      '@/stores/useConversationStore': { useConversationStore: { getState: () => ({
+        conversation: { conversationId: incomplete ? 'b' : 'a' },
+        resetConversation: () => { reset = true; },
+      }) } },
+      '@/stores/useExportStore': { useExportStore: { getState: () => ({ progress: null, dismissResult: () => {} }) } },
+      '@/stores/useMessagesSignaturesStore': { useMessagesSignaturesStore: { getState: () => ({ clearAllSignatures: () => {} }) } },
+      '../client': { chatClient: {} },
+    });
+    useDeleteAllConversations();
+    assert.equal(options.retry, false);
+    assert.equal(options.networkMode, 'always');
+    await options.onSuccess({ deletedIds: incomplete ? ['a'] : ['a', 'b'], failedIds: failed ? ['b'] : [], stopped });
+    assert.equal(queryClient.getQueryData(queryKeys.conversation.byId('a')), undefined);
+    assert.deepEqual(queryClient.getQueryData(queryKeys.conversation.byId('b')), incomplete ? { id: 'b' } : undefined);
+    assert.deepEqual(normalize(savedList), incomplete ? [{ id: 'b' }] : []);
+    assert.deepEqual(normalize(queryClient.getQueryData(queryKeys.conversation.all)), normalize(savedList));
+    assert.deepEqual(queryClient.getQueryData(queryKeys.users.meSettings), { appearance: 'dark' });
+    assert.deepEqual(cleared, incomplete ? ['a'] : ['a', 'b', 'all']);
+    assert.equal(reset, !incomplete);
+    assert.equal(navigations.length, incomplete ? 0 : 1);
+    assert.equal(notices[0][0], stopped ? 'info' : failed ? 'error' : 'success');
+    queryClient.clear();
+  });
+}
+
+test('stopping before deletion starts sends no requests', async () => {
+  const { chatClient, requests } = setup();
+  const controller = new AbortController();
+  controller.abort();
+  const result = await chatClient.deleteAllConversations(undefined, controller.signal);
+  assert.deepEqual(normalize(result), { deletedIds: [], failedIds: [], stopped: true });
+  assert.deepEqual(requests, []);
+});
+
+test('stopping during list loading never starts a deletion', async () => {
+  const { chatClient, requests } = setup();
+  const controller = new AbortController();
+  chatClient.getConversations = (signal) => new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
+  const deletion = chatClient.deleteAllConversations(undefined, controller.signal);
+  controller.abort();
+  assert.deepEqual(normalize(await deletion), { deletedIds: [], failedIds: [], stopped: true });
+  assert.deepEqual(requests, []);
+});
+
+for (const fails of [false, true]) {
+  test(`stop waits for the in-flight deletion and preserves its result (fails: ${fails})`, async () => {
+    const { chatClient } = setup({ conversations: [{ id: 'a' }, { id: 'b' }] });
+    const controller = new AbortController();
+    const called = [];
+    let finishRequest;
+    let started;
+    const requestStarted = new Promise((resolve) => { started = resolve; });
+    chatClient.deleteConversation = (id) => {
+      called.push(id);
+      started();
+      return new Promise((resolve, reject) => {
+        finishRequest = () => fails ? reject(new Error('Failed')) : resolve();
+      });
+    };
+    let settled = false;
+    const deletion = chatClient.deleteAllConversations(undefined, controller.signal)
+      .then((result) => { settled = true; return result; });
+    await requestStarted;
+    controller.abort();
+    await Promise.resolve();
+    assert.equal(settled, false);
+    finishRequest();
+    assert.deepEqual(normalize(await deletion), {
+      deletedIds: fails ? [] : ['a'], failedIds: fails ? ['a'] : [], stopped: true,
+    });
+    assert.deepEqual(called, ['a']);
+  });
+}
+
+test('stop after the last chat finishes still reports complete deletion', async () => {
+  const { chatClient } = setup({ conversations: [{ id: 'a' }] });
+  const controller = new AbortController();
+  const result = await chatClient.deleteAllConversations((completed) => {
+    if (completed === 1) controller.abort();
+  }, controller.signal);
+  assert.deepEqual(normalize(result), { deletedIds: ['a'], failedIds: [], stopped: false });
+});
+
+test('shared deletion controls retain progress, stop once, and allow a fresh run', () => {
+  const { useDeleteChatsStore: store } = load('src/stores/useDeleteChatsStore.ts', {
+    zustand: require('zustand'),
+  });
+  const controller = store.getState().begin();
+  store.getState().setProgress(2, 5);
+  assert.deepEqual(normalize(store.getState().progress), { completed: 2, total: 5 });
+  assert.throws(() => store.getState().begin(), /already running/);
+  store.getState().stop();
+  store.getState().stop();
+  assert.equal(controller.signal.aborted, true);
+  assert.equal(store.getState().isStopping, true);
+  store.getState().finish(controller);
+  assert.equal(store.getState().controller, null);
+  assert.equal(store.getState().isStopping, false);
+  const next = store.getState().begin();
+  assert.equal(next.signal.aborted, false);
+  assert.deepEqual(normalize(store.getState().progress), { completed: 0, total: 0 });
+  store.getState().finish(controller);
+  assert.equal(store.getState().controller, next);
+  store.getState().finish(next);
 });

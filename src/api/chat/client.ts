@@ -304,10 +304,38 @@ class ChatClient extends ApiClient {
   }
 
   async deleteConversation(id: string) {
-    assertConversationWritesEnabled();
     return this.delete<void>(`/conversations/${id}`, {
       apiVersion: "v2",
     });
+  }
+
+  async deleteAllConversations(onProgress?: (completed: number, total: number) => void, signal?: AbortSignal) {
+    const deletedIds: string[] = [];
+    const failedIds: string[] = [];
+    if (signal?.aborted) return { deletedIds, failedIds, stopped: true };
+    // Read the authenticated user's complete list from the server, including archived chats.
+    let conversations: ConversationInfo[];
+    try {
+      conversations = await this.getConversations(signal);
+    } catch (error) {
+      if (signal?.aborted) return { deletedIds, failedIds, stopped: true };
+      throw error;
+    }
+    if (signal?.aborted) return { deletedIds, failedIds, stopped: true };
+    const ids = [...new Set(conversations.map((conversation) => conversation.id))];
+    onProgress?.(0, ids.length);
+    for (const id of ids) {
+      if (signal?.aborted) return { deletedIds, failedIds, stopped: true };
+      try {
+        // Let an in-flight deletion finish so its outcome is known before stopping.
+        await this.deleteConversation(id);
+        deletedIds.push(id);
+      } catch {
+        failedIds.push(id);
+      }
+      onProgress?.(deletedIds.length + failedIds.length, ids.length);
+    }
+    return { deletedIds, failedIds, stopped: false };
   }
 
   async getChatList(page: number | null = null) {
