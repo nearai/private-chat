@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { ArchiveBoxIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -104,43 +105,40 @@ export default function ChatMenu({ chat, handleRename, handleDeleteSuccess, isPi
           side="bottom"
           align="start"
         >
-          <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
-            onClick={handlePinToggle}
-          >
-            {isPinned ? (
-              <>
-                <UnpinIcon className="h-4 w-4" strokeWidth={2} />
-                <span>{t("Unpin")}</span>
-              </>
-            ) : (
-              <>
-                <PinIcon className="h-4 w-4" strokeWidth={2} />
-                <span>{t("Pin")}</span>
-              </>
-            )}
-          </DropdownMenuItem>
+          {CONVERSATION_WRITES_ENABLED && (
+            <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handlePinToggle}>
+              {isPinned ? (
+                <>
+                  <UnpinIcon className="h-4 w-4" strokeWidth={2} />
+                  <span>{t("Unpin")}</span>
+                </>
+              ) : (
+                <>
+                  <PinIcon className="h-4 w-4" strokeWidth={2} />
+                  <span>{t("Pin")}</span>
+                </>
+              )}
+            </DropdownMenuItem>
+          )}
 
-          <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
-            onClick={handleRenameClick}
-          >
-            <PencilIcon className="h-4 w-4" strokeWidth={2} />
-            <span>{t("Rename")}</span>
-          </DropdownMenuItem>
+          {CONVERSATION_WRITES_ENABLED && (
+            <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleRenameClick}>
+              <PencilIcon className="h-4 w-4" strokeWidth={2} />
+              <span>{t("Rename")}</span>
+            </DropdownMenuItem>
+          )}
 
           {/* <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleClone}>
             <ClipboardIcon className="h-4 w-4" strokeWidth={2} />
             <span>{t("Clone")}</span>
           </DropdownMenuItem> */}
 
-          <DropdownMenuItem
-            className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5"
-            onClick={handleArchive}
-          >
-            <ArchiveBoxIcon className="h-4 w-4" strokeWidth={2} />
-            <span>{t("Archive")}</span>
-          </DropdownMenuItem>
+          {CONVERSATION_WRITES_ENABLED && (
+            <DropdownMenuItem className="flex cursor-pointer flex-row gap-2 rounded-md px-3 py-1.5" onClick={handleArchive}>
+              <ArchiveBoxIcon className="h-4 w-4" strokeWidth={2} />
+              <span>{t("Archive")}</span>
+            </DropdownMenuItem>
+          )}
 
           <DownloadDropdown chatId={chat.id} />
 

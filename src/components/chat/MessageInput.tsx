@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -69,7 +70,7 @@ interface MessageInputProps {
 
 const PASTED_TEXT_CHARACTER_LIMIT = 50000;
 
-const MessageInput: React.FC<MessageInputProps> = ({
+const WritableMessageInput: React.FC<MessageInputProps> = ({
   messages,
   allMessages,
   createMessagePair = () => {},
@@ -855,5 +856,46 @@ const MessageInput: React.FC<MessageInputProps> = ({
     </>
   );
 };
+
+// Keep the composer visible without mounting upload or submission handlers.
+const ReadOnlyMessageInput: React.FC<MessageInputProps> = ({ prompt, setPrompt, placeholder, fullWidth = true }) => {
+  const { t } = useTranslation("translation", { useSuspense: false });
+
+  return (
+    <div className={`mx-auto w-full px-4 ${fullWidth ? "" : "max-w-2xl"}`}>
+      <div className="relative flex w-full flex-col rounded-3xl border border-border bg-input px-1 shadow-lg transition focus-within:shadow-xl hover:shadow-xl">
+        <div className="px-2.5">
+          <div className="scrollbar-hidden h-fit max-h-80 overflow-auto px-1 pt-3" id="chat-input-container">
+            <textarea
+              id="chat-input"
+              aria-label={t("Message")}
+              className="field-sizing-content relative w-full resize-none border-none bg-transparent text-base outline-none dark:placeholder:text-white/70"
+              placeholder={placeholder || t("How can I help you today?")}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              style={{ lineHeight: "1.5" }}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end px-1 pb-2">
+          <Button
+            id="send-message-button"
+            className="mr-1 size-10 rounded-full"
+            type="button"
+            title="Private Chat is read-only"
+            aria-label={t("Send")}
+            disabled
+            size="icon"
+          >
+            <SendMessageIcon className="size-5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MessageInput: React.FC<MessageInputProps> = (props) =>
+  CONVERSATION_WRITES_ENABLED ? <WritableMessageInput {...props} /> : <ReadOnlyMessageInput {...props} />;
 
 export default MessageInput;

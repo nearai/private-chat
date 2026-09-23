@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import {
   ArrowUpOnSquareIcon,
   MagnifyingGlassIcon,
@@ -5,8 +6,7 @@ import {
 } from "@heroicons/react/24/outline";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import fileSaver from "file-saver";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,15 +27,16 @@ import {
 } from "@/components/ui/table";
 import { CompactTooltip } from "@/components/ui/tooltip";
 import ConfirmDialog from "../ConfirmDialog";
+import { ExportProgress } from "@/components/common/ExportProgress";
+import { useExportStore } from "@/stores/useExportStore";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useGetConversations } from "@/api/chat/queries/useGetConversations";
 import { useDeleteChat, useUnarchiveChat } from "@/api/chat/queries";
 import { queryKeys } from "@/api/query-keys";
 import type { ConversationInfo } from "@/types";
 
 dayjs.extend(localizedFormat);
-const { saveAs } = fileSaver;
 
 function ConversationSkeletonRow() {
   return (
@@ -68,7 +69,17 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
   const { t } = useTranslation("translation", { useSuspense: false });
 
   const queryClient = useQueryClient();
-  const { data: conversations, isPending } = useGetConversations();
+  const { data: conversations, isPending, isFetching, isError, isPaused, refetch } = useGetConversations();
+  const exportProgress = useExportStore((state) => state.progress);
+  const exportResult = useExportStore((state) => state.result);
+  const exportScope = useExportStore((state) => state.scope);
+  const startExport = useExportStore((state) => state.start);
+  const isDeletingAll = useIsMutating({ mutationKey: ["deleteAllConversations"] }) > 0;
+
+  useEffect(() => {
+    // The modal stays mounted while closed; refresh on every open, even during staleTime.
+    if (open) void refetch({ cancelRefetch: false });
+  }, [open, refetch]);
 
   const { mutateAsync: unarchiveChat } = useUnarchiveChat();
   const { mutateAsync: deleteChat } = useDeleteChat();
@@ -102,6 +113,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
   const handleUnarchive = useCallback(
     async (id: string) => {
+      if (!CONVERSATION_WRITES_ENABLED) return;
       const rollback = optimisticUpdate((old) =>
         old.map((c) =>
           c.id === id ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
@@ -135,6 +147,7 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
   );
 
   const handleUnarchiveAll = useCallback(async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const rollback = optimisticUpdate((old) =>
       old.map((c) =>
         c.metadata?.archived_at ? { ...c, metadata: { ...c.metadata, archived_at: undefined } } : c
@@ -152,30 +165,21 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
     }
   }, [archived, unarchiveChat, t, optimisticUpdate]);
 
-  const handleExport = () => {
-    try {
-      const blob = new Blob([JSON.stringify(archived, null, 2)], {
-        type: "application/json",
-      });
-      saveAs(blob, `${t("archived-chat-export")}-${Date.now()}.json`);
-    } catch (err) {
-      toast.error(String(err));
-    }
-  };
-
   return (
     <>
-      <ConfirmDialog
-        open={showUnarchiveAllConfirmDialog}
-        title={t("Unarchive All")}
-        description={t("Are you sure you want to unarchive all archived chats?")}
-        confirmText={t("Unarchive All")}
-        onConfirm={() => {
-          setShowUnarchiveAllConfirmDialog(false);
-          handleUnarchiveAll();
-        }}
-        onCancel={() => setShowUnarchiveAllConfirmDialog(false)}
-      />
+      {CONVERSATION_WRITES_ENABLED && (
+        <ConfirmDialog
+          open={showUnarchiveAllConfirmDialog}
+          title={t("Unarchive All")}
+          description={t("Are you sure you want to unarchive all archived chats?")}
+          confirmText={t("Unarchive All")}
+          onConfirm={() => {
+            setShowUnarchiveAllConfirmDialog(false);
+            handleUnarchiveAll();
+          }}
+          onCancel={() => setShowUnarchiveAllConfirmDialog(false)}
+        />
+      )}
 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] sm:max-w-4xl">
@@ -199,7 +203,23 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
           <hr className="my-2 border-muted/30" />
 
-          {isPending ? (
+          {!isFetching && (isError || isPaused) && (
+            <div role="alert" className="mb-3 flex items-center justify-between gap-3 text-sm">
+              <p className="text-muted-foreground">
+                {isPaused
+                  ? t("You are offline. Connect to refresh archived chats.")
+                  : t("Could not refresh archived chats. Any displayed history may be out of date.")}
+              </p>
+              <Button variant="secondary" size="small" onClick={() => void refetch({ cancelRefetch: false })}>
+                {t("Retry")}
+              </Button>
+            </div>
+          )}
+          {isFetching && archived.length > 0 && (
+            <p role="status" className="mb-3 text-muted-foreground text-sm">{t("Refreshing archived chats…")}</p>
+          )}
+
+          {(isPending && !isPaused) || (isFetching && archived.length === 0) ? (
             <div className="mb-3 max-h-88 overflow-y-scroll text-sm">
               <Table>
                 <TableHeader>
@@ -258,20 +278,16 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
 
                         <TableCell className="px-3 py-1 text-right">
                           <div className="flex justify-end gap-2">
-                            <CompactTooltip content={t("Unarchive Chat")}>
-                              <button
-                                className="rounded-xl p-2"
-                                onClick={() => handleUnarchive(chat.id)}
-                              >
-                                <ArrowUpOnSquareIcon className="size-4" />
-                              </button>
-                            </CompactTooltip>
+                            {CONVERSATION_WRITES_ENABLED && (
+                              <CompactTooltip content={t("Unarchive Chat")}>
+                                <button className="rounded-xl p-2" onClick={() => handleUnarchive(chat.id)}>
+                                  <ArrowUpOnSquareIcon className="size-4" />
+                                </button>
+                              </CompactTooltip>
+                            )}
 
                             <CompactTooltip content={t("Delete Chat")}>
-                              <button
-                                className="rounded-xl p-2"
-                                onClick={() => handleDelete(chat.id)}
-                              >
+                              <button className="rounded-xl p-2" onClick={() => handleDelete(chat.id)}>
                                 <TrashIcon className="size-4" />
                               </button>
                             </CompactTooltip>
@@ -284,25 +300,33 @@ export default function ArchivedChatsModal({ open, onOpenChange }: ArchivedChats
               </div>
               {/* Buttons */}
               <div className="mt-2 flex flex-col gap-3 md:flex-row md:justify-end md:gap-2">
+                {CONVERSATION_WRITES_ENABLED && (
+                  <Button
+                    variant="secondary"
+                    className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
+                    onClick={() => setShowUnarchiveAllConfirmDialog(true)}
+                  >
+                    {t("Unarchive All Archived Chats")}
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
-                  onClick={() => setShowUnarchiveAllConfirmDialog(true)}
-                >
-                  {t("Unarchive All Archived Chats")}
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="h-8 rounded-xl px-3.5 text-sm sm:h-9 sm:rounded-3xl sm:text-base"
-                  onClick={handleExport}
+                  onClick={() => void startExport("archived")}
+                  disabled={!!exportProgress || isDeletingAll}
                 >
                   {t("Export All Archived Chats")}
                 </Button>
               </div>
             </>
-          ) : (
+          ) : !isError && !isPaused ? (
             <div className="mb-8 text-sm">
               {t("You have no archived conversations.")}
+            </div>
+          ) : null}
+          {exportScope === "archived" && (exportProgress || exportResult) && (
+            <div className="mt-3">
+              <ExportProgress />
             </div>
           )}
         </DialogContent>

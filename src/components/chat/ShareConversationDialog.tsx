@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,10 +18,7 @@ import type {
 } from "@/types";
 import { ManageShareGroupsDialog } from "./ManageShareGroupsDialog";
 
-import {
-  createRecipientInput,
-  type RecipientInputValue,
-} from "./ShareRecipientInputs";
+import { createRecipientInput, type RecipientInputValue } from "./ShareRecipientInputs";
 
 import {
   AdvancedSharingSection,
@@ -48,6 +46,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   // Extract is_owner, can_share, and shares from the response
   const isOwner = sharesData?.is_owner ?? false;
   const canShare = sharesData?.can_share ?? false;
+  const canEditSharing = CONVERSATION_WRITES_ENABLED && canShare;
   const shares = sharesData?.shares ?? [];
 
   // Get current user info
@@ -99,7 +98,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
 
   // Handlers
   const handleInvite = async (recipientsToInvite: ShareRecipient[], perm: SharePermission) => {
-    if (!conversationId) return;
+    if (!canEditSharing || !conversationId) return;
 
     try {
       await createShare.mutateAsync({
@@ -112,14 +111,18 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
           },
         },
       });
-      toast.success(recipientsToInvite.length === 1 ? t("Invited {{email}}", { email: recipientsToInvite[0].value }) : t("Invited {{count}} people", { count: recipientsToInvite.length }));
+      toast.success(
+        recipientsToInvite.length === 1
+          ? t("Invited {{email}}", { email: recipientsToInvite[0].value })
+          : t("Invited {{count}} people", { count: recipientsToInvite.length })
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to send invite"));
     }
   };
 
   const handleAdvancedShare = async () => {
-    if (!conversationId) return;
+    if (!canEditSharing || !conversationId) return;
 
     let payload: CreateConversationShareRequest | null = null;
 
@@ -157,7 +160,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   };
 
   const handleCreatePublicLink = async () => {
-    if (!conversationId || publicShare) return;
+    if (!canEditSharing || !conversationId || publicShare) return;
 
     try {
       await createShare.mutateAsync({
@@ -174,7 +177,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
   };
 
   const handleRemoveAccess = async (share: ConversationShareInfo) => {
-    if (!conversationId) return;
+    if (!canEditSharing || !conversationId) return;
 
     setPendingDeleteId(share.id);
     try {
@@ -201,15 +204,13 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
         <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="text-xl">
-              {canShare
-                ? t("Share this conversation")
-                : t("Conversation access")}
+              {canEditSharing ? t("Share this conversation") : t("Conversation access")}
             </DialogTitle>
           </DialogHeader>
 
           <div ref={containerRef} className="max-h-[80vh] space-y-6 overflow-y-auto px-6 pb-6">
             {/* Main invite section - for users who can share */}
-            {canShare && conversationId && (
+            {canEditSharing && conversationId && (
               <InviteSection
                 recipients={recipients}
                 onRecipientsChange={setRecipients}
@@ -223,9 +224,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
             )}
 
             {/* Copy link section - available to everyone */}
-            {conversationId && (
-              <CopyLinkSection conversationId={conversationId} />
-            )}
+            {conversationId && <CopyLinkSection conversationId={conversationId} />}
 
             {/* Non-sharer info message */}
             {!canShare && !isSharesLoading && (
@@ -236,9 +235,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm">{t("Shared with you")}</p>
                   <p className="text-muted-foreground text-xs">
-                    {t(
-                      "You have access to this conversation. Only the owner can manage sharing.",
-                    )}
+                    {t("You have access to this conversation. Only the owner can manage sharing.")}
                   </p>
                 </div>
               </div>
@@ -273,7 +270,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
             )}
 
             {/* Advanced options toggle - for users who can share */}
-            {canShare && (
+            {canEditSharing && (
               <AdvancedSharingSection
                 showAdvanced={showAdvanced}
                 setShowAdvanced={setShowAdvanced}
@@ -289,7 +286,7 @@ export const ShareConversationDialog = ({ conversationId, open, onOpenChange }: 
                 isPending={createShare.isPending}
                 onAdvancedShare={handleAdvancedShare}
                 onManageGroups={() => {
-                  setIsManageGroupsOpen(true)
+                  setIsManageGroupsOpen(true);
                 }}
               />
             )}

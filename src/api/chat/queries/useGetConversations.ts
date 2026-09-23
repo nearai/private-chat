@@ -11,25 +11,20 @@ export const useGetConversations = () => {
 
   return useQuery({
     queryKey: queryKeys.conversation.all,
-    queryFn: async () => {
-      try {
-        const conversations = await chatClient.getConversations();
-        const normalized = conversations as unknown as ConversationInfo[];
-        offlineCache.saveConversationList(normalized);
-        return normalized;
-      } catch (error) {
-        const cached = offlineCache.getConversationList();
-        if (cached) {
-          console.warn("Using offline conversation list cache due to error:", error);
-          return cached;
-        }
-        throw error;
-      }
+    queryFn: async ({ signal }) => {
+      const conversations = await chatClient.getConversations(signal);
+      signal.throwIfAborted();
+      const normalized = conversations as unknown as ConversationInfo[];
+      offlineCache.saveConversationList(normalized);
+      return normalized;
     },
     enabled: !!token,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     networkMode: "offlineFirst",
+    // Persisted data has no freshness timestamp. Show it immediately, but revalidate on mount.
+    // React Query retains this data if refreshing fails, without hiding the error.
     initialData: cachedConversations ?? undefined,
+    initialDataUpdatedAt: 0,
   });
 };

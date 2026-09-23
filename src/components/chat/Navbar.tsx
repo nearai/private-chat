@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { DocumentDuplicateIcon, GlobeAltIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -67,18 +68,20 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
                 >
                   <SidebarIcon className="size-5 rotate-180" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  id="new-chat-button"
-                  type="button"
-                  className="size-8 text-muted-foreground"
-                  onClick={handleNewChat}
-                  aria-label="New Chat"
-                  title="New Chat"
-                >
-                  <PencilIcon className="size-4.5" />
-                </Button>
+                {CONVERSATION_WRITES_ENABLED && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    id="new-chat-button"
+                    type="button"
+                    className="size-8 text-muted-foreground"
+                    onClick={handleNewChat}
+                    aria-label="New Chat"
+                    title="New Chat"
+                  >
+                    <PencilIcon className="size-4.5" />
+                  </Button>
+                )}
               </div>
             )}
 
@@ -87,7 +90,7 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
             </div>
 
             <div className="flex h-fit items-center gap-2">
-              {chatId && sharesData && !sharesData.is_owner && onCopyAndContinue && (
+              {CONVERSATION_WRITES_ENABLED && chatId && sharesData && !sharesData.is_owner && onCopyAndContinue && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -129,11 +132,7 @@ export default function Navbar({ sharesData: propSharesData, onCopyAndContinue, 
           </div>
         </div>
         {chatId && (
-          <ShareConversationDialog
-            conversationId={chatId}
-            open={isShareDialogOpen}
-            onOpenChange={setIsShareDialogOpen}
-          />
+          <ShareConversationDialog conversationId={chatId} open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen} />
         )}
       </nav>
     </>

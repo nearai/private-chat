@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import Bolt from "@heroicons/react/24/outline/BoltIcon";
 import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
@@ -96,6 +97,7 @@ export default function NewChat({
   }, [inputValue, sortedPrompts]);
 
   const handleSendMessage = async (content: string, files: FileContentItem[], webSearchEnabled: boolean = false) => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const contentItems: ContentItem[] = [
       { type: "input_text", text: content },
       ...files.map((file) => generateContentFileDataForOpenAI(file)),
@@ -219,7 +221,7 @@ export default function NewChat({
           <div className="flex w-fit max-w-2xl flex-col items-center justify-center gap-3 px-2 pb-3 sm:gap-3.5">
             <NearAIIcon className="h-6" />
             <p className="text-center text-base text-muted-foreground">
-              Chat with your personal assistant without worrying about leaking private information.
+              Private Chat is read-only. Select an existing conversation to view or export.
             </p>
           </div>
           <MessageInput
@@ -233,43 +235,43 @@ export default function NewChat({
             stopStream={stopStream}
             autoFocusKey="new-chat"
           />
-          <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
-            <div className="mx-5">
-              <div className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
-                <Bolt className="h-4 w-4" />
-                Suggested
-              </div>
-              <div className="h-40 w-full">
-                <div role="list" className="scrollbar-none max-h-40 items-start overflow-auto">
-                  {filteredPrompts.map((prompt, idx) => (
-                    <button
-                      key={prompt.content}
-                      role="listitem"
-                      className="waterfall group flex w-full flex-1 shrink-0 flex-col justify-between rounded-xl px-3 py-2 font-normal text-base transition hover:bg-secondary/30"
-                      style={{ animationDelay: `${idx * 60}ms` }}
-                      onClick={() => setInputValue(prompt.content)}
-                    >
-                      <div className="flex flex-col text-left">
-                        {prompt.title && prompt.title[0] !== "" ? (
-                          <>
-                            <div className="line-clamp-1 font-medium transition">{prompt.title[0]}</div>
-                            <div className="line-clamp-1 font-normal text-muted-foreground text-xs">
-                              {prompt.title[1]}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="line-clamp-1 font-medium transition">{prompt.content}</div>
-                            <div className="line-clamp-1 font-normal text-muted-foreground text-xs">Prompt</div>
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+          {CONVERSATION_WRITES_ENABLED && (
+            <div className="mx-auto mt-2 w-full max-w-2xl font-primary">
+              <div className="mx-5">
+                <div className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
+                  <Bolt className="h-4 w-4" />
+                  Suggested
+                </div>
+                <div className="h-40 w-full">
+                  <div role="list" className="scrollbar-none max-h-40 items-start overflow-auto">
+                    {filteredPrompts.map((prompt, idx) => (
+                      <button
+                        key={prompt.content}
+                        role="listitem"
+                        className="waterfall group flex w-full flex-1 shrink-0 flex-col justify-between rounded-xl px-3 py-2 font-normal text-base transition hover:bg-secondary/30"
+                        style={{ animationDelay: `${idx * 60}ms` }}
+                        onClick={() => setInputValue(prompt.content)}
+                      >
+                        <div className="flex flex-col text-left">
+                          {prompt.title && prompt.title[0] !== "" ? (
+                            <>
+                              <div className="line-clamp-1 font-medium transition">{prompt.title[0]}</div>
+                              <div className="line-clamp-1 font-normal text-muted-foreground text-xs">{prompt.title[1]}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="line-clamp-1 font-medium transition">{prompt.content}</div>
+                              <div className="line-clamp-1 font-normal text-muted-foreground text-xs">Prompt</div>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

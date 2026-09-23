@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { DocumentDuplicateIcon, ExclamationTriangleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -47,7 +48,7 @@ const Home = ({
 
   // Get permission info for shared conversations
   const { data: sharesData } = useConversationShares(chatId);
-  const canWrite = sharesData?.can_write ?? true; // Default to true (owner) if not loaded yet
+  const canWrite = CONVERSATION_WRITES_ENABLED && (sharesData?.can_write ?? true);
 
   // Show author names when conversation has multiple users:
   // - You're not the owner (it's been shared with you), OR
@@ -146,6 +147,7 @@ const Home = ({
   const { handleScroll, scrollToBottom } = useScrollHandler(scrollContainerRef, conversationState ?? undefined, chatId);
   const handleSendMessage = useCallback(
     async (content: string, files: FileContentItem[], webSearchEnabled = false, previous_response_id?: string) => {
+      if (!CONVERSATION_WRITES_ENABLED) return;
       const contentItems: ContentItem[] = [
         { type: "input_text", text: content },
         ...files.map(generateContentFileDataForOpenAI),
@@ -177,6 +179,7 @@ const Home = ({
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
 
   const handleCopyAndContinue = useCallback(async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     if (!chatId) return;
 
     try {
@@ -194,6 +197,7 @@ const Home = ({
   }, [chatId, cloneChat, navigate]);
 
   const handleCopyClick = useCallback(() => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     setIsCopyDialogOpen(true);
   }, []);
 
@@ -473,7 +477,7 @@ const Home = ({
         {renderedMessages}
       </div>
 
-      {/* Show MessageInput for users with write access, or Copy & Continue for read-only */}
+      {/* The global read-only policy disables both composing and cloning. */}
       {canWrite ? (
         <div className="flex flex-col items-center">
           <MessageInput
@@ -492,7 +496,7 @@ const Home = ({
           </p>
         </div>
       ) : (
-        sharesData && !sharesData.is_owner && (
+        CONVERSATION_WRITES_ENABLED && sharesData && !sharesData.is_owner && (
           <div className="w-full rounded-b-xl border-border border-t bg-muted/30 p-2 sm:p-3 md:px-6">
             <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-3">
               <div className="flex flex-col text-center sm:gap-1 sm:text-left">
@@ -516,7 +520,7 @@ const Home = ({
 
       {/* Copy Conversation Confirmation Dialog */}
       <CopyConversationDialog
-        open={isCopyDialogOpen}
+        open={CONVERSATION_WRITES_ENABLED && isCopyDialogOpen}
         onOpenChange={setIsCopyDialogOpen}
         conversationTitle={conversationState?.conversation?.metadata?.title}
         onConfirm={handleCopyAndContinue}

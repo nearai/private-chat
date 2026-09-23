@@ -23,21 +23,23 @@ export const useGetConversation = (
 
   return useQuery({
     queryKey: queryKeys.conversation.byId(id),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!id) {
         throw new Error("Conversation ID is required");
       }
 
       try {
         const [conversation, conversationItems] = await Promise.all([
-          chatClient.getConversation(id),
-          chatClient.getConversationItems(id),
+          chatClient.getConversation(id, { signal }),
+          chatClient.getConversationItems(id, { signal }),
         ]);
+        signal.throwIfAborted();
 
         const mergedConversation = { ...conversation, ...conversationItems } as Conversation;
         offlineCache.saveConversationDetail(id, mergedConversation);
         return mergedConversation;
       } catch (error) {
+        signal.throwIfAborted();
         if (typeof error === 'object' && error !== null && 'error' in error) {
           const err = (error as { error: string }).error;
           if (err === 'Conversation not found') {

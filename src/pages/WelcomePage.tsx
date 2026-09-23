@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import type React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -50,8 +51,8 @@ const WelcomePage: React.FC = () => {
             align="start"
           >
             <div className="flex flex-col gap-y-3">
-              <h5 className="font-semibold text-lg">Chat with private AI models for free.</h5>
-              <p>Get access to your personal AI models without worrying leaking private information.</p>
+              <h5 className="font-semibold text-lg">View your Private Chat conversations.</h5>
+              <p>Sign in to read and export your existing conversations.</p>
 
               <button
                 type="button"
@@ -73,20 +74,37 @@ const WelcomePage: React.FC = () => {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <ChatPlaceholder inputValue={inputValue} setInputValue={handleInputChange}>
+      {CONVERSATION_WRITES_ENABLED ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ChatPlaceholder inputValue={inputValue} setInputValue={handleInputChange}>
+            <MessageInput
+              messages={[]}
+              onSubmit={gotoAuth}
+              showUserProfile={false}
+              prompt={inputValue}
+              fullWidth={false}
+              setPrompt={handleInputChange}
+              toolsDisabled={true}
+              autoFocusKey="welcome"
+            />
+          </ChatPlaceholder>
+        </div>
+      ) : (
+        <div className="m-auto flex w-full flex-col items-center gap-3 py-6">
+          <NearAIIcon className="h-6" />
+          <p className="px-6 text-center text-muted-foreground">
+            Private Chat is read-only. Sign in to view and export your conversations.
+          </p>
           <MessageInput
-            messages={[]}
             onSubmit={gotoAuth}
             showUserProfile={false}
             prompt={inputValue}
             fullWidth={false}
-            setPrompt={handleInputChange}
+            setPrompt={setInputValue}
             toolsDisabled={true}
-            autoFocusKey="welcome"
           />
-        </ChatPlaceholder>
-      </div>
+        </div>
+      )}
 
       <style>{`
 				@keyframes fadeInUp {

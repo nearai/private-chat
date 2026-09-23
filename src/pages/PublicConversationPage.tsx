@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { ArrowRightOnRectangleIcon, DocumentDuplicateIcon } from "@heroicons/react/24/outline";
@@ -75,6 +76,7 @@ export default function PublicConversationPage() {
   }, [chatId]);
 
   const handleCopyAndContinue = async () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     if (!chatId || !isLoggedIn) {
       // Redirect to login with return URL
       navigate(`/auth?redirect=/c/${chatId}`);
@@ -356,34 +358,32 @@ export default function PublicConversationPage() {
       </div>
 
       {/* Footer - Copy & Continue CTA */}
-      <footer className="border-border border-t bg-muted/30 px-4 py-4">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-            <div className="text-center sm:text-left">
-              <p className="font-medium text-sm">Want to continue this conversation?</p>
-              <p className="text-muted-foreground text-xs">
-                {isLoggedIn
-                  ? "Copy this conversation to your account and continue where it left off"
-                  : "Sign in to copy this conversation and continue where it left off"}
-              </p>
+      {CONVERSATION_WRITES_ENABLED && (
+        <footer className="border-border border-t bg-muted/30 px-4 py-4">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+              <div className="text-center sm:text-left">
+                <p className="font-medium text-sm">Want to continue this conversation?</p>
+                <p className="text-muted-foreground text-xs">
+                  {isLoggedIn
+                    ? "Copy this conversation to your account and continue where it left off"
+                    : "Sign in to copy this conversation and continue where it left off"}
+                </p>
+              </div>
+              <Button onClick={handleCopyAndContinue} disabled={cloneChat.isPending} className="rounded-xl px-6">
+                {cloneChat.isPending ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  <>
+                    <DocumentDuplicateIcon className="mr-2 size-4" />
+                    {isLoggedIn ? "Copy & Continue" : "Sign in to Continue"}
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              onClick={handleCopyAndContinue}
-              disabled={cloneChat.isPending}
-              className="rounded-xl px-6"
-            >
-              {cloneChat.isPending ? (
-                <Spinner className="size-4" />
-              ) : (
-                <>
-                  <DocumentDuplicateIcon className="mr-2 size-4" />
-                  {isLoggedIn ? "Copy & Continue" : "Sign in to Continue"}
-                </>
-              )}
-            </Button>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

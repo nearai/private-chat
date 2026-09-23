@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { marked } from "marked";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -96,6 +97,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [messageContent, editedContent]);
 
   const handleSave = useCallback(async () => {
+    if (!CONVERSATION_WRITES_ENABLED || readOnly) return;
     if (disabledSendButton) return;
     const userPromptMessage = allMessages[
       batch.userPromptId as string
@@ -165,6 +167,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
   }, [edit]);
 
   const handleEdit = () => {
+    if (!CONVERSATION_WRITES_ENABLED || readOnly) return;
     setEdit(true);
     setEditedContent(messageContent || "");
   };
@@ -357,7 +360,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </>
                     )}
 
-                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && !readOnly && (
+                    {batch.parentResponseId && !messageIsImported && !prevMessageIsImported && CONVERSATION_WRITES_ENABLED && !readOnly && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -405,7 +408,7 @@ const UserMessage: React.FC<UserMessageProps> = ({
                       </svg>
                     </Button>
 
-                    {/* {!readOnly && (!isFirstMessage || siblings.length > 1) && (
+                    {/* {CONVERSATION_WRITES_ENABLED && !readOnly && (!isFirstMessage || siblings.length > 1) && (
                       <button
                         className="invisible rounded-sm p-1 transition hover:text-black group-hover:visible"
                         onClick={() => setShowDeleteConfirm(true)}

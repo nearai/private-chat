@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useCallback, useMemo } from "react";
@@ -140,6 +141,7 @@ export default function ChatController({ children }: { children?: React.ReactNod
         initiator,
       }: ChatStartStreamOptions
     ) => {
+      if (!CONVERSATION_WRITES_ENABLED) return;
       const conversationLocalId = conversationId || params.chatId;
       if (!conversationLocalId) {
         console.error("Conversation ID is required to start stream");

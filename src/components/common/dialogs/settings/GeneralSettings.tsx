@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -149,6 +150,7 @@ const GeneralSettings = () => {
   };
 
   const toggleRequestFormat = () => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     const newFormat = requestFormat === null ? "json" : null;
     setRequestFormat(newFormat);
   };
@@ -251,6 +253,7 @@ const GeneralSettings = () => {
   };
 
   const handleParamsChange = (newParams: NonNullable<Settings["params"]>) => {
+    if (!CONVERSATION_WRITES_ENABLED) return;
     setParams(newParams);
   };
 
@@ -337,12 +340,14 @@ const GeneralSettings = () => {
 
               {showAdvanced && (
                 <>
-                  <AdvancedParams admin={isAdmin} params={params} onChange={handleParamsChange} />
+                  <div inert={!CONVERSATION_WRITES_ENABLED}>
+                    <AdvancedParams admin={isAdmin} params={params} onChange={handleParamsChange} />
+                  </div>
 
                   <hr className="border-border" />
 
                   {/* Keep Alive */}
-                  <div className="w-full">
+                  <div className="w-full" inert={!CONVERSATION_WRITES_ENABLED}>
                     <ParamControl
                       label={t("Keep Alive")}
                       tooltip="Control how long the model stays loaded in memory. Set to '5m' for 5 minutes, '1h' for 1 hour, or '-1' to keep loaded indefinitely."
@@ -358,7 +363,7 @@ const GeneralSettings = () => {
                   </div>
 
                   {/* Request Format */}
-                  <div>
+                  <div inert={!CONVERSATION_WRITES_ENABLED}>
                     <ParamControl
                       label={t("Request Mode")}
                       tooltip="Enable JSON mode to force the model to respond with valid JSON. You can also provide a JSON schema to constrain the response format."
@@ -368,6 +373,7 @@ const GeneralSettings = () => {
                     >
                       <div className="mt-0.5 flex">
                         <textarea
+                          readOnly={!CONVERSATION_WRITES_ENABLED}
                           className="w-full rounded-md border border-border bg-input p-2 text-sm outline-none placeholder:text-muted-foreground placeholder:opacity-40 dark:placeholder:opacity-60"
                           placeholder={t('e.g. "json" or a JSON schema')}
                           value={requestFormat || ""}

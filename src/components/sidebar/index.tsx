@@ -1,3 +1,4 @@
+import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -115,17 +116,14 @@ const LeftSidebar: React.FC = () => {
 
         {/* New Chat */}
         <div className="my-6 w-full space-y-1">
-          <Button
-            variant="ghost"
-            type="button"
-            className="flex h-9 w-full justify-start rounded-xl"
-            asChild
-          >
-            <Link id="sidebar-new-chat-button" to="/" onClick={handleMobileNavigation}>
-              <PencilIcon />
-              <p className="text-sm">{t("New Chat")}</p>
-            </Link>
-          </Button>
+          {CONVERSATION_WRITES_ENABLED && (
+            <Button variant="ghost" type="button" className="flex h-9 w-full justify-start rounded-xl" asChild>
+              <Link id="sidebar-new-chat-button" to="/" onClick={handleMobileNavigation}>
+                <PencilIcon />
+                <p className="text-sm">{t("New Chat")}</p>
+              </Link>
+            </Button>
+          )}
 
           <Button
             variant="ghost"
