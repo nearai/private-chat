@@ -26,7 +26,7 @@ export default function SunsetBanner() {
       <p className="mt-1">
         From September 28, 2026, you can view and export conversations, but not create new ones. On November 15, 2026,
         private.near.ai shuts down and all legacy conversation data will be permanently deleted. Please export any
-        conversations you want to keep before this date.
+        conversations you want to keep before this date in <strong>Settings → Chats → Export Chats</strong>.
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
         <ExternalLink href={PLAYGROUND_URL}>Explore NEAR AI Cloud Playground</ExternalLink>
@@ -58,6 +58,23 @@ export default function SunsetBanner() {
                   conversations you want to keep <strong>before this date</strong>.
                 </li>
               </ul>
+              <h2 className="font-semibold text-base">How to export your chats</h2>
+              <ol className="list-decimal space-y-2 pl-5">
+                <li>
+                  Open <strong>Settings</strong> in Private Chat and select <strong>Chats</strong>.
+                </li>
+                <li>
+                  Click <strong>Export Chats</strong> to download a copy of your conversations as a JSON file.
+                </li>
+                <li>
+                  Wait for the export to finish, then save the downloaded file somewhere you can find it later.
+                  Exporting may take some time depending on the size of your chat history.
+                </li>
+              </ol>
+              <p>
+                Export and save your chats before November 15, 2026, when all legacy conversation data will be
+                permanently deleted.
+              </p>
               <h2 className="font-semibold text-base">Where to go next</h2>
               <h3 className="font-semibold">Option 1: NEAR AI Cloud Playground</h3>
               <p>
