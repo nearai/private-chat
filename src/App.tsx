@@ -30,6 +30,7 @@ import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
 import { offlineCache } from "./lib/offlineCache";
 import { useIsOnline } from "./hooks/useIsOnline";
 import { PaymentRequiredDialog } from "./components/common/dialogs/PaymentRequiredDialog";
+import { ModelNotAllowedDialog } from "./components/common/dialogs/ModelNotAllowedDialog";
 
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
@@ -86,6 +87,7 @@ function App() {
         <Toaster />
         <ExportProgressNotification />
         <PaymentRequiredDialog />
+        <ModelNotAllowedDialog />
         <Routes>
           {/* Protected routes - require authentication */}
           <Route
