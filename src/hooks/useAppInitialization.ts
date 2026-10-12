@@ -2,8 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useConfig } from "@/api/config/queries";
 import { queryKeys } from "@/api/query-keys";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { initializeDesktopIntegrations } from "@/utils/desktop";
+import { clearLegacyHashCredentials, setSessionCredentials } from "@/lib/sessionCredentials";
 
 export const useAppInitialization = () => {
   const queryClient = useQueryClient();
@@ -26,8 +26,8 @@ export const useAppInitialization = () => {
           const params = new URLSearchParams(hash);
           const oauthToken = params.get("token");
           if (oauthToken) {
-            localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, oauthToken);
-            window.history.replaceState(null, "", window.location.pathname);
+            await setSessionCredentials(oauthToken, params.get("session_id"));
+            clearLegacyHashCredentials();
             queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
           }
         }

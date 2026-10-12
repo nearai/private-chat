@@ -1,7 +1,7 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { create } from "zustand";
 import type { ModelAttestationReport } from "@/api/nearai/client";
 import { nearAIClient } from "@/api/nearai/client";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 interface ModelAttestationCache {
   [modelId: string]: ModelAttestationReport;
@@ -78,7 +78,7 @@ export const useModelAttestationStore = create<ModelAttestationState>()((set, ge
       }
     }
 
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const token = useUserStore.getState().token;
     if (!token) {
       return null;
     }

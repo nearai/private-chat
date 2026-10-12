@@ -16,6 +16,7 @@ import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import NearIcon from "@/assets/icons/near-icon-green.svg?react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
+import { setSessionCredentials, type SessionWriteOptions } from "@/lib/sessionCredentials";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
@@ -72,9 +73,18 @@ const AuthPage: React.FC = () => {
   };
 
   const completeLogin = useCallback(
-    async (userToken: string, userSessionId: string, newUser: boolean) => {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, userToken);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, userSessionId);
+    async (userToken: string, userSessionId: string, newUser: boolean, options?: SessionWriteOptions) => {
+      // Consume legacy router credentials before publishing a reactive session.
+      if (searchParams.has("token") || searchParams.has("session_id")) {
+        const callbackParams = new URLSearchParams(searchParams);
+        callbackParams.delete("token");
+        callbackParams.delete("session_id");
+        navigate(
+          { pathname: window.location.pathname, search: callbackParams.toString(), hash: window.location.hash },
+          { replace: true }
+        );
+      }
+      if (!(await setSessionCredentials(userToken, userSessionId || null, options))) return false;
       queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
 
@@ -91,8 +101,9 @@ const AuthPage: React.FC = () => {
       } catch (error) {
         console.error("Failed to fetch user data for tracking:", error);
       }
+      return true;
     },
-    [queryClient]
+    [queryClient, navigate, searchParams]
   );
 
   const cleanupOAuthChannel = useCallback(() => {

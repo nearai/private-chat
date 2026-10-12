@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router";
@@ -9,7 +10,6 @@ import type { Conversation, ConversationItemsResponse, ConversationUserInput, Co
 import { ConversationTypes } from "@/types";
 import { extractMessageContent } from "@/types/openai";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { toast } from "sonner";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export default function PublicConversationPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isLoggedIn = typeof window !== "undefined" && Boolean(localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN));
+  const isLoggedIn = Boolean(useUserStore((state) => state.token));
 
   // Use the clone hook which invalidates conversation list queries
   const cloneChat = useCloneChat();

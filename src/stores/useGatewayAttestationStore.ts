@@ -1,7 +1,7 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { create } from "zustand";
 import type { GatewayAttestation } from "@/api/nearai/client";
 import { nearAIClient } from "@/api/nearai/client";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 interface GatewayAttestationState {
   gatewayAttestation: GatewayAttestation | null;
@@ -38,7 +38,7 @@ export const useGatewayAttestationStore = create<GatewayAttestationState>()((set
       });
     }
 
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const token = useUserStore.getState().token;
     if (!token) {
       return null;
     }

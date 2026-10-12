@@ -1,12 +1,12 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/api/query-keys";
 import type { ConversationInfo } from "@/types";
 import { chatClient } from "../client";
 import { offlineCache } from "@/lib/offlineCache";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 export const useGetConversations = () => {
-  const token = typeof window !== "undefined" ? localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN) : null;
+  const token = useUserStore((state) => state.token);
   const cachedConversations = offlineCache.getConversationList();
 
   return useQuery({

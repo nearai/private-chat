@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { useUserStore } from "@/stores/useUserStore";
 import Layout from "@/components/layout/Layout";
 import ChatController from "./ChatController";
 import PublicConversationPage from "./PublicConversationPage";
@@ -8,7 +8,7 @@ import PublicConversationPage from "./PublicConversationPage";
  * or the public conversation view based on login status.
  */
 export default function ConversationWrapper() {
-  const isLoggedIn = typeof window !== "undefined" && Boolean(localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN));
+  const isLoggedIn = Boolean(useUserStore((state) => state.token));
 
   // If logged in, show the regular chat controller with the full Layout (sidebar, etc.)
   // The ChatController will handle access checks internally

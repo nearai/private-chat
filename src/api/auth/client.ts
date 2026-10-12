@@ -1,5 +1,5 @@
 import { ApiClient } from "@/api/base-client";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { useUserStore } from "@/stores/useUserStore";
 import type { OAuth2Provider, SessionUser } from "@/types";
 import type { SignedMessage } from "near-kit";
 
@@ -23,7 +23,7 @@ class AuthClient extends ApiClient {
   }
 
   async getSessionUser(): Promise<SessionUser> {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const { token } = useUserStore.getState();
 
     if (!token) {
       throw new Error("No token found");
@@ -53,24 +53,16 @@ class AuthClient extends ApiClient {
   }
 
   async signOut(): Promise<void> {
-    const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const { sessionId, token } = useUserStore.getState();
 
     if (!token) throw new Error("No token found");
-    if (!sessionId) {
-      // if no sessionId, allow sign out to proceed (clean local state) for API compatibility
-      console.warn("No session ID found, proceeding with sign out");
-      return;
-    }
 
-    await this.post(
-      "/auth/logout",
-      { session_id: sessionId },
-      {
-        apiVersion: "v2",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    await this.post("/auth/logout", sessionId ? { session_id: sessionId } : {}, {
+      apiVersion: "v2",
+      ignore401Error: true,
+      preserveErrorDetails: true,
+      headers: { Authorization: `Bearer ${token}` },
+    });
   }
 
   async updateProfile(token: string, name: string, profileImageUrl: string) {

@@ -62,7 +62,9 @@ const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
         title: t("Sign Out"),
         icon: <ArrowRightStartOnRectangleIcon className="h-5 w-5" />,
         type: "item",
-        action: async () => await signOut(),
+        action: async () => {
+          await signOut().catch(() => undefined);
+        },
         className:
           "bg-destructive/10 text-destructive-foreground hover:bg-destructive/20! hover:text-destructive-foreground!",
       },
