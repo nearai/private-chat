@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -5,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { nearAIClient } from "@/api/nearai/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
-import { IMPORTED_MESSAGE_SIGNATURE_TIP, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { IMPORTED_MESSAGE_SIGNATURE_TIP } from "@/lib/constants";
 import { verifySignature } from "@/lib/signature";
 import { useMessagesSignaturesStore } from "@/stores/useMessagesSignaturesStore";
 import { useViewStore } from "@/stores/useViewStore";
@@ -107,7 +108,7 @@ const MessageVerifier: React.FC<MessageVerifierProps> = ({ conversation, message
   );
 
   const fetchSignature = useCallback(async () => {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const token = useUserStore.getState().token;
     if (!token || !message.chatCompletionId) return;
     if (signature) return;
 

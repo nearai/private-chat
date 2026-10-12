@@ -16,6 +16,9 @@ import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import NearIcon from "@/assets/icons/near-icon-green.svg?react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib";
+import { clearQueryCallbackCredentials, getQueryCallbackCredentials } from "@/lib/authCallback";
+import { useUserStore } from "@/stores/useUserStore";
+import { clearOAuthCodeFlow, consumeOAuthCodeFlow, prepareOAuthCodeFlow } from "@/lib/oauthCodeFlow";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { posthogOauthLogin, posthogOauthSignup } from "@/lib/posthog";
 import type { OAuth2Provider } from "@/types";
@@ -32,24 +35,23 @@ type OAuthCompleteEvent = {
   isNewUser: boolean;
 };
 
-const OAUTH_STORAGE_PREFIX = "desktop-oauth-channel:";
-const buildOAuthChannelStorageKey = (channelId: string) => `${OAUTH_STORAGE_PREFIX}${channelId}`;
-
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
+  const { setSession } = useUserStore();
+  const { token, sessionId, code } = getQueryCallbackCredentials();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const connectorRef = useRef<NearConnector | null>(null);
-  const oauthChannelRef = useRef<BroadcastChannel | null>(null);
-  const storageListenerRef = useRef<((event: StorageEvent) => void) | null>(null);
   const desktopOAuthUnlistenRef = useRef<(() => void) | null>(null);
-  const activeChannelIdRef = useRef<string | null>(null);
+  const oauthCompletionStartedRef = useRef(false);
+  const loginPendingRef = useRef(false);
+  const desktopAttemptRef = useRef(0);
 
-  const token = searchParams.get("token");
-  const sessionId = searchParams.get("session_id");
-  const isNewUser = searchParams.get("is_new_user") === "true";
-  const oauthChannelParam = searchParams.get("oauth_channel");
   const redirectParam = searchParams.get("redirect");
+  const frontendStateParam = searchParams.get("state");
+  const oauthChannelParam = searchParams.get("oauth_channel");
+  const isNewUser = searchParams.get("is_new_user") === "true";
+  const [showCloseTabMessage, setShowCloseTabMessage] = useState(false);
 
   // Save redirect parameter to localStorage for use after auth completes
   useEffect(() => {
@@ -61,7 +63,6 @@ const AuthPage: React.FC = () => {
   const [agreedTerms, setAgreedTerms] = useState(
     localStorage.getItem(LOCAL_STORAGE_KEYS.AGREED_TERMS) === TERMS_VERSION
   );
-  const [showCloseTabMessage, setShowCloseTabMessage] = useState(false);
   const navigate = useNavigate();
   const checkAgreeTerms = () => {
     if (!agreedTerms) {
@@ -73,8 +74,7 @@ const AuthPage: React.FC = () => {
 
   const completeLogin = useCallback(
     async (userToken: string, userSessionId: string, newUser: boolean) => {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, userToken);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION, userSessionId);
+      await setSession(userToken, userSessionId || null);
       queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
 
@@ -92,29 +92,13 @@ const AuthPage: React.FC = () => {
         console.error("Failed to fetch user data for tracking:", error);
       }
     },
-    [queryClient]
+    [queryClient, setSession]
   );
 
-  const cleanupOAuthChannel = useCallback(() => {
-    if (oauthChannelRef.current) {
-      oauthChannelRef.current.close();
-      oauthChannelRef.current = null;
-    }
-    if (storageListenerRef.current) {
-      window.removeEventListener("storage", storageListenerRef.current);
-      storageListenerRef.current = null;
-    }
+  const cleanupDesktopOAuthListener = useCallback(() => {
     if (desktopOAuthUnlistenRef.current) {
       desktopOAuthUnlistenRef.current();
       desktopOAuthUnlistenRef.current = null;
-    }
-    if (activeChannelIdRef.current) {
-      try {
-        localStorage.removeItem(buildOAuthChannelStorageKey(activeChannelIdRef.current));
-      } catch (error) {
-        console.warn("Failed to clear OAuth storage cache:", error);
-      }
-      activeChannelIdRef.current = null;
     }
   }, []);
 
@@ -128,84 +112,87 @@ const AuthPage: React.FC = () => {
   }, []);
 
   const finalizeOAuth = useCallback(
-    (payload: OAuthCompleteEvent) => {
-      cleanupOAuthChannel();
+    async (payload: OAuthCompleteEvent) => {
+      cleanupDesktopOAuthListener();
       const redirectPath = getRedirectPath();
-      completeLogin(payload.token, payload.sessionId, payload.isNewUser)
-        .then(() => {
-          navigate(redirectPath, { replace: true });
-          clearRedirectPath();
-        })
-        .catch((error) => {
-          console.error("Failed to finalize OAuth login:", error);
-          toast.error("Failed to complete login. Please try again.");
-        });
+      await completeLogin(payload.token, payload.sessionId, payload.isNewUser);
+      navigate(redirectPath, { replace: true });
+      clearRedirectPath();
     },
-    [cleanupOAuthChannel, completeLogin, navigate, getRedirectPath, clearRedirectPath]
+    [cleanupDesktopOAuthListener, completeLogin, navigate, getRedirectPath, clearRedirectPath]
   );
 
-  const startOAuthChannelListener = useCallback(
-    async (channelId: string) => {
-      cleanupOAuthChannel();
-      activeChannelIdRef.current = channelId;
-
-      const handlePayload = (payload: OAuthCompleteEvent) => finalizeOAuth(payload);
-
-      if (typeof window.BroadcastChannel === "function") {
-        try {
-          const channel = new BroadcastChannel(channelId);
-          oauthChannelRef.current = channel;
-          channel.onmessage = (event) => {
-            handlePayload(event.data as OAuthCompleteEvent);
-          };
-        } catch (error) {
-          console.error("Failed to create OAuth BroadcastChannel:", error);
+  const startDesktopOAuthListener = useCallback(
+    async (state: string, mode: "code" | "near", attempt: number) => {
+      cleanupDesktopOAuthListener();
+      let completionStarted = false;
+      let completionFinished = false;
+      const unlisten = await listenForDesktopOAuth((payload) => {
+        if (attempt !== desktopAttemptRef.current || completionStarted) return;
+        const legacy = payload.legacy === true;
+        if (legacy) {
+          if (!payload.token || payload.code || (payload.state && payload.state !== state)) return;
+        } else {
+          if (payload.state !== state) return;
+          if (mode === "code" ? !payload.code || payload.token : !payload.token || !payload.sessionId || payload.code)
+            return;
         }
-      }
-
-      const storageListener = (event: StorageEvent) => {
-        if (
-          event.key === buildOAuthChannelStorageKey(channelId) &&
-          typeof event.newValue === "string" &&
-          event.newValue.length > 0
-        ) {
-          try {
-            const parsed = JSON.parse(event.newValue) as OAuthCompleteEvent;
-            handlePayload(parsed);
-          } catch (error) {
-            console.error("Failed to parse OAuth payload from storage:", error);
-          }
-        }
-      };
-      window.addEventListener("storage", storageListener);
-      storageListenerRef.current = storageListener;
-
-      if (isTauri()) {
-        try {
-          const unlisten = await listenForDesktopOAuth((payload) => {
-            if (payload.oauthChannel && payload.oauthChannel !== channelId) {
-              return;
-            }
-            if (!payload.token || !payload.sessionId) {
-              console.warn("Received incomplete OAuth payload from desktop callback:", payload);
-              return;
-            }
-            handlePayload({
-              token: payload.token,
-              sessionId: payload.sessionId,
+        completionStarted = true;
+        loginPendingRef.current = true;
+        const finish = async () => {
+          // Both forms are bound to the initiating webview's random state. Only
+          // OAuth code mode transmits the verifier to the backend for exchange.
+          if (legacy) {
+            clearOAuthCodeFlow();
+            await finalizeOAuth({
+              token: payload.token!,
+              sessionId: payload.sessionId ?? "",
               isNewUser: Boolean(payload.isNewUser),
             });
+            return;
+          }
+          const verifier = consumeOAuthCodeFlow(payload.state ?? null);
+          if (mode === "code") {
+            const response = await authClient.exchangeOAuthCode(payload.code!, verifier);
+            if (attempt !== desktopAttemptRef.current) return;
+            await finalizeOAuth({
+              token: response.token,
+              sessionId: response.session_id,
+              isNewUser: response.is_new_user,
+            });
+          } else {
+            await finalizeOAuth({
+              token: payload.token!,
+              sessionId: payload.sessionId!,
+              isNewUser: Boolean(payload.isNewUser),
+            });
+          }
+        };
+        void finish()
+          .catch(() => {
+            if (attempt !== desktopAttemptRef.current) return;
+            cleanupDesktopOAuthListener();
+            toast.error("Failed to complete login. Please try again.");
+          })
+          .finally(() => {
+            completionFinished = true;
+            if (attempt === desktopAttemptRef.current) loginPendingRef.current = false;
           });
-          desktopOAuthUnlistenRef.current = unlisten;
-        } catch (error) {
-          console.error("Failed to subscribe to desktop OAuth bridge:", error);
-        }
-      }
+      });
+      if (attempt !== desktopAttemptRef.current) unlisten?.();
+      else desktopOAuthUnlistenRef.current = unlisten;
+      return () => completionStarted && !completionFinished;
     },
-    [cleanupOAuthChannel, finalizeOAuth]
+    [cleanupDesktopOAuthListener, finalizeOAuth]
   );
 
-  useEffect(() => () => cleanupOAuthChannel(), [cleanupOAuthChannel]);
+  useEffect(
+    () => () => {
+      desktopAttemptRef.current += 1;
+      cleanupDesktopOAuthListener();
+    },
+    [cleanupDesktopOAuthListener]
+  );
 
   const openExternalOAuthUrl = async (url: string) => {
     if (!isTauri()) return false;
@@ -244,55 +231,72 @@ const AuthPage: React.FC = () => {
   };
 
   const handleOAuthLogin = async (provider: OAuth2Provider) => {
-    if (!checkAgreeTerms()) return;
-
-    if (isTauri()) {
-      try {
-        const channelId = crypto.randomUUID();
-        await startOAuthChannelListener(channelId);
+    if (!checkAgreeTerms() || loginPendingRef.current) return;
+    loginPendingRef.current = true;
+    const attempt = ++desktopAttemptRef.current;
+    cleanupDesktopOAuthListener();
+    try {
+      const { codeChallenge, state } = await prepareOAuthCodeFlow();
+      if (isTauri()) {
+        const isCompleting = await startDesktopOAuthListener(state, "code", attempt);
         const callbackUrl = await getDesktopOAuthCallbackUrl();
-        const popupUrl = authClient.getOAuthUrl(provider, callbackUrl, { oauthChannel: channelId });
+        const popupUrl = authClient.getOAuthUrl(provider, callbackUrl, {
+          responseMode: "code",
+          codeChallenge,
+          frontendState: state,
+        });
         const openedExternally = await openExternalOAuthUrl(popupUrl);
         if (!openedExternally) {
           const openedWindow = window.open(popupUrl, "_blank", "noopener,noreferrer");
           if (!openedWindow) throw new Error("Unable to open browser window");
         }
+        loginPendingRef.current = isCompleting();
         toast.message("Continue the sign-in process in your browser.");
-      } catch (error) {
-        console.error("Failed to start OAuth in browser:", error);
-        cleanupOAuthChannel();
-        toast.error("Unable to open the browser for login. Please try again.");
+      } else {
+        authClient.oauth2SignIn(provider, undefined, {
+          responseMode: "code",
+          codeChallenge,
+          frontendState: state,
+        });
       }
-      return;
+    } catch {
+      clearOAuthCodeFlow();
+      cleanupDesktopOAuthListener();
+      loginPendingRef.current = false;
+      toast.error("Unable to start secure login. Please try again.");
     }
-
-    authClient.oauth2SignIn(provider);
   };
 
   const handleNearLogin = async () => {
-    if (!checkAgreeTerms()) return;
+    if (!checkAgreeTerms() || loginPendingRef.current) return;
     if (!config) return;
 
     if (isTauri()) {
       try {
-        const channelId = crypto.randomUUID();
-        await startOAuthChannelListener(channelId);
+        loginPendingRef.current = true;
+        const attempt = ++desktopAttemptRef.current;
+        cleanupDesktopOAuthListener();
+        const { state } = await prepareOAuthCodeFlow();
+        const isCompleting = await startDesktopOAuthListener(state, "near", attempt);
         const callbackUrl = await getDesktopOAuthCallbackUrl();
 
         // Construct the URL for the new NearLogin page
         const nearLoginUrl = new URL(APP_ROUTES.NEAR_LOGIN, NEAR_LOGIN_URL);
         nearLoginUrl.searchParams.set("frontend_callback", callbackUrl);
-        nearLoginUrl.searchParams.set("oauth_channel", channelId);
+        nearLoginUrl.searchParams.set("state", state);
 
         const openedExternally = await openExternalOAuthUrl(nearLoginUrl.toString());
         if (!openedExternally) {
           const openedWindow = window.open(nearLoginUrl.toString(), "_blank", "noopener,noreferrer");
           if (!openedWindow) throw new Error("Unable to open browser window");
         }
+        loginPendingRef.current = isCompleting();
         toast.message("Continue the sign-in process in your browser.");
       } catch (error) {
         console.error("Failed to start NEAR login in browser:", error);
-        cleanupOAuthChannel();
+        clearOAuthCodeFlow();
+        loginPendingRef.current = false;
+        cleanupDesktopOAuthListener();
         toast.error("Unable to open the browser for NEAR login. Please try again.");
       }
       return;
@@ -327,77 +331,55 @@ const AuthPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!token) return;
-
-    if (oauthChannelParam && !isTauri()) {
-      try {
+    if ((!token && !code) || oauthCompletionStartedRef.current) return;
+    oauthCompletionStartedRef.current = true;
+    const finishOAuth = async () => {
+      let resolvedToken = token;
+      let resolvedSessionId = sessionId ?? "";
+      let resolvedIsNewUser = isNewUser;
+      if (code) {
+        const verifier = consumeOAuthCodeFlow(frontendStateParam);
+        const response = await authClient.exchangeOAuthCode(code, verifier);
+        resolvedToken = response.token;
+        resolvedSessionId = response.session_id;
+        resolvedIsNewUser = response.is_new_user;
+      } else {
+        // Match private-assistant's rolling-upgrade fallback for older backends.
+        clearOAuthCodeFlow();
+      }
+      if (!resolvedToken) throw new Error("OAuth callback did not contain usable credentials");
+      if (oauthChannelParam) {
         const channel = new BroadcastChannel(oauthChannelParam);
         channel.postMessage({
-          token,
-          sessionId: sessionId ?? "",
-          isNewUser,
+          token: resolvedToken,
+          sessionId: resolvedSessionId,
+          isNewUser: resolvedIsNewUser,
         } satisfies OAuthCompleteEvent);
         channel.close();
-        setShowCloseTabMessage(true);
-      } catch (error) {
-        console.error("Failed to notify desktop app about OAuth completion:", error);
-        toast.error("Unable to complete login. Please return to the app.");
-      }
-      return;
-    }
-
-    const payload: OAuthCompleteEvent = {
-      token,
-      sessionId: sessionId ?? "",
-      isNewUser,
-    };
-
-    if (oauthChannelParam) {
-      let delivered = false;
-
-      if (typeof window.BroadcastChannel === "function") {
-        try {
-          const channel = new BroadcastChannel(oauthChannelParam);
-          channel.postMessage(payload);
-          channel.close();
-          delivered = true;
-        } catch (error) {
-          console.error("Failed to notify desktop app via BroadcastChannel:", error);
-        }
-      }
-
-      try {
-        localStorage.setItem(buildOAuthChannelStorageKey(oauthChannelParam), JSON.stringify(payload));
-        // storage event will fire on the desktop window; remove our copy shortly after
-        setTimeout(() => {
-          try {
-            localStorage.removeItem(buildOAuthChannelStorageKey(oauthChannelParam));
-          } catch (removeError) {
-            console.warn("Failed to cleanup OAuth storage cache:", removeError);
-          }
-        }, 250);
-        delivered = true;
-      } catch (storageError) {
-        console.error("Failed to notify desktop app via storage:", storageError);
-      }
-
-      if (delivered) {
+        clearQueryCallbackCredentials();
         setShowCloseTabMessage(true);
         return;
       }
-
-      toast.error("Unable to notify the desktop app. Please return to the application and try again.");
-      return;
-    }
-
-    const redirectPath = getRedirectPath();
-    completeLogin(payload.token, payload.sessionId, payload.isNewUser)
-      .then(() => {
-        navigate(redirectPath, { replace: true });
-        clearRedirectPath();
-      })
-      .catch(() => toast.error("Failed to complete login."));
-  }, [token, sessionId, isNewUser, navigate, completeLogin, oauthChannelParam, getRedirectPath, clearRedirectPath]);
+      // Publishing the session can remount AuthPage while tracking is still
+      // pending. Consume the handoff first so that remount cannot replay it.
+      clearQueryCallbackCredentials();
+      await completeLogin(resolvedToken, resolvedSessionId, resolvedIsNewUser);
+      navigate(getRedirectPath(), { replace: true });
+      clearRedirectPath();
+    };
+    void finishOAuth().catch(() => toast.error("Failed to complete login. Please try again."));
+  }, [
+    token,
+    sessionId,
+    code,
+    frontendStateParam,
+    isNewUser,
+    oauthChannelParam,
+    navigate,
+    completeLogin,
+    getRedirectPath,
+    clearRedirectPath,
+  ]);
 
   const authContent = !config ? (
     <div className="flex h-full items-center justify-center">
@@ -515,7 +497,6 @@ const AuthPage: React.FC = () => {
       </div>
     );
   }
-
   return authContent;
 };
 

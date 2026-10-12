@@ -36,7 +36,9 @@ export type DesktopOAuthPayload = {
   token?: string;
   sessionId?: string;
   isNewUser?: boolean;
-  oauthChannel?: string | null;
+  code?: string;
+  state?: string | null;
+  legacy?: boolean;
 };
 
 export const getDesktopOAuthCallbackUrl = async (): Promise<string> => {

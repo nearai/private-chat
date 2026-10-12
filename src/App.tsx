@@ -23,7 +23,6 @@ import ChatController from "./pages/ChatController";
 import ConversationWrapper from "./pages/ConversationWrapper";
 import SharedPage from "./pages/SharedPage";
 import { useUserStore } from "./stores/useUserStore";
-import { LOCAL_STORAGE_KEYS } from "./lib/constants";
 import { eventEmitter } from "./lib/event";
 import useInitRemoteSettings from "./hooks/useInitRemoteSettings";
 import { useRemoteConfig } from "./api/config/queries/useRemoteConfig";
@@ -34,18 +33,17 @@ import { PaymentRequiredDialog } from "./components/common/dialogs/PaymentRequir
 function App() {
   const { isInitialized, isLoading: isAppLoading } = useAppInitialization();
   const location = useLocation();
-  const { setUser } = useUserStore();
+  const { token, logout } = useUserStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const hasAuthToken = typeof window !== "undefined" && Boolean(localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN));
+  const hasAuthToken = typeof window !== "undefined" && Boolean(token);
   const isOnline = useIsOnline();
   const canFetchAuthenticatedData = hasAuthToken && isOnline;
   const { isSettingsLoading } = useInitRemoteSettings(canFetchAuthenticatedData);
 
-  const {
-    isFetching: isRemoteConfigFetching,
-    data: remoteConfig,
-  } = useRemoteConfig({ enabled: canFetchAuthenticatedData });
+  const { isFetching: isRemoteConfigFetching, data: remoteConfig } = useRemoteConfig({
+    enabled: canFetchAuthenticatedData,
+  });
   const { isFetching: isModelsFetching } = useModels({
     enabled: canFetchAuthenticatedData && !!remoteConfig?.default_model && !isRemoteConfigFetching,
     defaultModel: remoteConfig?.default_model,
@@ -60,20 +58,21 @@ function App() {
     posthogPageView(location.pathname);
   }, [location.pathname]);
 
-  const handleLogout = useCallback(() => {
-    useExportStore.getState().stop();
-    setUser(null);
-    posthogReset();
-    localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION);
-    offlineCache.clearAll();
-    queryClient.clear();
-    navigate(APP_ROUTES.AUTH, { replace: true });
-  }, [navigate, setUser, queryClient]);
+  const handleLogout = useCallback(
+    async ({ expectedToken }: { expectedToken: string }) => {
+      if (!(await logout(expectedToken))) return;
+      useExportStore.getState().stop();
+      posthogReset();
+      offlineCache.clearAll();
+      queryClient.clear();
+      navigate(APP_ROUTES.AUTH, { replace: true });
+    },
+    [navigate, logout, queryClient]
+  );
 
   useEffect(() => {
-    eventEmitter.on('logout', handleLogout);
-    return () => eventEmitter.off('logout', handleLogout);
+    eventEmitter.on("logout", handleLogout);
+    return () => eventEmitter.off("logout", handleLogout);
   }, [handleLogout]);
 
   if (!isInitialized || isLoading) {

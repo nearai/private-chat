@@ -8,6 +8,39 @@ This frontend application connects to the chat API backend. For backend setup an
 
 **Backend Repository:** [https://github.com/nearai/chat-api](https://github.com/nearai/chat-api)
 
+## Authentication backend compatibility
+
+Google/GitHub sign-in requests the chat-api PKCE callback implementation
+(nearai/chat-api#408): `frontend_response_mode=code`, S256 challenges, and
+`POST /v1/auth/exchange`. Like private-assistant, this frontend accepts legacy
+query/fragment bearer callbacks during rolling upgrades. Credentials are removed
+from the address bar before analytics/support scripts start and passed in memory.
+Legacy servers still expose the bearer in the initial redirect URL; deploy the
+PKCE backend to stop that URL transport.
+
+Sessions are owned by the Zustand user store. Login and logout credential changes
+share a Web Lock where supported; only the user profile is persisted in the store
+record. Token and session ID remain in their existing dedicated storage keys.
+Logout preserves credentials written by a newer login in another tab.
+
+Sign-out always calls `POST /v1/auth/logout`, including when the stored session ID
+is missing. The updated backend derives the revoked session from the bearer token
+(nearai/chat-api#409). Failed revocation keeps local credentials for retry.
+Session expiration and idle timeout remain backend policy.
+
+Desktop OAuth keeps the PKCE verifier in the initiating webview. Modern code/state
+callbacks are exchanged there; legacy bearer GET callbacks are accepted only while
+an active desktop login is awaiting completion. Desktop NEAR sign-in posts
+credentials in a form body to the exact loopback callback and checks its state.
+The hosted `/near-login` page also supports old desktop clients that send a UUID
+`oauth_channel` without `state`: it returns the legacy bearer GET callback to the
+same validated loopback address and preserves the channel. Updating the hosted
+frontend restores NEAR login for those clients without a desktop reinstall.
+An empty, invalid, or duplicated state never falls back to the legacy protocol.
+This transitional branch still exposes the bearer in the callback URL; upgrading
+the desktop client is required to use POST and the updated local logout logic.
+Existing backend callback-origin validation must allow the desktop loopback origin.
+
 ## Prerequisites
 
 - **Node.js** (v24 or higher)

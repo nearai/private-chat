@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { ArrowPathIcon, ArrowUpRightIcon, CheckIcon, ChevronRightIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/index";
 import { useChatStore } from "@/stores/useChatStore";
 import { useGatewayAttestationStore } from "@/stores/useGatewayAttestationStore";
@@ -129,7 +129,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
   }, [models, setGatewayAttestation]);
 
   const fetchAttestationReport = useCallback(async (forceRefresh: boolean = false, modelOverride?: string) => {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const token = useUserStore.getState().token;
     
     const modelToFetch = modelOverride ?? currentModel;
 
@@ -527,7 +527,7 @@ const ModelVerifier: React.FC<ModelVerifierProps> = ({ model, selectedModels, sh
       return;
     }
 
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const token = useUserStore.getState().token;
     if (!token) {
       setLoading(false);
       prevShowRef.current = show;

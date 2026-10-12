@@ -1,5 +1,5 @@
 import { ApiClient } from "@/api/base-client";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { useUserStore } from "@/stores/useUserStore";
 import type { OAuth2Provider, SessionUser } from "@/types";
 import type { SignedMessage } from "near-kit";
 
@@ -10,6 +10,10 @@ export interface NearAuthResponse {
   expires_at: string;
   is_new_user: boolean;
 }
+
+export type OAuthSignInOptions =
+  | { oauthChannel?: string; responseMode?: undefined }
+  | { oauthChannel?: string; responseMode: "code"; codeChallenge: string; frontendState: string };
 
 class AuthClient extends ApiClient {
   constructor() {
@@ -23,7 +27,7 @@ class AuthClient extends ApiClient {
   }
 
   async getSessionUser(): Promise<SessionUser> {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const { token } = useUserStore.getState();
 
     if (!token) {
       throw new Error("No token found");
@@ -53,24 +57,14 @@ class AuthClient extends ApiClient {
   }
 
   async signOut(): Promise<void> {
-    const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION);
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const { sessionId, token } = useUserStore.getState();
 
     if (!token) throw new Error("No token found");
-    if (!sessionId) {
-      // if no sessionId, allow sign out to proceed (clean local state) for API compatibility
-      console.warn("No session ID found, proceeding with sign out");
-      return;
-    }
 
-    await this.post(
-      "/auth/logout",
-      { session_id: sessionId },
-      {
-        apiVersion: "v2",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    await this.post("/auth/logout", sessionId ? { session_id: sessionId } : {}, {
+      apiVersion: "v2",
+      headers: { Authorization: `Bearer ${token}` },
+    });
   }
 
   async updateProfile(token: string, name: string, profileImageUrl: string) {
@@ -103,19 +97,31 @@ class AuthClient extends ApiClient {
     );
   }
 
-  getOAuthUrl(provider: OAuth2Provider, frontendCallback: string, options?: { oauthChannel?: string }) {
+  getOAuthUrl(provider: OAuth2Provider, frontendCallback: string, options?: OAuthSignInOptions) {
     const callback = frontendCallback || window.location.origin;
     const params = new URLSearchParams({
       frontend_callback: callback,
     });
-    if (options?.oauthChannel) {
-      params.set("oauth_channel", options.oauthChannel);
+    if (options?.oauthChannel) params.set("oauth_channel", options.oauthChannel);
+    if (options?.responseMode === "code") {
+      params.set("frontend_response_mode", "code");
+      params.set("code_challenge", options.codeChallenge);
+      params.set("code_challenge_method", "S256");
+      params.set("frontend_state", options.frontendState);
     }
     return `${this.baseURLV2}/auth/${provider}?${params.toString()}`;
   }
 
-  oauth2SignIn(provider: OAuth2Provider, frontendCallback?: string, options?: { oauthChannel?: string }) {
+  oauth2SignIn(provider: OAuth2Provider, frontendCallback?: string, options?: OAuthSignInOptions) {
     window.location.href = this.getOAuthUrl(provider, frontendCallback ?? window.location.origin, options);
+  }
+
+  async exchangeOAuthCode(code: string, codeVerifier: string): Promise<NearAuthResponse> {
+    return this.post<NearAuthResponse>(
+      "/auth/exchange",
+      { code, code_verifier: codeVerifier },
+      { apiVersion: "v2", ignore401Error: true }
+    );
   }
 
   /**

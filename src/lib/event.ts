@@ -1,7 +1,7 @@
-import mitt from 'mitt';
+import mitt from "mitt";
 
 export type Events = {
-  logout: undefined;
+  logout: { expectedToken: string };
   payment_required: undefined;
 };
 

@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { Navigate, useLocation } from "react-router";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { APP_ROUTES } from "@/pages/routes";
@@ -8,7 +9,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const location = useLocation();
-  const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+  const token = useUserStore((state) => state.token);
 
   if (!token) {
     // Save the intended destination for redirect after login

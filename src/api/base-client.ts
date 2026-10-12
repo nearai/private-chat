@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/useUserStore";
 import type { QueryClient } from "@tanstack/react-query";
 import { createParser, type EventSourceMessage } from "eventsource-parser";
 import OpenAI from "openai";
@@ -100,7 +101,7 @@ export class ApiClient {
       defaultHeaders = {},
       includeAuth = true,
     } = options;
-    const openAIToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const openAIToken = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
 
     const normalizeUrl = (value: string) => value.replace(/\/+$/, "");
     const normalizePath = (value: string) => (value.startsWith("/") ? value : `/${value}`);
@@ -138,13 +139,15 @@ export class ApiClient {
       // Check if auth is required (default to this.includeAuth unless explicitly set to false)
       const shouldIncludeAuth = options.requiresAuth !== false && this.includeAuth;
       if (shouldIncludeAuth) {
-        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        const token = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
           throw new Error(`No token found, ${endpoint} request aborted`);
         }
       }
+      const authorizationHeader = Object.entries(headers).find(([name]) => name.toLowerCase() === "authorization")?.[1];
+      const requestToken = authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
       if (!isOnline()) {
         throw { detail: "You are offline. Please check your internet connection.", status: 0, offline: true };
       }
@@ -185,8 +188,8 @@ export class ApiClient {
           }
         }
         if (response.status === 401) {
-          if (!options.ignore401Error) {
-            eventEmitter.emit("logout");
+          if (!options.ignore401Error && requestToken) {
+            eventEmitter.emit("logout", { expectedToken: requestToken });
           }
         }
 
@@ -245,7 +248,7 @@ export class ApiClient {
           };
 
       if (this.includeAuth) {
-        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        const token = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
@@ -400,13 +403,15 @@ export class ApiClient {
       };
 
       if (this.includeAuth) {
-        const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        const token = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
           throw new Error("No token found");
         }
       }
+      const authorizationHeader = Object.entries(headers).find(([name]) => name.toLowerCase() === "authorization")?.[1];
+      const requestToken = authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
       const baseURL = options.apiVersion === "v2" ? this.baseURLV2 : this.baseURLV1;
       const requestUrl = `${baseURL}${endpoint}`;
       const httpFetch = await getHttpClient();
@@ -420,8 +425,8 @@ export class ApiClient {
 
       if (!response.ok) {
         const error = await response.json();
-        if (response.status === 401) {
-          eventEmitter.emit("logout");
+        if (response.status === 401 && requestToken) {
+          eventEmitter.emit("logout", { expectedToken: requestToken });
         }
         if (response.status === 402) {
           eventEmitter.emit("payment_required");
