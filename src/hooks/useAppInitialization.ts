@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { clearHashCallbackCredentials, getHashCallbackCredentials } from "@/lib/authCallback";
 import { useConfig } from "@/api/config/queries";
 import { queryKeys } from "@/api/query-keys";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { initializeDesktopIntegrations } from "@/utils/desktop";
+import { clearLegacyHashCredentials, setSessionCredentials } from "@/lib/sessionCredentials";
 
 export const useAppInitialization = () => {
   const queryClient = useQueryClient();
@@ -19,19 +20,22 @@ export const useAppInitialization = () => {
       setIsLoading(true);
 
       try {
-        await initializeDesktopIntegrations();
-
-        const hash = window.location.hash.substring(1);
+        const { token: hashToken, sessionId } = getHashCallbackCredentials();
+        clearHashCallbackCredentials();
+        const hash = hashToken
+          ? new URLSearchParams({ token: hashToken, ...(sessionId ? { session_id: sessionId } : {}) }).toString()
+          : "";
         if (hash) {
           const params = new URLSearchParams(hash);
           const oauthToken = params.get("token");
           if (oauthToken) {
-            localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, oauthToken);
-            window.history.replaceState(null, "", window.location.pathname);
+            await setSessionCredentials(oauthToken, params.get("session_id"));
+            clearLegacyHashCredentials();
             queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
           }
         }
 
+        await initializeDesktopIntegrations();
         setIsInitialized(true);
       } catch (error) {
         console.error("Failed to initialize app:", error);

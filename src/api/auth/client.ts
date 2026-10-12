@@ -11,6 +11,11 @@ export interface NearAuthResponse {
   is_new_user: boolean;
 }
 
+export type OAuthSignInOptions =
+  | { oauthChannel?: string; responseMode?: undefined }
+  | { oauthChannel?: string; responseMode: "code"; codeChallenge: string; frontendState: string };
+
+
 class AuthClient extends ApiClient {
   constructor() {
     super({
@@ -103,19 +108,31 @@ class AuthClient extends ApiClient {
     );
   }
 
-  getOAuthUrl(provider: OAuth2Provider, frontendCallback: string, options?: { oauthChannel?: string }) {
+  getOAuthUrl(provider: OAuth2Provider, frontendCallback: string, options?: OAuthSignInOptions) {
     const callback = frontendCallback || window.location.origin;
     const params = new URLSearchParams({
       frontend_callback: callback,
     });
-    if (options?.oauthChannel) {
-      params.set("oauth_channel", options.oauthChannel);
+    if (options?.oauthChannel) params.set("oauth_channel", options.oauthChannel);
+    if (options?.responseMode === "code") {
+      params.set("frontend_response_mode", "code");
+      params.set("code_challenge", options.codeChallenge);
+      params.set("code_challenge_method", "S256");
+      params.set("frontend_state", options.frontendState);
     }
     return `${this.baseURLV2}/auth/${provider}?${params.toString()}`;
   }
 
-  oauth2SignIn(provider: OAuth2Provider, frontendCallback?: string, options?: { oauthChannel?: string }) {
+  oauth2SignIn(provider: OAuth2Provider, frontendCallback?: string, options?: OAuthSignInOptions) {
     window.location.href = this.getOAuthUrl(provider, frontendCallback ?? window.location.origin, options);
+  }
+
+  async exchangeOAuthCode(code: string, codeVerifier: string): Promise<NearAuthResponse> {
+    return this.post<NearAuthResponse>(
+      "/auth/exchange",
+      { code, code_verifier: codeVerifier },
+      { apiVersion: "v2", ignore401Error: true }
+    );
   }
 
   /**
