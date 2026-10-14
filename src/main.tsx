@@ -7,9 +7,15 @@ import "./styles/global.css";
 import React from "react";
 import { ThemeProvider } from "./components/common/ThemeProvider";
 import { initI18n } from "./i18n";
+import { consumeAuthCallbackCredentials } from "./lib/authCallback";
+import { initCrisp } from "./lib/crisp";
 import { initPosthog } from "./lib/posthog.ts";
 
-initPosthog();
+const authCallbackUrlSanitized = consumeAuthCallbackCredentials();
+if (authCallbackUrlSanitized) {
+  initPosthog();
+  initCrisp();
+}
 initI18n(localStorage?.locale);
 
 registerSW({ immediate: true });

@@ -2,6 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
+		<meta name="referrer" content="no-referrer" />
 		<link rel="icon" href="/favicon.ico" />
 		<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
 		<link rel="icon" href="/icons/favicon.png" type="image/png" sizes="864x865" />
@@ -25,27 +26,7 @@
 			rel="stylesheet"
 		/>
 		<title>NEAR AI Private Chat</title>
-		<script type="text/javascript">
-			window.$crisp = [];
-			window.CRISP_WEBSITE_ID = "bdd3f956-a76f-444f-8d4c-80e2209da4e1";
-			(function () {
-				d = document;
-				s = d.createElement("script");
-				s.src = "https://client.crisp.chat/l.js";
-				s.async = 1;
-				d.getElementsByTagName("head")[0].appendChild(s);
-			})();
-			
-			// Wait for Crisp to be fully loaded, then hide the chat bubble
-			window.CRISP_READY_TRIGGER = function() {
-				$crisp.push(["do", "chat:hide"]);
-			};
-			
-			// Re-hide when chat is closed
-			window.$crisp.push(["on", "chat:closed", function () {
-				window.$crisp.push(["do", "chat:hide"]);
-			}]);
-		</script>
+
 	</head>
 	<body>
 		<div id="root"></div>

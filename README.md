@@ -159,3 +159,33 @@ private-chat/
 ## License
 
 See [LICENSE](LICENSE) file for details.
+
+## OAuth backend and desktop compatibility
+
+Google/GitHub sign-in requests the chat-api PKCE callback implementation
+(nearai/chat-api#408): `frontend_response_mode=code`, S256 challenges, and
+`POST /v1/auth/exchange`. Like private-assistant, this frontend accepts legacy
+query/fragment bearer callbacks during rolling upgrades. Credentials are removed
+from the address bar before analytics/support scripts start and passed in memory.
+Legacy servers still expose the bearer in the initial redirect URL; deploy the
+PKCE backend to stop that URL transport.
+
+
+Desktop OAuth keeps the PKCE verifier in the initiating webview. Modern code/state
+callbacks are exchanged there; legacy bearer GET callbacks are accepted only while
+an active desktop login is awaiting completion. Desktop NEAR sign-in posts
+credentials in a form body to the exact loopback callback and checks its state.
+The hosted `/near-login` page also supports old desktop clients that send a UUID
+`oauth_channel` without `state`: it returns the legacy bearer GET callback to the
+same validated loopback address and preserves the channel. Updating the hosted
+frontend restores NEAR login for those clients without a desktop reinstall.
+An empty, invalid, or duplicated state never falls back to the legacy protocol.
+This transitional branch still exposes the bearer in the callback URL; upgrading
+the desktop client is required to use POST. The missing-session-ID logout fix is
+provided by the independent logout change.
+Existing backend callback-origin validation must allow the desktop loopback origin.
+
+
+This OAuth change is based on main and can be released without the logout change.
+The existing logout implementation is unchanged. Code-mode login requires
+chat-api #408 and its database migration; the independent logout fix requires #409.
