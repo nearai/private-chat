@@ -125,6 +125,67 @@ test('store logout clears this tab while preserving a newer session written by a
   assert.equal(local.getItem(keys.TOKEN), 'sess_tab_b');
   assert.equal(local.getItem(keys.SESSION), 'session-b');
 });
+for (const [name, request] of [
+  ['JSON', (api) => api.get('/read')],
+  ['non-JSON', (api) => api.requestWithoutJson('/files/id/content')],
+  ['streaming', (api) => api.stream('/responses', {})],
+]) {
+  test(`${name} requests after logout cannot adopt another tab's stored session`, async () => {
+    const local = storage();
+    local.setItem(keys.TOKEN, 'sess_tab_a'); local.setItem(keys.SESSION, 'session-a');
+    let fetchCalls = 0;
+    const client = transport(local, async () => {
+      fetchCalls++;
+      throw new Error('Unexpected request after logout');
+    });
+    const existingApi = new client.ApiClient();
+    local.setItem(keys.TOKEN, 'sess_tab_b'); local.setItem(keys.SESSION, 'session-b');
+    assert.equal(await client.clearSession('sess_tab_a'), true);
+    const newApi = new client.ApiClient();
+    for (const api of [existingApi, newApi]) {
+      await assert.rejects(request(api), (error) => /No token found/.test(String(error)));
+    }
+    assert.equal(fetchCalls, 0);
+    assert.equal(client.useUserStore.getState().token, null);
+    assert.equal(local.getItem(keys.TOKEN), 'sess_tab_b');
+    assert.equal(local.getItem(keys.SESSION), 'session-b');
+  });
+}
+test('public requests and explicit login work after logout without adopting stored credentials', async () => {
+  const local = storage(); local.setItem(keys.TOKEN, 'sess_tab_a');
+  const requests = [];
+  const client = transport(local, async (...args) => { requests.push(args); return Response.json({ ok: true }); });
+  const api = new client.ApiClient();
+  local.setItem(keys.TOKEN, 'sess_tab_b'); local.setItem(keys.SESSION, 'session-b');
+  await client.clearSession('sess_tab_a');
+  await api.get('/public', { requiresAuth: false });
+  await new client.ApiClient({ includeAuth: false }).get('/public');
+  assert.equal(requests[0][1].headers.Authorization, undefined);
+  assert.equal(requests[1][1].headers.Authorization, undefined);
+  assert.equal(client.useUserStore.getState().token, null);
+  await client.useUserStore.getState().setSession('sess_login', 'session-login');
+  await api.get('/read');
+  await api.requestWithoutJson('/files/id/content');
+  assert.equal(requests[2][1].headers.Authorization, 'Bearer sess_login');
+  assert.equal(requests[3][1].headers.Authorization, 'Bearer sess_login');
+});
+test('client construction uses the session store even after logout preserves another tab login', async () => {
+  const local = storage(); local.setItem(keys.TOKEN, 'sess_tab_a');
+  const store = userStore(local);
+  const { ApiClient } = load('src/api/base-client.ts', new Proxy({
+    openai: { default: require('openai') },
+    '@/stores/useUserStore': { useUserStore: store },
+    '@/lib/constants': constants,
+    './constants': { CHAT_API_BASE_URL: 'https://api.example', DEPRECATED_API_BASE_URL: 'https://legacy.example' },
+  }, { has: () => true }), { localStorage: local });
+  assert.equal(new ApiClient().openAIClient.apiKey, 'sess_tab_a');
+  local.setItem(keys.TOKEN, 'sess_tab_b'); local.setItem(keys.SESSION, 'session-b');
+  await store.getState().logout('sess_tab_a');
+  assert.equal(new ApiClient().openAIClient.apiKey, '');
+  assert.equal(local.getItem(keys.TOKEN), 'sess_tab_b');
+  await store.getState().setSession('sess_login', 'session-login');
+  assert.equal(new ApiClient().openAIClient.apiKey, 'sess_login');
+});
 test('store ignores a delayed logout after a newer same-tab login', async () => {
   const local = storage();
   const store = userStore(local, { locks: queuedLocks() });

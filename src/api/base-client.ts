@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses/responses.mjs";
 import { toast } from "sonner";
 import { MessageStatus } from "@/lib";
-import { FALLBACK_CONVERSATION_TITLE, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { FALLBACK_CONVERSATION_TITLE } from "@/lib/constants";
 import { eventEmitter } from "@/lib/event";
 import { isOfflineError, isOnline } from "@/lib/network";
 import { buildConversationEntry, useConversationStore, type ConversationStoreState } from "@/stores/useConversationStore";
@@ -101,7 +101,7 @@ export class ApiClient {
       defaultHeaders = {},
       includeAuth = true,
     } = options;
-    const openAIToken = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const openAIToken = useUserStore.getState().token;
 
     const normalizeUrl = (value: string) => value.replace(/\/+$/, "");
     const normalizePath = (value: string) => (value.startsWith("/") ? value : `/${value}`);
@@ -139,7 +139,7 @@ export class ApiClient {
       // Check if auth is required (default to this.includeAuth unless explicitly set to false)
       const shouldIncludeAuth = options.requiresAuth !== false && this.includeAuth;
       if (shouldIncludeAuth) {
-        const token = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        const token = useUserStore.getState().token;
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
@@ -248,7 +248,7 @@ export class ApiClient {
           };
 
       if (this.includeAuth) {
-        const token = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        const token = useUserStore.getState().token;
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
@@ -404,7 +404,7 @@ export class ApiClient {
       };
 
       if (this.includeAuth) {
-        const token = useUserStore.getState().token || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+        const token = useUserStore.getState().token;
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         } else {
