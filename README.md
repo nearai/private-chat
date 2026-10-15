@@ -8,20 +8,6 @@ This frontend application connects to the chat API backend. For backend setup an
 
 **Backend Repository:** [https://github.com/nearai/chat-api](https://github.com/nearai/chat-api)
 
-## Authentication backend compatibility
-
-Sign-out always calls `POST /v1/auth/logout`, including when the stored session ID
-is missing. The updated backend derives the revoked session from the bearer token
-(nearai/chat-api#409). Failed revocation keeps local credentials for retry.
-Session expiration and idle timeout remain backend policy.
-This change can be released independently of the OAuth code-exchange change;
-the existing OAuth protocol and desktop callback transport are unchanged.
-
-Sessions are owned by the Zustand user store. Login and logout credential changes
-share a Web Lock where supported; only the user profile is persisted in the store
-record. Token and session ID remain in their existing dedicated storage keys.
-Logout preserves credentials written by a newer login in another tab.
-
 ## Prerequisites
 
 - **Node.js** (v24 or higher)
