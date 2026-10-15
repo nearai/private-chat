@@ -219,6 +219,7 @@ test('welcome page keeps the shutdown notice and a composer with sending disable
   const { renderToStaticMarkup } = require('react-dom/server');
   const Container = ({ children }) => React.createElement('div', null, children);
   const { default: WelcomePage } = load('src/pages/WelcomePage.tsx', {
+    '@/stores/useUserStore': { useUserStore: { getState: () => ({ token: null }) } },
     'react': React,
     'react/jsx-runtime': require('react/jsx-runtime'),
     'react-router': { useNavigate: () => () => {} },
@@ -487,6 +488,7 @@ function conversationQuery(cached, fetcher) {
   let options;
   const persisted = [];
   const { useGetConversations } = load('src/api/chat/queries/useGetConversations.ts', {
+    '@/stores/useUserStore': { useUserStore: (selector) => selector({ token: 'test-token' }) },
     '@tanstack/react-query': { useQuery: (value) => { options = value; return {}; } },
     '@/api/query-keys': { queryKeys: { conversation: { all: ['conversations'] } } },
     '@/lib/constants': { LOCAL_STORAGE_KEYS: { TOKEN: 'sessionToken' } },

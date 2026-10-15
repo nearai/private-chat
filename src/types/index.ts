@@ -614,7 +614,11 @@ export interface ApiResponse<T = unknown> {
 // Store types
 export interface UserStore {
   user: SessionUser | null;
+  token: string | null;
+  sessionId: string | null;
   setUser: (user: SessionUser | null) => void;
+  setSession: (token: string, sessionId: string | null, options?: { expectedToken: string | null; isCurrent?: () => boolean }) => Promise<boolean>;
+  logout: (expectedToken: string) => Promise<boolean>;
 }
 
 export interface ViewStore {

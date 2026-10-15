@@ -1,14 +1,14 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/api/query-keys";
 import type { User } from "@/types";
 import { usersClient } from "../client";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { offlineCache } from "@/lib/offlineCache";
 
 type UseUsersOptions = Omit<UseQueryOptions<User, Error>, "queryKey" | "queryFn">;
 
 export const useUserData = (options?: UseUsersOptions) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN) : null;
+  const token = useUserStore((state) => state.token);
   const isOnline = typeof navigator === "undefined" || navigator.onLine !== false;
   const cachedUser = offlineCache.getUserData();
 

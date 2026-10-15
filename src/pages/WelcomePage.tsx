@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { CONVERSATION_WRITES_ENABLED } from "@/lib/read-only";
 import type React from "react";
 import { useState } from "react";
@@ -24,7 +25,7 @@ const WelcomePage: React.FC = () => {
   };
 
   const gotoAuth = async () => {
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    const token = useUserStore.getState().token;
     if (token) {
       navigate(APP_ROUTES.HOME);
     } else {

@@ -1,9 +1,9 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/api/query-keys";
 import type { RemoteConfig } from "@/types";
 import { configClient } from "../client";
 import { DEFAULT_MODEL } from "@/api/constants";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 type NormalizedRemoteConfig = {
   default_model: string;
@@ -16,7 +16,7 @@ const normalizeRemoteConfig = (config?: RemoteConfig | null): NormalizedRemoteCo
 });
 
 export const useRemoteConfig = (options?: UseRemoteConfigOptions) => {
-  const hasAuthToken = typeof window !== "undefined" && Boolean(localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN));
+  const hasAuthToken = Boolean(useUserStore((state) => state.token));
   const { enabled, ...restOptions } = options ?? {};
 
   return useQuery<NormalizedRemoteConfig, Error>({

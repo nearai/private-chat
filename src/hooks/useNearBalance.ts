@@ -1,5 +1,5 @@
+import { useUserStore } from "@/stores/useUserStore";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import { usersClient } from "@/api/users/client";
 import type { User } from "@/types";
 import { NEAR_RPC_URL } from "@/api/constants";
@@ -73,6 +73,8 @@ export const useNearBalance = (options: UseNearBalanceOptions = {}) => {
     [balance]
   );
 
+  const token = useUserStore((state) => state.token);
+
   const checkBalance = useCallback(async (): Promise<boolean> => {
     if (!userInfo || !isOnline || !isNearLinked) return false;
 
@@ -93,7 +95,6 @@ export const useNearBalance = (options: UseNearBalanceOptions = {}) => {
 
   useEffect(() => {
     if (!isOnline) return;
-    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token) return;
     usersClient
       .getUserData()
@@ -103,7 +104,7 @@ export const useNearBalance = (options: UseNearBalanceOptions = {}) => {
       .catch((err) => {
         console.error("Failed to fetch user data:", err);
       });
-  }, [isOnline]);
+  }, [isOnline, token]);
 
   useEffect(() => {
     if (!enabled || !isOnline || balance !== null || !isNearLinked) return;
