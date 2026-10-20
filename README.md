@@ -171,14 +171,6 @@ Legacy servers still expose the bearer in the initial redirect URL; deploy the
 PKCE backend to stop that URL transport.
 
 
-For chat-api #411, the callback carries only code/state and the gateway cookie is
-issued by the exchange. Exchange requests use `credentials: "include"` so browsers
-can accept its `Set-Cookie` across allowed origins; Tauri uses the HTTP plugin's
-cookie jar. A failed exchange requires a fresh sign-in, not a retry of the consumed
-code. Verify cookie domain/attributes and Web/mobile-browser/Tauri gateway access
-on staging before retiring older clients.
-
-
 Desktop OAuth keeps the PKCE verifier in the initiating webview. Modern code/state
 callbacks are exchanged there; legacy bearer GET callbacks are accepted only while
 an active desktop login is awaiting completion. Desktop NEAR sign-in posts
