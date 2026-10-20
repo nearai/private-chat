@@ -123,7 +123,7 @@ class AuthClient extends ApiClient {
     return this.post<NearAuthResponse>(
       "/auth/exchange",
       { code, code_verifier: codeVerifier },
-      { apiVersion: "v2", ignore401Error: true }
+      { apiVersion: "v2", ignore401Error: true, credentials: "include" }
     );
   }
 

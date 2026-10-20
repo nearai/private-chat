@@ -79,6 +79,72 @@ test('OAuth initiation and exchange send only challenge/state in URL and verifie
   assert.equal(calls[0][1].method, 'POST');
   assert.deepEqual(JSON.parse(calls[0][1].body), { code: 'one-time', code_verifier: 'verifier' });
 });
+for (const desktop of [false, true]) {
+  test(`${desktop ? 'native' : 'browser'} exchange opts in to receiving the gateway cookie`, async () => {
+    const calls = [];
+    const { authClient } = transport(storage(), async (...args) => {
+      calls.push(args);
+      return Response.json({ token: 'sess_verified', session_id: 'verified-id' }, {
+        headers: { 'Set-Cookie': 'gateway=verified; Domain=.near.ai; Path=/; Secure; HttpOnly; SameSite=None' },
+      });
+    }, undefined, { desktop });
+    await authClient.exchangeOAuthCode('one-time-code', 'frontend-verifier');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], 'https://api.example/v1/auth/exchange');
+    assert.equal(calls[0][1].credentials, 'include');
+    assert.deepEqual(JSON.parse(calls[0][1].body), { code: 'one-time-code', code_verifier: 'frontend-verifier' });
+    assert.equal(calls[0][1].headers.Authorization, undefined);
+  });
+}
+
+for (const desktop of [false, true]) {
+  for (const status of [401, 502, 'network failure']) {
+    test(`${desktop ? 'native' : 'web'} exchange ${status} requires fresh sign-in without installing a session or retrying`, async () => {
+      const local = storage(); local.setItem(keys.AGREED_TERMS, 'V2');
+      const context = flow(local);
+      const calls = [];
+      const { authClient } = transport(local, async (...args) => {
+        calls.push(args);
+        if (status === 'network failure') throw new TypeError('Failed to fetch');
+        return Response.json({ code: 'exchange_failed', message: 'Restart sign-in' }, { status });
+      }, undefined, { desktop });
+      let state;
+      let ui;
+      if (desktop) {
+        ui = renderAuth(context, authClient, { desktop: true });
+        await ui.click(0);
+        state = new URL(ui.opened[0]).searchParams.get('frontend_state');
+        ui.deliver({ code: 'one-time-code', state });
+      } else {
+        ({ state } = await context.pkce.prepareOAuthCodeFlow());
+        context.globals.window.location = new URL(`https://app.example/auth/callback?code=one-time-code&state=${state}`);
+        context.callback.consumeAuthCallbackCredentials();
+        authClient.oauth2SignIn = (provider, callback, options) => {
+          context.globals.window.location.href = authClient.getOAuthUrl(provider, callback ?? context.globals.window.location.origin, options);
+        };
+        ui = renderAuth(context, authClient);
+      }
+      await flush();
+      assert.equal(calls.length, 1);
+      assert.equal(local.getItem(keys.TOKEN), null);
+      assert.equal(local.getItem(keys.SESSION), null);
+      assert.equal(ui.errors.length, 1);
+      assert.equal(ui.navigations.length, 0);
+      assert.throws(() => context.pkce.consumeOAuthCodeFlow(state));
+      if (desktop) ui.deliver({ code: 'one-time-code', state });
+      else renderAuth(context, { exchangeOAuthCode() { assert.fail('Spent callback replay'); } });
+      await flush();
+      assert.equal(calls.length, 1);
+      await ui.click(1);
+      const restart = new URL(desktop ? ui.opened[1] : context.globals.window.location.href);
+      assert.equal(restart.searchParams.get('frontend_response_mode'), 'code');
+      assert.notEqual(restart.searchParams.get('frontend_state'), state);
+      const verifier = context.pkce.consumeOAuthCodeFlow(restart.searchParams.get('frontend_state'));
+      assert.equal(await context.pkce.createPkceChallenge(verifier), restart.searchParams.get('code_challenge'));
+    });
+  }
+}
+
 test('web callback exchanges code before persisting credentials and redirecting', async () => {
   const local = storage();
   const context = flow(local);
