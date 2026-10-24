@@ -66,7 +66,6 @@ struct DesktopOAuthPayload {
     is_new_user: bool,
     code: Option<String>,
     state: Option<String>,
-    legacy: bool,
 }
 
 static OAUTH_SERVER: OnceCell<OAuthServerHandle> = OnceCell::new();
@@ -138,19 +137,11 @@ fn parse_payload(
     let token = values.remove("token").filter(|s| !s.is_empty());
     let session_id = values.remove("session_id").filter(|s| !s.is_empty());
     let is_new_user = matches!(values.remove("is_new_user").as_deref(), Some("true"));
-    // Older backends ignore PKCE initiation fields and return a bearer URL.
-    // Mark that representation so only an active frontend attempt can accept it.
-    let legacy = method == "GET" && has_token && !has_code;
-    if legacy {
-        values.remove("expires_at");
-        values.remove("oauth_channel");
-    }
     if !values.is_empty() {
         return Err("Unexpected callback parameter".into());
     }
     match method {
         "GET" if code.is_some() && state.is_some() && !has_token && !has_session => {}
-        "GET" if legacy && token.is_some() && (!has_session || session_id.is_some()) => {}
         "POST" if !has_code && token.is_some() && session_id.is_some() && state.is_some() => {}
         _ => return Err("Invalid callback payload".into()),
     }
@@ -160,7 +151,6 @@ fn parse_payload(
         is_new_user,
         code,
         state,
-        legacy,
     })
 }
 
@@ -227,19 +217,17 @@ mod tests {
     }
 
     #[test]
-    fn distinguishes_near_post_from_legacy_get() {
+    fn near_bearer_requires_state_bound_post() {
         let body = format!(
             "token=sess%2Bsecret&session_id=id&is_new_user=true&state={}",
             state()
         );
         let payload = parse_payload("POST", "/oauth/callback", "", &body).unwrap();
         assert_eq!(payload.token.as_deref(), Some("sess+secret"));
+        assert_eq!(payload.session_id.as_deref(), Some("id"));
+        assert_eq!(payload.state, Some(state()));
         assert!(payload.is_new_user);
-        assert!(
-            parse_payload("GET", "/oauth/callback", &body, "")
-                .unwrap()
-                .legacy
-        );
+        assert!(parse_payload("GET", "/oauth/callback", &body, "").is_err());
         assert!(parse_payload("POST", "/oauth/callback", &body, "").is_err());
     }
 
@@ -271,23 +259,21 @@ mod tests {
         .is_err());
     }
     #[test]
-    fn accepts_legacy_bearer_get_without_state_and_with_expiry_metadata() {
+    fn rejects_bearer_get_with_or_without_state_at_both_paths() {
         for path in ["/oauth/callback", "/oauth/callback/auth/callback"] {
-            let payload = parse_payload("GET", path, "token=sess_legacy&session_id=id&expires_at=2026-11-01T00%3A00%3A00Z&is_new_user=true", "").unwrap();
-            assert!(payload.legacy);
-            assert_eq!(payload.token.as_deref(), Some("sess_legacy"));
-            assert!(payload.state.is_none());
-            assert!(payload.is_new_user);
+            for query in [
+                "token=sess_secret".to_string(),
+                "token=sess_secret&session_id=id&expires_at=2026-11-01".to_string(),
+                format!("token=sess_secret&session_id=id&state={}", state()),
+                format!("%74oken=sess_secret&state={}", state()),
+            ] {
+                assert!(parse_payload("GET", path, &query, "").is_err());
+            }
         }
-        assert!(
-            parse_payload("GET", "/oauth/callback", "token=sess_legacy", "")
-                .unwrap()
-                .legacy
-        );
     }
 
     #[test]
-    fn legacy_fallback_does_not_relax_modern_code_or_post_state_requirements() {
+    fn code_and_post_require_state_and_unambiguous_credentials() {
         assert!(parse_payload("GET", "/oauth/callback", "code=one-time", "").is_err());
         assert!(parse_payload(
             "POST",
