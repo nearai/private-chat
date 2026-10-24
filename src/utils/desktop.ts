@@ -2,12 +2,11 @@ import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const hasWindowBridge = () => {
   if (typeof window === "undefined") return false;
-  const candidate = window as Window &
-    {
-      __TAURI__?: unknown;
-      __TAURI_IPC__?: unknown;
-      __TAURI_INTERNALS__?: unknown;
-    };
+  const candidate = window as Window & {
+    __TAURI__?: unknown;
+    __TAURI_IPC__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
+  };
   return Boolean(candidate.__TAURI__ || candidate.__TAURI_IPC__ || candidate.__TAURI_INTERNALS__);
 };
 
@@ -38,7 +37,6 @@ export type DesktopOAuthPayload = {
   isNewUser?: boolean;
   code?: string;
   state?: string | null;
-  legacy?: boolean;
 };
 
 export const getDesktopOAuthCallbackUrl = async (): Promise<string> => {

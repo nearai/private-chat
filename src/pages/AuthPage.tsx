@@ -37,7 +37,7 @@ type OAuthCompleteEvent = {
 
 const AuthPage: React.FC = () => {
   const { data: config } = useConfig();
-  const { token, sessionId, code } = getQueryCallbackCredentials();
+  const { code, state: frontendStateParam, invalid: invalidCallback } = getQueryCallbackCredentials();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const connectorRef = useRef<NearConnector | null>(null);
@@ -56,10 +56,6 @@ const AuthPage: React.FC = () => {
   }, []);
 
   const redirectParam = searchParams.get("redirect");
-  const frontendStateParam = searchParams.get("state");
-  const oauthChannelParam = searchParams.get("oauth_channel");
-  const isNewUser = searchParams.get("is_new_user") === "true";
-  const [showCloseTabMessage, setShowCloseTabMessage] = useState(false);
 
   // Save redirect parameter to localStorage for use after auth completes
   useEffect(() => {
@@ -82,16 +78,6 @@ const AuthPage: React.FC = () => {
 
   const completeLogin = useCallback(
     async (userToken: string, userSessionId: string, newUser: boolean, options?: SessionWriteOptions) => {
-      // Consume legacy router credentials before publishing a reactive session.
-      if (searchParams.has("token") || searchParams.has("session_id")) {
-        const callbackParams = new URLSearchParams(searchParams);
-        callbackParams.delete("token");
-        callbackParams.delete("session_id");
-        navigate(
-          { pathname: window.location.pathname, search: callbackParams.toString(), hash: window.location.hash },
-          { replace: true }
-        );
-      }
       if (!(await setSessionCredentials(userToken, userSessionId || null, options))) return false;
       queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.userData });
@@ -111,7 +97,7 @@ const AuthPage: React.FC = () => {
       }
       return true;
     },
-    [queryClient, navigate, searchParams]
+    [queryClient]
   );
 
   const cleanupDesktopOAuthListener = useCallback(() => {
@@ -154,28 +140,12 @@ const AuthPage: React.FC = () => {
       let completionFinished = false;
       const unlisten = await listenForDesktopOAuth((payload) => {
         if (attempt !== desktopAttemptRef.current || completionStarted) return;
-        const legacy = payload.legacy === true;
-        if (legacy) {
-          if (!payload.token || payload.code || (payload.state && payload.state !== state)) return;
-        } else {
-          if (payload.state !== state) return;
-          if (mode === "code" ? !payload.code || payload.token : !payload.token || !payload.sessionId || payload.code)
-            return;
-        }
+        if (payload.state !== state) return;
+        if (mode === "code" ? !payload.code || payload.token : !payload.token || !payload.sessionId || payload.code)
+          return;
         completionStarted = true;
         loginPendingRef.current = true;
         const finish = async () => {
-          // Both forms are bound to the initiating webview's random state. Only
-          // OAuth code mode transmits the verifier to the backend for exchange.
-          if (legacy) {
-            clearOAuthCodeFlow();
-            await finalizeOAuth({
-              token: payload.token!,
-              sessionId: payload.sessionId ?? "",
-              isNewUser: Boolean(payload.isNewUser),
-            });
-            return;
-          }
           const verifier = consumeOAuthCodeFlow(payload.state ?? null);
           if (mode === "code") {
             const response = await authClient.exchangeOAuthCode(payload.code!, verifier);
@@ -266,7 +236,6 @@ const AuthPage: React.FC = () => {
         const isCompleting = await startDesktopOAuthListener(state, "code", attempt);
         const callbackUrl = await getDesktopOAuthCallbackUrl();
         const popupUrl = authClient.getOAuthUrl(provider, callbackUrl, {
-          responseMode: "code",
           codeChallenge,
           frontendState: state,
         });
@@ -279,7 +248,6 @@ const AuthPage: React.FC = () => {
         toast.message("Continue the sign-in process in your browser.");
       } else {
         authClient.oauth2SignIn(provider, undefined, {
-          responseMode: "code",
           codeChallenge,
           frontendState: state,
         });
@@ -356,51 +324,31 @@ const AuthPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if ((!token && !code) || oauthCompletionStartedRef.current) return;
+    if ((!code && !invalidCallback) || oauthCompletionStartedRef.current) return;
     oauthCompletionStartedRef.current = true;
     loginPendingRef.current = true;
     const expectedToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     const finishOAuth = async () => {
-      let resolvedToken = token;
-      let resolvedSessionId = sessionId ?? "";
-      let resolvedIsNewUser = isNewUser;
-      if (code) {
-        const verifier = consumeOAuthCodeFlow(frontendStateParam);
-        const response = await authClient.exchangeOAuthCode(code, verifier);
-        resolvedToken = response.token;
-        resolvedSessionId = response.session_id;
-        resolvedIsNewUser = response.is_new_user;
-      } else {
-        // Match private-assistant's rolling-upgrade fallback for older backends.
+      if (invalidCallback || !code) {
         clearOAuthCodeFlow();
+        throw new Error("Invalid OAuth callback");
       }
-      if (!resolvedToken) throw new Error("OAuth callback did not contain usable credentials");
+      const verifier = consumeOAuthCodeFlow(frontendStateParam);
+      const response = await authClient.exchangeOAuthCode(code, verifier);
       if (!mountedRef.current || localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN) !== expectedToken) {
         clearQueryCallbackCredentials();
-        return;
-      }
-      if (oauthChannelParam) {
-        const channel = new BroadcastChannel(oauthChannelParam);
-        channel.postMessage({
-          token: resolvedToken,
-          sessionId: resolvedSessionId,
-          isNewUser: resolvedIsNewUser,
-        } satisfies OAuthCompleteEvent);
-        channel.close();
-        clearQueryCallbackCredentials();
-        setShowCloseTabMessage(true);
         return;
       }
       // Publishing the session can remount AuthPage while tracking is still
       // pending. Consume the handoff first so that remount cannot replay it.
       clearQueryCallbackCredentials();
-      const installed = await completeLogin(resolvedToken, resolvedSessionId, resolvedIsNewUser, {
+      const installed = await completeLogin(response.token, response.session_id, response.is_new_user, {
         expectedToken,
         isCurrent: () => mountedRef.current,
       });
       // Session publication can remount AuthPage during tracking. A successful
       // handoff may still redirect, provided a newer login has not replaced it.
-      if (installed && localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN) === resolvedToken) {
+      if (installed && localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN) === response.token) {
         navigate(getRedirectPath(), { replace: true });
         clearRedirectPath();
       }
@@ -413,18 +361,7 @@ const AuthPage: React.FC = () => {
       .finally(() => {
         loginPendingRef.current = false;
       });
-  }, [
-    token,
-    sessionId,
-    code,
-    frontendStateParam,
-    isNewUser,
-    oauthChannelParam,
-    navigate,
-    completeLogin,
-    getRedirectPath,
-    clearRedirectPath,
-  ]);
+  }, [code, frontendStateParam, invalidCallback, navigate, completeLogin, getRedirectPath, clearRedirectPath]);
 
   const authContent = !config ? (
     <div className="flex h-full items-center justify-center">
@@ -533,15 +470,6 @@ const AuthPage: React.FC = () => {
     </div>
   );
 
-  if (showCloseTabMessage) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 px-6 text-center">
-        <NearAIIcon className="h-10 w-10" />
-        <p className="font-semibold text-lg">You can close this tab.</p>
-        <p className="text-muted-foreground text-sm">Return to the NEAR AI application to continue.</p>
-      </div>
-    );
-  }
   return authContent;
 };
 
