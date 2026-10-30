@@ -58,7 +58,7 @@ function hookStore(store) {
 const normalize = (value) => JSON.parse(JSON.stringify(value));
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-function transport(local, fetch, onLogout = () => {}) {
+function transport(local, fetch, onLogout = () => {}, { desktop = false } = {}) {
   const useUserStore = userStore(local);
   const events = [];
   const eventEmitter = { emit: (...args) => {
@@ -71,10 +71,11 @@ function transport(local, fetch, onLogout = () => {}) {
     '@/lib/constants': constants, '@/lib/event': { eventEmitter }, '@/lib/network': { isOnline: () => true, isOfflineError: () => false },
     '@/stores/useUserStore': { useUserStore },
     '@/stores/useConversationStore': { useConversationStore: { getState: () => ({ updateConversation: () => {} }) } },
-    '@/types': {}, '@/utils/desktop': { isTauri: () => false },
+    '@/types': {}, '@/utils/desktop': { isTauri: () => desktop },
+    '@tauri-apps/plugin-http': { fetch },
     './constants': { CHAT_API_BASE_URL: 'https://api.example', DEPRECATED_API_BASE_URL: 'https://legacy.example' },
     './query-keys': {}, '@/lib/utils/mock': {},
-  }, { localStorage: local, fetch });
+  }, { localStorage: local, fetch: desktop ? () => assert.fail('Native exchange must use plugin-http') : fetch });
   const { authClient } = load('src/api/auth/client.ts', { '@/api/base-client': { ApiClient }, '@/stores/useUserStore': { useUserStore }, '@/lib/constants': constants }, { localStorage: local, window: { location: { origin: 'https://app.example' } } });
   const clearSession = (expectedToken) => useUserStore.getState().logout(expectedToken);
   const logout = existsSync('src/lib/logout.ts') ? load('src/lib/logout.ts', { '@/api/auth/client': { authClient }, '@/stores/useUserStore': { useUserStore }, '@/lib/event': { eventEmitter } }, { localStorage: local }) : {};

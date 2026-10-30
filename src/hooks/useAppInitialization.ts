@@ -1,13 +1,8 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { clearHashCallbackCredentials, getHashCallbackCredentials } from "@/lib/authCallback";
 import { useConfig } from "@/api/config/queries";
-import { queryKeys } from "@/api/query-keys";
 import { initializeDesktopIntegrations } from "@/utils/desktop";
-import { clearLegacyHashCredentials, setSessionCredentials } from "@/lib/sessionCredentials";
 
 export const useAppInitialization = () => {
-  const queryClient = useQueryClient();
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -20,21 +15,6 @@ export const useAppInitialization = () => {
       setIsLoading(true);
 
       try {
-        const { token: hashToken, sessionId } = getHashCallbackCredentials();
-        clearHashCallbackCredentials();
-        const hash = hashToken
-          ? new URLSearchParams({ token: hashToken, ...(sessionId ? { session_id: sessionId } : {}) }).toString()
-          : "";
-        if (hash) {
-          const params = new URLSearchParams(hash);
-          const oauthToken = params.get("token");
-          if (oauthToken) {
-            await setSessionCredentials(oauthToken, params.get("session_id"));
-            clearLegacyHashCredentials();
-            queryClient.invalidateQueries({ queryKey: queryKeys.models.all });
-          }
-        }
-
         await initializeDesktopIntegrations();
         setIsInitialized(true);
       } catch (error) {
@@ -45,7 +25,7 @@ export const useAppInitialization = () => {
     };
 
     initializeApp();
-  }, [isInitialized, isLoading, queryClient]);
+  }, [isInitialized, isLoading]);
 
   return {
     isInitialized,

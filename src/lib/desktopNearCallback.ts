@@ -22,52 +22,20 @@ export function validateDesktopNearCallback(callback: string | null, state: stri
   return validateCallbackUrl(callback);
 }
 
-function validateLegacyChannel(channel: string | null): string {
-  // Older desktop clients generate this channel with crypto.randomUUID().
-  if (!channel || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(channel))
-    throw new Error("Invalid desktop login channel");
-  return channel;
-}
+export type DesktopNearCallback = { callbackUrl: string; state: string };
 
-export type DesktopNearCallback =
-  | { mode: "post"; callbackUrl: string; state: string }
-  | { mode: "legacy"; callbackUrl: string; oauthChannel: string };
-
-/** Select the protocol before requesting a wallet signature; malformed modern requests never fall back. */
+/** Validate the state-bound POST protocol before requesting a wallet signature. */
 export function resolveDesktopNearCallback(params: URLSearchParams): DesktopNearCallback {
-  for (const name of ["frontend_callback", "state", "oauth_channel"]) {
-    if (params.getAll(name).length > 1) throw new Error("Duplicate desktop login parameter");
+  for (const name of ["frontend_callback", "state"]) {
+    if (params.getAll(name).length !== 1) throw new Error("Invalid desktop login parameter");
   }
-  const callback = params.get("frontend_callback");
-  if (params.has("state")) {
-    const state = params.get("state") ?? "";
-    return { mode: "post", callbackUrl: validateDesktopNearCallback(callback, state), state };
-  }
-  return {
-    mode: "legacy",
-    callbackUrl: validateCallbackUrl(callback),
-    oauthChannel: validateLegacyChannel(params.get("oauth_channel")),
-  };
+  if (params.has("oauth_channel")) throw new Error("Unsupported desktop login protocol");
+  const state = params.get("state") ?? "";
+  return { callbackUrl: validateDesktopNearCallback(params.get("frontend_callback"), state), state };
 }
 
 export function completeDesktopNearCallback(callback: DesktopNearCallback, response: NearAuthResponse): void {
-  if (callback.mode === "post") {
-    postDesktopNearCallback(callback.callbackUrl, callback.state, response);
-    return;
-  }
-  // Only old clients require a bearer URL. Keep the channel so their active
-  // listener can match the response; modern requests never use this transport.
-  const destination = new URL(validateCallbackUrl(callback.callbackUrl));
-  destination.searchParams.set("oauth_channel", validateLegacyChannel(callback.oauthChannel));
-  destination.searchParams.set("token", response.token);
-  destination.searchParams.set("session_id", response.session_id);
-  destination.searchParams.set("is_new_user", String(response.is_new_user));
-  try {
-    window.location.replace(destination.href);
-  } catch {
-    // Navigation exceptions can include the destination; do not log a bearer URL.
-    throw new Error("Unable to deliver desktop login callback");
-  }
+  postDesktopNearCallback(callback.callbackUrl, callback.state, response);
 }
 
 /** A top-level form POST avoids placing credentials in navigation URLs or requiring loopback CORS. */

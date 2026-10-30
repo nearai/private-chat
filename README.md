@@ -160,32 +160,23 @@ private-chat/
 
 See [LICENSE](LICENSE) file for details.
 
-## OAuth backend and desktop compatibility
+## OAuth and desktop login
 
-Google/GitHub sign-in requests the chat-api PKCE callback implementation
-(nearai/chat-api#408): `frontend_response_mode=code`, S256 challenges, and
-`POST /v1/auth/exchange`. Like private-assistant, this frontend accepts legacy
-query/fragment bearer callbacks during rolling upgrades. Credentials are removed
-from the address bar before analytics/support scripts start and passed in memory.
-Legacy servers still expose the bearer in the initial redirect URL; deploy the
-PKCE backend to stop that URL transport.
+Google/GitHub sign-in requires frontend S256 PKCE and state. The provider callback
+returns only a one-time code; the initiating browser or webview exchanges it with
+its verifier through `POST /v1/auth/exchange` before installing a session. The
+exchange receives the gateway cookie with `credentials: "include"`.
 
+Bearer credentials in query strings, fragments, desktop GET callbacks, and old
+`oauth_channel` handoffs are rejected. URL credentials are stripped and discarded
+before analytics/support scripts start. Older clients must upgrade; there is no
+legacy token-mode fallback.
 
-Desktop OAuth keeps the PKCE verifier in the initiating webview. Modern code/state
-callbacks are exchanged there; legacy bearer GET callbacks are accepted only while
-an active desktop login is awaiting completion. Desktop NEAR sign-in posts
-credentials in a form body to the exact loopback callback and checks its state.
-The hosted `/near-login` page also supports old desktop clients that send a UUID
-`oauth_channel` without `state`: it returns the legacy bearer GET callback to the
-same validated loopback address and preserves the channel. Updating the hosted
-frontend restores NEAR login for those clients without a desktop reinstall.
-An empty, invalid, or duplicated state never falls back to the legacy protocol.
-This transitional branch still exposes the bearer in the callback URL; upgrading
-the desktop client is required to use POST. The missing-session-ID logout fix is
-provided by the independent logout change.
-Existing backend callback-origin validation must allow the desktop loopback origin.
+Desktop NEAR signed-message login uses a state-bound form POST to the exact
+loopback callback. The hosted `/near-login` page validates the callback and state
+before requesting a wallet signature. Direct web NEAR login remains supported.
 
-
-This OAuth change is based on main and can be released without the logout change.
-The existing logout implementation is unchanged. Code-mode login requires
-chat-api #408 and its database migration; the independent logout fix requires #409.
+Deploy with nearai/chat-api#412 and migration V42. Upgrade supported clients first,
+then verify Google/GitHub Web/mobile/Tauri login and gateway cookie behavior on
+staging before backend promotion. Native HTTP cookies do not populate the external
+browser's cookie store.

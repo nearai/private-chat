@@ -258,7 +258,7 @@ function renderApp(client, local) {
     get: (target, id) => target[id] ?? new Proxy({}, { get: () => () => null }),
   });
   const { default: App } = load('src/App.tsx', dependencies, { localStorage: local });
-  App(); effects.forEach((effect) => cleanups.push(effect()));
+  App(); effects.forEach((effect) => { cleanups.push(effect()); });
   return { calls, navigations, logout: (payload) => logoutHandler(payload) };
 }
 test('authenticated 401 and actual App listener complete logout through a queued Web Lock', async () => {
@@ -301,12 +301,15 @@ test('App clears only this tab when another tab has stored a newer session', asy
   assert.equal(app.navigations.length, 1);
 });
 
-test('legacy callback does not replay when session publication remounts the login page', async () => {
+test('PKCE callback does not replay when session publication remounts the login page', async () => {
   const local = storage();
-  const context = { globals: { localStorage: local, sessionStorage: storage(), window: browser('https://app.example/auth/callback?token=sess_legacy&session_id=id&redirect=%2Fc%2F1') }, useUserStore: userStore(local) };
+  const context = { globals: { localStorage: local, sessionStorage: storage(), window: browser('https://app.example/auth/callback?redirect=%2Fc%2F1') }, useUserStore: userStore(local) };
   if (existsSync('src/lib/authCallback.ts')) {
     context.callback = load('src/lib/authCallback.ts', {}, context.globals);
     context.pkce = load('src/lib/oauthCodeFlow.ts', {}, context.globals);
+    const { state } = await context.pkce.prepareOAuthCodeFlow();
+    context.globals.window.location.searchParams.set('code', 'once');
+    context.globals.window.location.searchParams.set('state', state);
     context.callback.consumeAuthCallbackCredentials();
   }
   let resolveTracking, trackingCalls = 0;
@@ -317,9 +320,9 @@ test('legacy callback does not replay when session publication remounts the logi
       context.globals.window.location = typeof target === 'string' ? new URL(target, previous) : new URL(target.pathname + (target.search ? '?' + target.search.replace(/^\?/, '') : '') + (target.hash || ''), previous);
     },
   };
-  const first = renderAuth(context, {}, options);
+  const first = renderAuth(context, { exchangeOAuthCode: async () => ({ token: 'sess_verified', session_id: 'id', is_new_user: false }) }, options);
   await flush();
-  assert.equal(context.useUserStore.getState().token, 'sess_legacy');
+  assert.equal(context.useUserStore.getState().token, 'sess_verified');
   assert.equal(context.useUserStore.getState().sessionId, 'id');
   assert.equal(context.globals.window.location.searchParams.has('token'), false);
   first.unmount();
@@ -379,8 +382,8 @@ test('cancelled session write is rejected inside the reactive store lock', async
 
 test('legacy hash cleanup preserves query parameters and unrelated fragment values', () => {
   const local = storage(); const window = browser('https://app.example/auth?redirect=%2Fc%2F1#token=sess_secret&session_id=id&keep=yes');
-  const helper = load('src/lib/sessionCredentials.ts', { '@/lib/constants': constants, '@/stores/useUserStore': { useUserStore: userStore(local) } }, { localStorage: local, window });
-  helper.clearLegacyHashCredentials();
+  const helper = load('src/lib/authCallback.ts', {}, { window });
+  helper.consumeAuthCallbackCredentials();
   assert.equal(window.location.searchParams.get('redirect'), '/c/1');
   assert.equal(window.location.hash, '#keep=yes');
 });
