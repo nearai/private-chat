@@ -24,81 +24,12 @@ export default defineConfig({
     svgr(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: [
-        "favicon.ico",
-        "apple-touch-icon-180x180.png",
-        "pwa-64x64.png",
-        "pwa-192x192.png",
-        "pwa-512x512.png",
-        "maskable-icon-512x512.png",
-        "icons/favicon.svg",
-      ],
-      workbox: {
-        disableDevLogs: false,
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
-        navigateFallback: "/",
-        navigateFallbackDenylist: [
-          /^\/v1\//,
-          /^\/docs/,
-          /^\/health$/,
-          /^\/api-docs(\/|$)/,
-        ],
-        globPatterns: ["**/*.{html,js,css,ico,png,jpg,svg,woff2,woff,ttf,webp}"],
-        cleanupOutdatedCaches: true,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url, sameOrigin, request }) => {
-              const isApi =
-                url.pathname.startsWith("/v1/") ||
-                url.pathname.startsWith("/docs") ||
-                url.pathname.startsWith("/health") ||
-                url.pathname.startsWith("/api-docs");
-              return sameOrigin && !isApi && request.mode === "navigate";
-            },
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "html-pages",
-              expiration: {
-                maxAgeSeconds: 600, // 10 minutes
-              },
-              cacheableResponse: {
-                statuses: [200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ url, sameOrigin }) => {
-              const isApi =
-                url.pathname.startsWith("/v1/") ||
-                url.pathname.startsWith("/docs") ||
-                url.pathname.startsWith("/health") ||
-                url.pathname.startsWith("/api-docs");
-              return (
-                sameOrigin &&
-                !isApi &&
-                (url.pathname.endsWith(".js") ||
-                  url.pathname.endsWith(".css") ||
-                  url.pathname.endsWith(".png") ||
-                  url.pathname.endsWith(".svg") ||
-                  url.pathname.endsWith(".jpg") ||
-                  url.pathname.endsWith(".webp") ||
-                  url.pathname.endsWith(".woff") ||
-                  url.pathname.endsWith(".woff2"))
-              );
-            },
-            handler: "CacheFirst",
-            options: {
-              cacheName: "static-resources",
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 604800, // 7 days
-              },
-              cacheableResponse: {
-                statuses: [200],
-              },
-            },
-          },
-        ],
+      // Keep /sw.js available so existing installations receive the cleanup worker.
+      strategies: "injectManifest",
+      srcDir: "src/pwa",
+      filename: "sw.js",
+      injectManifest: {
+        injectionPoint: undefined,
       },
       manifest: {
         name: "NEAR AI",
