@@ -1,0 +1,13 @@
+<!doctype html>
+<h1 id="version">legacy</h1>
+<script type="module">
+  if (new URL(location.href).searchParams.has("delay_module")) {
+    window.waitingForLegacyModule = true;
+    await fetch("/legacy-module-gate");
+  }
+  try {
+    await import("/legacy-main.js");
+  } catch (error) {
+    window.legacyModuleError = error.message;
+  }
+</script>
