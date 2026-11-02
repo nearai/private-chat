@@ -9,15 +9,66 @@ const legacyCaches = ["workbox-precache-v2-https://app.example/", "html-pages", 
 function cacheStorage(names = legacyCaches, { list, remove } = {}) {
   const remaining = new Set(names);
   const deleted = [];
+  const entries = new Map();
+  const entry = (pathname, type) => ({
+    request: { url: `https://app.example${pathname}` },
+    response: new Response("retained bytes", { headers: { "content-type": type } }),
+  });
+  for (const name of names) {
+    const values = name.startsWith("workbox-precache-")
+      ? [
+          entry("/index.html?__WB_REVISION__=old", "text/html"),
+          entry("/?__WB_REVISION__=old", "text/html"),
+          entry("/legacy.js?__WB_REVISION__=old", "application/javascript"),
+          entry("/legacy.css", "text/css"),
+          entry("/font.woff2", "font/woff2"),
+          entry("/icon.png", "image/png"),
+          entry("/viewer.html", "text/html"),
+        ]
+      : name === "html-pages"
+        ? [
+            entry("/c/cached", "text/html; charset=utf-8"),
+            entry("/c/xhtml", "application/xhtml+xml"),
+            entry("/export.pdf", "application/pdf"),
+          ]
+        : name === "static-resources"
+          ? [entry("/legacy-runtime.js", "application/javascript")]
+          : [entry("/unrelated.html", "text/html")];
+    entries.set(name, new Map(values.map((value) => [value.request.url, value])));
+  }
+  const htmlEntries = () =>
+    [...entries].flatMap(([name, values]) =>
+      [...values.values()]
+        .filter(({ request, response }) =>
+          name === "html-pages"
+            ? ["text/html", "application/xhtml+xml"].includes(response.headers.get("content-type").split(";")[0])
+            : name.startsWith("workbox-precache-") && ["/", "/index.html"].includes(new URL(request.url).pathname)
+        )
+        .map(({ request }) => `${name}:${request.url}`)
+    );
+  const allEntries = () => [...entries].flatMap(([name, values]) => [...values.keys()].map((url) => `${name}:${url}`));
   return {
     remaining,
     deleted,
+    htmlEntries,
+    retainedEntries: () =>
+      allEntries()
+        .filter((key) => !htmlEntries().includes(key))
+        .sort(),
     api: {
       keys: async () => (list ? list() : [...remaining]),
-      delete: async (name) => {
-        if (remove) await remove(name);
-        deleted.push(name);
-        return remaining.delete(name);
+      delete: () => assert.fail("Do not delete cache containers needed by legacy documents"),
+      open: async (name) => {
+        const values = entries.get(name);
+        return {
+          keys: async () => [...values.values()].map(({ request }) => request),
+          match: async (request) => values.get(request.url)?.response,
+          delete: async (request) => {
+            if (remove) await remove(name, request.url);
+            deleted.push(`${name}:${request.url}`);
+            return values.delete(request.url);
+          },
+        };
       },
     },
   };
@@ -28,6 +79,7 @@ function loadWorker(caches = cacheStorage(), unregister = async () => true) {
   const delays = [];
   let unregistered = false;
   runInNewContext(readFileSync("public/sw.js", "utf8"), {
+    URL,
     setTimeout: (callback, delay) => {
       delays.push(delay);
       queueMicrotask(callback);
@@ -96,10 +148,14 @@ function loadPage({
 }
 
 test("retirement clears caches in install without forced activation or a fetch handler", async () => {
-  const worker = loadWorker();
+  const caches = cacheStorage();
+  const retained = caches.retainedEntries();
+  const worker = loadWorker(caches);
   assert.deepEqual([...worker.listeners.keys()], ["install"]);
   await assert.rejects(worker.install(), /PWA retired/);
   assert.equal(worker.isUnregistered(), true);
+  assert.deepEqual(caches.htmlEntries(), []);
+  assert.deepEqual(caches.retainedEntries(), retained);
 });
 
 test("install keeps cache cleanup alive and queues unregister without waiting for activation", async () => {
@@ -114,7 +170,7 @@ test("install keeps cache cleanup alive and queues unregister without waiting fo
   assert.equal(worker.isUnregistered(), false);
   finish();
   await installation;
-  assert.equal(caches.remaining.size, 0);
+  assert.deepEqual(caches.htmlEntries(), []);
   assert.equal(worker.isUnregistered(), true);
 });
 
@@ -165,7 +221,7 @@ test("one failed deletion does not prevent other caches or the registration bein
   const worker = loadWorker(caches);
   await assert.rejects(worker.install(), /Failed to clear legacy PWA caches/);
   assert.equal(worker.isUnregistered(), true);
-  assert.deepEqual([...caches.remaining], ["html-pages"]);
+  assert.equal(caches.htmlEntries().length, 2);
 });
 
 test("worker unregister failure does not prevent cache deletion", async () => {
@@ -174,11 +230,12 @@ test("worker unregister failure does not prevent cache deletion", async () => {
     throw new Error("Unregister unavailable");
   });
   await assert.rejects(worker.install(), /PWA retired/);
-  assert.equal(caches.remaining.size, 0);
+  assert.deepEqual(caches.htmlEntries(), []);
 });
 
-test("page cleanup removes only the old PWA caches and registrations", async () => {
+test("page cleanup removes only old HTML and registrations while preserving legacy assets and unrelated caches", async () => {
   const caches = cacheStorage([...legacyCaches, "unrelated"]);
+  const retained = caches.retainedEntries();
   const unregistered = [];
   const registration = (name, scriptURL) => ({
     [name]: { scriptURL },
@@ -197,7 +254,8 @@ test("page cleanup removes only the old PWA caches and registrations", async () 
     ],
   });
   await page.cleanup();
-  assert.deepEqual([...caches.remaining], ["unrelated"]);
+  assert.deepEqual(caches.htmlEntries(), []);
+  assert.deepEqual(caches.retainedEntries(), retained);
   assert.deepEqual(unregistered, Array(3).fill("https://app.example/sw.js"));
   assert.deepEqual(page.delays, []);
 });
@@ -206,8 +264,8 @@ test("page retries failed cache deletions even after worker unregistration succe
   let failures = 0;
   let unregistered = 0;
   const caches = cacheStorage(legacyCaches, {
-    remove: (name) => {
-      if (name === "html-pages" && failures++ < 2) throw new Error("Transient");
+    remove: (name, url) => {
+      if (name === "html-pages" && url.endsWith("/c/cached") && failures++ < 2) throw new Error("Transient");
     },
   });
   const page = loadPage({
@@ -227,7 +285,7 @@ test("page retries failed cache deletions even after worker unregistration succe
   });
   await page.cleanup();
   assert.equal(unregistered, 1);
-  assert.equal(caches.remaining.size, 0);
+  assert.deepEqual(caches.htmlEntries(), []);
   assert.deepEqual(page.delays, [1000, 5000]);
   assert.deepEqual(page.warnings, []);
 });
@@ -243,7 +301,7 @@ test("enumerating workers can fail independently while cache cleanup succeeds", 
     },
   });
   await page.cleanup();
-  assert.equal(caches.remaining.size, 0);
+  assert.deepEqual(caches.htmlEntries(), []);
   assert.equal(attempts, 2);
   assert.deepEqual(page.delays, [1000]);
 });
@@ -265,7 +323,7 @@ test("permanent storage failures have bounded retries and are retried again on t
   assert.deepEqual(page.delays, [1000, 5000]);
   failing = false;
   await page.cleanup();
-  assert.equal(caches.remaining.size, 0);
+  assert.deepEqual(caches.htmlEntries(), []);
 });
 
 test("unsupported service worker and Cache Storage APIs are harmless", async () => {

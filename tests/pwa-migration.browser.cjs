@@ -28,7 +28,28 @@ async function waitForRetirement(page) {
   }
 }
 
-async function fixture(t, storageFailure = "none") {
+async function expectHtmlRetiredAndAssetsPreserved(page) {
+  const state = await page.evaluate(async () => {
+    const precacheNames = (await caches.keys()).filter((name) => name.startsWith("workbox-precache-"));
+    const entrypoints = (
+      await Promise.all(
+        precacheNames.map(async (name) => {
+          const cache = await caches.open(name);
+          return (await cache.keys()).filter((request) => ["/", "/index.html"].includes(new URL(request.url).pathname));
+        })
+      )
+    ).flat().length;
+    return {
+      entrypoints,
+      html: Boolean(await (await caches.open("html-pages")).match("/entry")),
+      script: Boolean(await (await caches.open("static-resources")).match("/legacy-main.js")),
+      unrelated: Boolean(await (await caches.open("unrelated-cache")).match("/entry")),
+    };
+  });
+  assert.deepEqual(state, { entrypoints: 0, html: false, script: true, unrelated: true });
+}
+
+async function fixture(t, storageFailure = "none", options = {}) {
   const compile = async (file) =>
     ts.transpileModule(await readFile(path.join(root, file), "utf8"), {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -36,11 +57,28 @@ async function fixture(t, storageFailure = "none") {
   const callback = await compile("src/lib/authCallback.ts");
   const cleanup = await compile("src/lib/pwaCleanup.ts");
   const retirementWorker = await readFile(path.join(root, "public/sw.js"), "utf8");
-  const legacyWorker = await readFile(path.join(fixtureRoot, "legacy-worker.js"), "utf8");
+  const legacyWorker = await readFile(
+    path.join(fixtureRoot, options.realWorkbox ? "vendor/legacy-worker.js" : "legacy-worker.js"),
+    "utf8"
+  );
+  const workboxRuntime = options.realWorkbox
+    ? await readFile(path.join(fixtureRoot, "vendor/workbox-runtime.js"))
+    : null;
+  const legacyHtml = options.realWorkbox
+    ? await readFile(path.join(fixtureRoot, "legacy-workbox-index.html"), "utf8")
+    : null;
   const oldMain = await readFile(path.join(fixtureRoot, "legacy-main.js"), "utf8");
   const newMain = await readFile(path.join(fixtureRoot, "current-main.js"), "utf8");
   let deployed = false;
-  const html = () => `<!doctype html><h1 id="version">${deployed ? "current" : "legacy"}</h1>
+  const gates = [];
+  let removedAssetRequests = 0;
+  const releaseLegacyModules = () => {
+    for (const response of gates.splice(0)) response.end("released");
+  };
+  const html = () =>
+    !deployed && legacyHtml
+      ? legacyHtml
+      : `<!doctype html><h1 id="version">${deployed ? "current" : "legacy"}</h1>
     <script type="module" src="/${deployed ? "current" : "legacy"}-main.js"></script>`;
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url, "http://localhost").pathname;
@@ -54,17 +92,26 @@ async function fixture(t, storageFailure = "none") {
           self.caches.keys = () => ${storageFailure === "permanent" ? "true" : "attempts++ < 2"}
             ? Promise.reject(new Error("Injected storage failure")) : realKeys();\n`;
       }
-      response.end(deployed ? prefix + retirementWorker : legacyWorker);
+      response.end(deployed && options.retireWorker !== false ? prefix + retirementWorker : legacyWorker);
+    } else if (pathname === "/workbox-runtime.js") response.end(workboxRuntime);
+    else if (pathname === "/legacy-module-gate") {
+      gates.push(response);
     } else if (pathname === "/auth-callback.js") response.end(callback);
     else if (pathname === "/pwa-cleanup.js") response.end(cleanup);
-    else if (pathname === "/legacy-main.js") response.end(oldMain);
-    else if (pathname === "/current-main.js") response.end(newMain);
+    else if (pathname === "/legacy-main.js") {
+      if (deployed && options.removeOldAssets) {
+        removedAssetRequests++;
+        response.statusCode = 404;
+        response.end("Old deployment asset removed");
+      } else response.end(oldMain);
+    } else if (pathname === "/current-main.js") response.end(newMain);
     else response.end(html());
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const context = await browser.newContext();
   context.setDefaultTimeout(15000);
   t.after(async () => {
+    releaseLegacyModules();
     await context.close();
     await new Promise((resolve) => {
       server.close(resolve);
@@ -77,8 +124,70 @@ async function fixture(t, storageFailure = "none") {
     deploy: () => {
       deployed = true;
     },
+    releaseLegacyModules,
+    removedAssetRequests: () => removedAssetRequests,
   };
 }
+
+async function startDelayedDocument(app) {
+  const page = await app.context.newPage();
+  await page.goto(`${app.origin}/auth/callback?code=delayed&state=state&delay_module=1`, { waitUntil: "commit" });
+  await page.waitForFunction(() => window.waitingForLegacyModule === true);
+  return page;
+}
+
+async function expectDelayedDocumentToStart(app, page) {
+  app.releaseLegacyModules();
+  await page.waitForFunction(() => window.pendingCode === "delayed" || window.legacyModuleError);
+  const result = await page.evaluate(() => ({ code: window.pendingCode, error: window.legacyModuleError }));
+  assert.equal(result.error, undefined, "The legacy document must still import assets missing from the new deployment");
+  assert.equal(result.code, "delayed");
+  assert.equal(app.removedAssetRequests(), 0, "The retired Workbox cache must still supply the old module");
+  await page.evaluate(() => window.finishExchange());
+  await page.waitForFunction(() => window.exchanged === "delayed");
+  assert.equal(await page.evaluate(() => Number(sessionStorage.loads)), 1);
+}
+
+test(
+  "real Workbox preserves delayed legacy modules when the retirement worker installs",
+  { timeout: 30000 },
+  async (t) => {
+    const app = await fixture(t, "none", { realWorkbox: true, removeOldAssets: true });
+    const old = await app.context.newPage();
+    await old.goto(app.origin);
+    await old.waitForFunction(() => navigator.serviceWorker.controller);
+    const delayed = await startDelayedDocument(app);
+    app.deploy();
+    const visitor = await app.context.newPage();
+    await visitor.goto(`${app.origin}/c/discover-retirement`);
+    await waitForRetirement(visitor);
+    await expectDelayedDocumentToStart(app, delayed);
+    assert.equal(old.isClosed(), false);
+  }
+);
+
+test(
+  "new-page cleanup preserves modules still needed by another legacy Workbox document",
+  { timeout: 30000 },
+  async (t) => {
+    // Keep the old worker unchanged to exercise page cleanup independently of the
+    // retirement worker. /docs is excluded by the shipped navigation denylist.
+    const app = await fixture(t, "none", { realWorkbox: true, removeOldAssets: true, retireWorker: false });
+    const old = await app.context.newPage();
+    await old.goto(app.origin);
+    await old.waitForFunction(() => navigator.serviceWorker.controller);
+    const delayed = await startDelayedDocument(app);
+    app.deploy();
+    const current = await app.context.newPage();
+    await current.goto(`${app.origin}/docs/current-app`);
+    await current.waitForFunction(() => window.cleanupDone);
+    await current.evaluate(() => window.cleanupDone);
+    await waitForRetirement(current);
+    assert.equal(await current.locator("#version").textContent(), "current");
+    await expectDelayedDocumentToStart(app, delayed);
+    assert.equal(old.isClosed(), false);
+  }
+);
 
 async function seedOldPages(t, storageFailure) {
   const app = await fixture(t, storageFailure);
@@ -89,7 +198,7 @@ async function seedOldPages(t, storageFailure) {
     localStorage.setItem("session-marker", "keep-me");
     for (const name of ["html-pages", "unrelated-cache"]) {
       const cache = await caches.open(name);
-      await cache.put("/entry", new Response("keep"));
+      await cache.put("/entry", new Response("<html>legacy</html>", { headers: { "content-type": "text/html" } }));
     }
   });
   const auth = await app.context.newPage();
@@ -124,14 +233,7 @@ for (const trigger of ["reload", "new-tab"]) {
       await waitForRetirement(visitor);
       assert.equal(app.old.isClosed(), false);
       assert.equal(app.auth.isClosed(), false);
-      assert.deepEqual(
-        await visitor.evaluate(async () =>
-          (await caches.keys()).filter(
-            (name) => name === "html-pages" || name === "static-resources" || name.startsWith("workbox-precache-")
-          )
-        ),
-        []
-      );
+      await expectHtmlRetiredAndAssetsPreserved(visitor);
       assert.equal(await app.old.evaluate(() => Number(sessionStorage.loads)), 1);
       assert.equal(await app.auth.evaluate(() => Number(sessionStorage.loads)), 1);
       assert.equal(await app.auth.evaluate(() => window.pendingCode), "once");
@@ -148,7 +250,7 @@ for (const trigger of ["reload", "new-tab"]) {
       assert.equal(await fresh.locator("#version").textContent(), "current");
       assert.equal(await fresh.evaluate(() => navigator.serviceWorker.controller), null);
       assert.equal(await fresh.evaluate(() => localStorage.getItem("session-marker")), "keep-me");
-      assert.deepEqual(await fresh.evaluate(() => caches.keys()), ["unrelated-cache"]);
+      await expectHtmlRetiredAndAssetsPreserved(fresh);
       await app.auth.evaluate(() => window.finishExchange());
       await app.auth.waitForFunction(() => window.exchanged === "once");
       assert.equal(await app.auth.evaluate(() => Number(sessionStorage.loads)), 1);
@@ -171,7 +273,7 @@ for (const storageFailure of ["transient", "permanent"]) {
       await visitor.waitForFunction(() => window.cleanupDone);
       await visitor.evaluate(() => window.cleanupDone);
       assert.equal(await visitor.locator("#version").textContent(), "current");
-      assert.deepEqual(await visitor.evaluate(() => caches.keys()), ["unrelated-cache"]);
+      await expectHtmlRetiredAndAssetsPreserved(visitor);
       assert.equal(await app.auth.evaluate(() => Number(sessionStorage.loads)), 1);
       assert.equal(await app.auth.evaluate(() => window.pendingCode), "once");
       await app.auth.evaluate(() => window.finishExchange());

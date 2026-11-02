@@ -3,12 +3,28 @@
 // is deliberately rejected after queuing unregister: even a late registration
 // from an old OAuth document must never activate and trigger its autoUpdate
 // listener, which could discard an authorization code held only in memory.
-async function clearLegacyPwaCaches() {
+async function clearLegacyPwaHtml() {
   const cacheNames = await self.caches.keys();
   const results = await Promise.allSettled(
     cacheNames
-      .filter((name) => name === "html-pages" || name === "static-resources" || name.startsWith("workbox-precache-"))
-      .map((name) => self.caches.delete(name))
+      .filter((name) => name === "html-pages" || name.startsWith("workbox-precache-"))
+      .map(async (name) => {
+        const cache = await self.caches.open(name);
+        const requests = await cache.keys();
+        await Promise.all(
+          requests.map(async (request) => {
+            if (name === "html-pages") {
+              const response = await cache.match(request);
+              const type = response?.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+              if (type !== "text/html" && type !== "application/xhtml+xml") return;
+            } else {
+              const pathname = new URL(request.url).pathname;
+              if (pathname !== "/" && pathname !== "/index.html") return;
+            }
+            await cache.delete(request);
+          })
+        );
+      })
   );
   if (results.some((result) => result.status === "rejected")) {
     throw new Error("Failed to clear legacy PWA caches");
@@ -21,7 +37,10 @@ self.addEventListener("install", (event) => {
       try {
         for (let attempt = 0; ; attempt++) {
           try {
-            await clearLegacyPwaCaches();
+            // Evict the SPA shell so subsequent navigations reach the new app.
+            // Do not delete asset entries or cache containers: a legacy document
+            // may already hold old HTML and still need its JS/CSS after rollout.
+            await clearLegacyPwaHtml();
             break;
           } catch (error) {
             if (attempt === 2) throw error;
