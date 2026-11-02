@@ -25,7 +25,7 @@ import type { OAuth2Provider } from "@/types";
 import { getDesktopOAuthCallbackUrl, isTauri, listenForDesktopOAuth } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
-import { NEAR_LOGIN_URL } from "@/api/constants";
+import { NEAR_LOGIN_URL, NEAR_NETWORK_ID } from "@/api/constants";
 
 const TERMS_VERSION = "V2";
 
@@ -296,13 +296,13 @@ const AuthPage: React.FC = () => {
     }
 
     try {
-      const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
+      const connector = connectorRef.current ?? new NearConnector({ network: NEAR_NETWORK_ID });
       connectorRef.current = connector;
 
       await connector.connect();
 
       const near = new Near({
-        network: "mainnet",
+        network: NEAR_NETWORK_ID,
         wallet: fromHotConnect(connector),
       });
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { authClient } from "@/api/auth/client";
 import { useConfig } from "@/api/config/queries";
-import { CHAT_API_BASE_URL } from "@/api/constants";
+import { CHAT_API_BASE_URL, NEAR_NETWORK_ID } from "@/api/constants";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
@@ -29,13 +29,13 @@ const NearLogin = () => {
         const callback = resolveDesktopNearCallback(searchParams);
         setStatus("Connecting to NEAR wallet...");
 
-        const connector = connectorRef.current ?? new NearConnector({ network: "mainnet" });
+        const connector = connectorRef.current ?? new NearConnector({ network: NEAR_NETWORK_ID });
         connectorRef.current = connector;
 
         await connector.connect();
 
         const near = new Near({
-          network: "mainnet",
+          network: NEAR_NETWORK_ID,
           wallet: fromHotConnect(connector),
         });
 
