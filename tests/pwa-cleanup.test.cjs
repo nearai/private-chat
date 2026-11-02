@@ -2,118 +2,276 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { test } = require("node:test");
 const { runInNewContext } = require("node:vm");
+const { load, storage, browser, userStore, renderAuth, keys, flush } = require("./helpers/auth.cjs");
 
-function loadWorker({ cacheNames = [], clients = [], deleteCache = async () => true } = {}) {
-  const listeners = new Map();
-  const calls = [];
-  const self = {
-    addEventListener: (name, handler) => listeners.set(name, handler),
-    skipWaiting: async () => {
-      calls.push("skipWaiting");
-    },
-    caches: {
-      keys: async () => cacheNames,
+const legacyCaches = ["workbox-precache-v2-https://app.example/", "html-pages", "static-resources"];
+
+function cacheStorage(names = legacyCaches, { list, remove } = {}) {
+  const remaining = new Set(names);
+  const deleted = [];
+  return {
+    remaining,
+    deleted,
+    api: {
+      keys: async () => (list ? list() : [...remaining]),
       delete: async (name) => {
-        await deleteCache(name);
-        calls.push(`delete:${name}`);
-        return true;
-      },
-    },
-    clients: {
-      matchAll: async (options) => {
-        assert.equal(options.type, "window");
-        assert.equal(options.includeUncontrolled, undefined);
-        return clients;
-      },
-    },
-    registration: {
-      unregister: async () => {
-        calls.push("unregister");
-        return true;
+        if (remove) await remove(name);
+        deleted.push(name);
+        return remaining.delete(name);
       },
     },
   };
-  runInNewContext(readFileSync("src/pwa/sw.js", "utf8"), { self });
+}
+
+function loadWorker(caches = cacheStorage(), unregister = async () => true) {
+  const listeners = new Map();
+  let unregistered = false;
+  runInNewContext(readFileSync("public/sw.js", "utf8"), {
+    self: {
+      caches: caches.api,
+      addEventListener: (name, handler) => listeners.set(name, handler),
+      skipWaiting: () => assert.fail("Old autoUpdate bundles must not activate during an in-flight login"),
+      clients: {
+        claim: () => assert.fail("Must not take over open pages"),
+        matchAll: () => assert.fail("Must not navigate or reload open pages"),
+      },
+      registration: {
+        unregister: async () => {
+          unregistered = true;
+          return unregister();
+        },
+      },
+    },
+  });
   return {
-    calls,
     listeners,
-    dispatch(name) {
+    isUnregistered: () => unregistered,
+    activate() {
       let lifetime;
-      listeners.get(name)({
+      listeners.get("activate")({
         waitUntil: (promise) => {
           lifetime = promise;
         },
       });
-      assert.ok(lifetime, `${name} must keep the worker alive until completion`);
+      assert.ok(lifetime, "Activation must keep cleanup operations alive");
       return lifetime;
     },
   };
 }
 
-test("old PWA caches finish deleting before unregistering and reloading controlled pages", async () => {
-  let finishDeletion;
-  const pendingDeletion = new Promise((resolve) => {
-    finishDeletion = resolve;
-  });
-  const navigated = [];
-  const url = "https://chat.example/chat/123?view=full#latest";
-  const worker = loadWorker({
-    cacheNames: ["workbox-precache-v2", "html-pages", "static-resources"],
-    deleteCache: () => pendingDeletion,
-    clients: [
-      {
-        url,
-        navigate: async (next) => {
-          assert.equal(worker.calls.at(-1), "unregister");
-          navigated.push(next);
-        },
-      },
-    ],
-  });
-  await worker.dispatch("install");
-  const activation = worker.dispatch("activate");
-  await new Promise(setImmediate);
-  assert.deepEqual(worker.calls, ["skipWaiting"]);
-  assert.deepEqual(navigated, []);
+function loadPage({
+  caches = cacheStorage(),
+  registrations = [],
+  getRegistrations,
+  window = browser("https://app.example/"),
+} = {}) {
+  const delays = [];
+  const warnings = [];
+  window.setTimeout = (callback, delay) => {
+    delays.push(delay);
+    queueMicrotask(callback);
+  };
+  window.location.reload = () => assert.fail("Cleanup must not reload during OAuth exchange");
+  const globals = {
+    window,
+    caches: caches.api,
+    navigator: { serviceWorker: { getRegistrations: getRegistrations || (async () => registrations) } },
+    console: { warn: (...args) => warnings.push(args) },
+  };
+  return {
+    globals,
+    delays,
+    warnings,
+    cleanup: load("src/lib/pwaCleanup.ts", {}, globals).cleanupLegacyPwa,
+  };
+}
 
-  finishDeletion();
-  await activation;
-  assert.deepEqual(worker.calls, [
-    "skipWaiting",
-    "delete:workbox-precache-v2",
-    "delete:html-pages",
-    "delete:static-resources",
-    "unregister",
-  ]);
-  assert.deepEqual(navigated, [url]);
-  assert.equal(worker.listeners.has("fetch"), false);
-});
-
-test("fresh visits unregister without reloading uncontrolled pages", async () => {
+test("retirement waits for old pages to release; no fetch, forced activation, or refresh handler", async () => {
   const worker = loadWorker();
-  await worker.dispatch("activate");
-  assert.deepEqual(worker.calls, ["unregister"]);
+  assert.deepEqual([...worker.listeners.keys()], ["activate"]);
+  await worker.activate();
+  assert.equal(worker.isUnregistered(), true);
 });
 
-test("a closing tab does not prevent the other controlled tabs from refreshing", async () => {
-  const navigated = [];
-  const worker = loadWorker({
-    clients: [
-      {
-        url: "https://chat.example/closed",
-        navigate: async () => {
-          throw new Error("Tab closed");
-        },
+test("activation stays alive for deletion, but slow deletion does not block unregistering", async () => {
+  let finish;
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const caches = cacheStorage([...legacyCaches, "unrelated"], { remove: () => pending });
+  const worker = loadWorker(caches);
+  let completed = false;
+  const activation = worker.activate().then(() => {
+    completed = true;
+  });
+  await flush();
+  assert.equal(worker.isUnregistered(), true);
+  assert.equal(completed, false);
+  finish();
+  await activation;
+  assert.deepEqual([...caches.remaining], ["unrelated"]);
+});
+
+test("cache enumeration failure cannot prevent worker unregistering", async () => {
+  const worker = loadWorker(
+    cacheStorage([], {
+      list: () => {
+        throw new Error("Storage unavailable");
       },
-      {
-        url: "https://chat.example/open",
-        navigate: async (url) => {
-          navigated.push(url);
-        },
-      },
+    })
+  );
+  await worker.activate();
+  assert.equal(worker.isUnregistered(), true);
+});
+
+test("one failed deletion does not prevent other caches or the registration being removed", async () => {
+  const caches = cacheStorage(legacyCaches, {
+    remove: (name) => {
+      if (name === "html-pages") throw new Error("Transient deletion error");
+    },
+  });
+  const worker = loadWorker(caches);
+  await worker.activate();
+  assert.equal(worker.isUnregistered(), true);
+  assert.deepEqual([...caches.remaining], ["html-pages"]);
+});
+
+test("worker unregister failure does not prevent cache deletion", async () => {
+  const caches = cacheStorage();
+  await loadWorker(caches, async () => {
+    throw new Error("Unregister unavailable");
+  }).activate();
+  assert.equal(caches.remaining.size, 0);
+});
+
+test("page cleanup removes only the old PWA caches and registrations", async () => {
+  const caches = cacheStorage([...legacyCaches, "unrelated"]);
+  const unregistered = [];
+  const registration = (name, scriptURL) => ({
+    [name]: { scriptURL },
+    unregister: async () => {
+      unregistered.push(scriptURL);
+      return true;
+    },
+  });
+  const page = loadPage({
+    caches,
+    registrations: [
+      registration("active", "https://app.example/sw.js"),
+      registration("waiting", "https://app.example/sw.js"),
+      registration("installing", "https://app.example/sw.js"),
+      registration("active", "https://app.example/another-app/sw.js"),
     ],
   });
-  await worker.dispatch("activate");
-  assert.deepEqual(worker.calls, ["unregister"]);
-  assert.deepEqual(navigated, ["https://chat.example/open"]);
+  await page.cleanup();
+  assert.deepEqual([...caches.remaining], ["unrelated"]);
+  assert.deepEqual(unregistered, Array(3).fill("https://app.example/sw.js"));
+  assert.deepEqual(page.delays, []);
+});
+
+test("page retries failed cache deletions even after worker unregistration succeeds", async () => {
+  let failures = 0;
+  let unregistered = 0;
+  const caches = cacheStorage(legacyCaches, {
+    remove: (name) => {
+      if (name === "html-pages" && failures++ < 2) throw new Error("Transient");
+    },
+  });
+  const page = loadPage({
+    caches,
+    getRegistrations: async () =>
+      unregistered
+        ? []
+        : [
+            {
+              active: { scriptURL: "https://app.example/sw.js" },
+              unregister: async () => {
+                unregistered++;
+                return true;
+              },
+            },
+          ],
+  });
+  await page.cleanup();
+  assert.equal(unregistered, 1);
+  assert.equal(caches.remaining.size, 0);
+  assert.deepEqual(page.delays, [1000, 5000]);
+  assert.deepEqual(page.warnings, []);
+});
+
+test("enumerating workers can fail independently while cache cleanup succeeds", async () => {
+  let attempts = 0;
+  const caches = cacheStorage();
+  const page = loadPage({
+    caches,
+    getRegistrations: async () => {
+      if (attempts++ === 0) throw new Error("Temporary registration error");
+      return [];
+    },
+  });
+  await page.cleanup();
+  assert.equal(caches.remaining.size, 0);
+  assert.equal(attempts, 2);
+  assert.deepEqual(page.delays, [1000]);
+});
+
+test("permanent storage failures have bounded retries and are retried again on the next startup", async () => {
+  let failing = true;
+  let attempts = 0;
+  const caches = cacheStorage(legacyCaches, {
+    list: () => {
+      attempts++;
+      if (failing) throw new Error("Storage unavailable");
+      return [...caches.remaining];
+    },
+  });
+  const page = loadPage({ caches });
+  await page.cleanup();
+  assert.equal(attempts, 3);
+  assert.equal(page.warnings.length, 1);
+  assert.deepEqual(page.delays, [1000, 5000]);
+  failing = false;
+  await page.cleanup();
+  assert.equal(caches.remaining.size, 0);
+});
+
+test("unsupported service worker and Cache Storage APIs are harmless", async () => {
+  const { cleanupLegacyPwa } = load("src/lib/pwaCleanup.ts", {}, { navigator: {}, window: {} });
+  await cleanupLegacyPwa();
+});
+
+test("cleanup during a pending OAuth exchange preserves the stripped in-memory authorization code", async () => {
+  const local = storage();
+  const session = storage();
+  const win = browser("https://app.example/auth/callback");
+  const page = loadPage({ window: win });
+  const globals = { ...page.globals, localStorage: local, sessionStorage: session };
+  const context = {
+    globals,
+    useUserStore: userStore(local),
+    pkce: load("src/lib/oauthCodeFlow.ts", {}, globals),
+    callback: load("src/lib/authCallback.ts", {}, globals),
+  };
+  const { state } = await context.pkce.prepareOAuthCodeFlow();
+  win.location = new URL(`https://app.example/auth/callback?code=once&state=${state}`);
+  context.callback.consumeAuthCallbackCredentials();
+  let finishExchange;
+  const ui = renderAuth(context, {
+    exchangeOAuthCode: () =>
+      new Promise((resolve) => {
+        finishExchange = resolve;
+      }),
+  });
+  await page.cleanup();
+  assert.doesNotMatch(win.location.search, /code=/);
+  assert.equal(win.location.href, `https://app.example/auth/callback?state=${state}`);
+  assert.deepEqual(page.warnings, []);
+  assert.equal(context.callback.getQueryCallbackCredentials().code, "once");
+  assert.equal(local.getItem(keys.TOKEN), null);
+  assert.deepEqual(ui.navigations, []);
+  finishExchange({ token: "sess_after_cleanup", session_id: "id", is_new_user: false });
+  await flush();
+  assert.equal(local.getItem(keys.TOKEN), "sess_after_cleanup");
+  assert.equal(ui.navigations.length, 1);
+  assert.deepEqual(ui.errors, []);
 });

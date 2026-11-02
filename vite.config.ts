@@ -2,8 +2,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import { defineConfig, type PluginOption } from "vite";
-import { VitePWA } from "vite-plugin-pwa";
+import { defineConfig } from "vite";
 
 import svgr from "vite-plugin-svgr";
 
@@ -18,59 +17,7 @@ function getGitCommitHash(): string {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    svgr(),
-    VitePWA({
-      registerType: "autoUpdate",
-      // Keep /sw.js available so existing installations receive the cleanup worker.
-      strategies: "injectManifest",
-      srcDir: "src/pwa",
-      filename: "sw.js",
-      injectManifest: {
-        injectionPoint: undefined,
-      },
-      manifest: {
-        name: "NEAR AI",
-        short_name: "NEAR AI",
-        description: "NEAR AI Private Chat",
-        theme_color: "#171717",
-        background_color: "#171717",
-        display: "standalone",
-        start_url: "/",
-        orientation: "portrait",
-        icons: [
-          {
-            src: "pwa-64x64.png",
-            sizes: "64x64",
-            type: "image/png",
-          },
-          {
-            src: "pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "maskable-icon-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-          {
-            src: "apple-touch-icon-180x180.png",
-            sizes: "180x180",
-            type: "image/png",
-          },
-        ],
-      },
-    }) as PluginOption,
-  ],
+  plugins: [react(), tailwindcss(), svgr()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
