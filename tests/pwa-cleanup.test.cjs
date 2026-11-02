@@ -25,15 +25,20 @@ function cacheStorage(names = legacyCaches, { list, remove } = {}) {
 
 function loadWorker(caches = cacheStorage(), unregister = async () => true) {
   const listeners = new Map();
+  const delays = [];
   let unregistered = false;
   runInNewContext(readFileSync("public/sw.js", "utf8"), {
+    setTimeout: (callback, delay) => {
+      delays.push(delay);
+      queueMicrotask(callback);
+    },
     self: {
       caches: caches.api,
       addEventListener: (name, handler) => listeners.set(name, handler),
       skipWaiting: () => assert.fail("Old autoUpdate bundles must not activate during an in-flight login"),
       clients: {
         claim: () => assert.fail("Must not take over open pages"),
-        matchAll: () => assert.fail("Must not navigate or reload open pages"),
+        matchAll: () => assert.fail("Must not navigate any open pages, including OAuth callbacks"),
       },
       registration: {
         unregister: async () => {
@@ -45,16 +50,20 @@ function loadWorker(caches = cacheStorage(), unregister = async () => true) {
   });
   return {
     listeners,
+    delays,
     isUnregistered: () => unregistered,
-    activate() {
+    dispatch(name) {
       let lifetime;
-      listeners.get("activate")({
+      listeners.get(name)({
         waitUntil: (promise) => {
           lifetime = promise;
         },
       });
-      assert.ok(lifetime, "Activation must keep cleanup operations alive");
+      assert.ok(lifetime, `${name} must keep cleanup operations alive`);
       return lifetime;
+    },
+    install() {
+      return this.dispatch("install");
     },
   };
 }
@@ -86,30 +95,53 @@ function loadPage({
   };
 }
 
-test("retirement waits for old pages to release; no fetch, forced activation, or refresh handler", async () => {
+test("retirement clears caches in install without forced activation or a fetch handler", async () => {
   const worker = loadWorker();
-  assert.deepEqual([...worker.listeners.keys()], ["activate"]);
-  await worker.activate();
+  assert.deepEqual([...worker.listeners.keys()], ["install"]);
+  await assert.rejects(worker.install(), /PWA retired/);
   assert.equal(worker.isUnregistered(), true);
 });
 
-test("activation stays alive for deletion, but slow deletion does not block unregistering", async () => {
+test("install keeps cache cleanup alive and queues unregister without waiting for activation", async () => {
   let finish;
   const pending = new Promise((resolve) => {
     finish = resolve;
   });
-  const caches = cacheStorage([...legacyCaches, "unrelated"], { remove: () => pending });
+  const caches = cacheStorage(legacyCaches, { remove: () => pending });
   const worker = loadWorker(caches);
-  let completed = false;
-  const activation = worker.activate().then(() => {
-    completed = true;
-  });
+  const installation = assert.rejects(worker.install(), /PWA retired/);
   await flush();
-  assert.equal(worker.isUnregistered(), true);
-  assert.equal(completed, false);
+  assert.equal(worker.isUnregistered(), false);
   finish();
-  await activation;
-  assert.deepEqual([...caches.remaining], ["unrelated"]);
+  await installation;
+  assert.equal(caches.remaining.size, 0);
+  assert.equal(worker.isUnregistered(), true);
+});
+
+test("install does not deadlock on the unregister job queued behind itself", async () => {
+  let finish;
+  const pendingUnregister = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const worker = loadWorker(undefined, () => pendingUnregister);
+  await assert.rejects(worker.install(), /PWA retired/);
+  assert.equal(worker.isUnregistered(), true);
+  finish(true);
+});
+
+test("install retries cache failures and rejects persistent failures so future browser updates can retry", async () => {
+  let attempts = 0;
+  const caches = cacheStorage([], {
+    list: () => {
+      attempts++;
+      throw new Error("Storage unavailable");
+    },
+  });
+  const worker = loadWorker(caches);
+  await assert.rejects(worker.install(), /Storage unavailable/);
+  assert.equal(attempts, 3);
+  assert.deepEqual(worker.delays, [1000, 5000]);
+  assert.equal(worker.isUnregistered(), true);
 });
 
 test("cache enumeration failure cannot prevent worker unregistering", async () => {
@@ -120,7 +152,7 @@ test("cache enumeration failure cannot prevent worker unregistering", async () =
       },
     })
   );
-  await worker.activate();
+  await assert.rejects(worker.install(), /Storage unavailable/);
   assert.equal(worker.isUnregistered(), true);
 });
 
@@ -131,16 +163,17 @@ test("one failed deletion does not prevent other caches or the registration bein
     },
   });
   const worker = loadWorker(caches);
-  await worker.activate();
+  await assert.rejects(worker.install(), /Failed to clear legacy PWA caches/);
   assert.equal(worker.isUnregistered(), true);
   assert.deepEqual([...caches.remaining], ["html-pages"]);
 });
 
 test("worker unregister failure does not prevent cache deletion", async () => {
   const caches = cacheStorage();
-  await loadWorker(caches, async () => {
+  const worker = loadWorker(caches, async () => {
     throw new Error("Unregister unavailable");
-  }).activate();
+  });
+  await assert.rejects(worker.install(), /PWA retired/);
   assert.equal(caches.remaining.size, 0);
 });
 

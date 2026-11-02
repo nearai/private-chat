@@ -11,6 +11,7 @@
     "test:auth": "node --test tests/auth-*.test.cjs",
     "test:read-only": "node --test tests/read-only.test.cjs",
     "test:pwa": "node --test tests/pwa-cleanup.test.cjs",
+    "test:pwa:browser": "node --test tests/pwa-migration.browser.cjs",
     "lint": "pnpm run typecheck && biome lint --fix",
     "check": "biome check --fix",
     "format": "biome format --write && pnpm run check",
@@ -102,6 +103,7 @@
     "@vitejs/plugin-react-swc": "^4.1.0",
     "husky": "^9.1.7",
     "lint-staged": "16.2.4",
+    "playwright-core": "1.64.1",
     "typescript": "~5.8.3",
     "vite": "^7.1.12",
     "vite-plugin-svgr": "^4.5.0"
