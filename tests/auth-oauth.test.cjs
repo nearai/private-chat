@@ -283,12 +283,12 @@ function renderNearLogin(params) {
     react: { useRef: (current) => ({ current }), useEffect: (effect) => effects.push(effect), useState: (initial) => [initial, (next) => { if (initial === null) errors.push(next); }] },
     'react-router': { useSearchParams: () => [params] },
     '@hot-labs/near-connect': { NearConnector: class { async connect() { calls.push(['wallet']); } } },
-    'near-kit': { fromHotConnect: () => ({}), generateNonce: () => new Uint8Array(32), Near: class { async signMessage() { calls.push(['signature']); return {}; } } },
-    '@/api/auth/client': { authClient: { async sendNearAuth() { calls.push(['auth']); return nearAuthResponse; } } },
+    'near-kit': { fromHotConnect: () => ({}), generateNonce: () => new Uint8Array(32), Near: class { async signMessage(payload) { assert.equal(payload.recipient, 'private-chat-stg.near.ai'); calls.push(['signature']); return {}; } } },
+    '@/api/auth/client': { authClient: { async sendNearAuth(signed, payload) { assert.equal(payload.recipient, 'private-chat-stg.near.ai'); calls.push(['auth']); return nearAuthResponse; } } },
     '@/api/config/queries': { useConfig: () => ({ data: { signInMessage: 'Sign in' } }) },
     '@/assets/icons/near-ai.svg?react': { default: () => null },
     '@/components/common/Spinner': { default: () => null }, '@/components/ui/button': { Button: () => null },
-    '@/lib/desktopNearCallback': helper, '@/api/constants': { CHAT_API_BASE_URL: 'https://api.example' },
+    '@/lib/desktopNearCallback': helper, '@/api/constants': { NEAR_AUTH_RECIPIENT: 'private-chat-stg.near.ai', NEAR_NETWORK_ID: 'testnet' },
   }, globals);
   NearLogin();
   // React StrictMode replays the effect; the same mounted flow must sign only once.

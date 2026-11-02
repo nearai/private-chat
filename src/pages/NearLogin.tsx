@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { authClient } from "@/api/auth/client";
 import { useConfig } from "@/api/config/queries";
-import { CHAT_API_BASE_URL, NEAR_NETWORK_ID } from "@/api/constants";
+import { NEAR_AUTH_RECIPIENT, NEAR_NETWORK_ID } from "@/api/constants";
 import NearAIIcon from "@/assets/icons/near-ai.svg?react";
 import Spinner from "@/components/common/Spinner";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ const NearLogin = () => {
         setStatus("Requesting signature...");
 
         const nonce = generateNonce();
-        const recipient = new URL(CHAT_API_BASE_URL).host;
+        const recipient = NEAR_AUTH_RECIPIENT;
         const message = config.signInMessage;
 
         // console.log("NEAR Login: Requesting signature for message:", message, "to recipient:", recipient);

@@ -25,7 +25,7 @@ import type { OAuth2Provider } from "@/types";
 import { getDesktopOAuthCallbackUrl, isTauri, listenForDesktopOAuth } from "@/utils/desktop";
 import Spinner from "../components/common/Spinner";
 import { APP_ROUTES } from "./routes";
-import { NEAR_LOGIN_URL, NEAR_NETWORK_ID } from "@/api/constants";
+import { NEAR_AUTH_RECIPIENT, NEAR_LOGIN_URL, NEAR_NETWORK_ID } from "@/api/constants";
 
 const TERMS_VERSION = "V2";
 
@@ -307,7 +307,7 @@ const AuthPage: React.FC = () => {
       });
 
       const nonce = generateNonce();
-      const recipient = window.location.host;
+      const recipient = NEAR_AUTH_RECIPIENT;
       const message = config.signInMessage;
 
       const signedMessage = await near.signMessage({ message, recipient, nonce });

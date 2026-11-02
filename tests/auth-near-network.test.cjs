@@ -30,6 +30,7 @@ for (const [name, env, network, rpc] of [
 ]) {
   test(`NEAR configuration ${name}`, () => {
     const actual = config(env);
+    assert.equal(actual.NEAR_AUTH_RECIPIENT, "private-chat-stg.near.ai");
     assert.equal(actual.NEAR_NETWORK_ID, network);
     assert.equal(actual.NEAR_RPC_URL, rpc);
   });

@@ -101,7 +101,7 @@ The following environment variables can be configured (optional):
 - `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics key
 - `VITE_PUBLIC_POSTHOG_HOST` - PostHog host URL
 - `VITE_DEFAULT_MODEL` - Default AI model (default: `zai-org/GLM-4.6`)
-- `VITE_NEAR_NETWORK_ID` - Wallet network (default: `testnet`). Set `mainnet` for production builds. Applies to web and desktop wallet login; the backend must verify keys on the same network. Testnet login requires a testnet wallet account.
+- `VITE_NEAR_NETWORK_ID` - Wallet network (default: `testnet`). Set `mainnet` for production builds. Applies to web and desktop wallet login; the backend must verify keys on the same network. Testnet login requires a testnet wallet account. Both login flows sign for the fixed recipient `private-chat-stg.near.ai`, regardless of the frontend host; the backend must accept this recipient.
 - `VITE_NEAR_RPC_URL` - Optional NEAR RPC override. Defaults to `https://test.rpc.fastnear.com` for testnet and `https://free.rpc.fastnear.com` for mainnet. These settings are compiled into the frontend and require a rebuild.
 
 Create a `.env` file in the root directory to set these variables:

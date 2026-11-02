@@ -37,6 +37,7 @@ export const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || "";
 export const TEMP_RESPONSE_ID = "temp-response-id";
 export const DEFAULT_MODEL = import.meta.env.VITE_DEFAULT_MODEL || "zai-org/GLM-4.6";
 export const MODEL_FOR_TITLE_GENERATION = "Qwen/Qwen3-30B-A3B-Instruct-2507";
+export const NEAR_AUTH_RECIPIENT = "private-chat-stg.near.ai";
 export const NEAR_NETWORK_ID = import.meta.env.VITE_NEAR_NETWORK_ID?.trim() === "mainnet" ? "mainnet" : "testnet";
 export const NEAR_RPC_URL =
   import.meta.env.VITE_NEAR_RPC_URL?.trim() ||
