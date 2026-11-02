@@ -37,6 +37,11 @@ module. These tests failed with whole-cache deletion and pass with HTML-only
 eviction. The Workbox runtime is a licensed, test-only fixture; no Workbox package
 is added to the app's dependencies.
 
+The worker-retirement regression also checks that the discovery navigation is
+served by the legacy Workbox fallback, displays legacy HTML, and never starts
+new-page cleanup. Its fallback is bound to the precached `/index.html`, keeping
+worker-side and page-side retirement coverage independent.
+
 The retirement script intentionally rejects installation after queuing the
 unregister job. This prevents activation from firing an old client's automatic
 reload, including when an old OAuth document registers late after retirement.

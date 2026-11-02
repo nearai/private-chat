@@ -159,8 +159,15 @@ test(
     const delayed = await startDelayedDocument(app);
     app.deploy();
     const visitor = await app.context.newPage();
-    await visitor.goto(`${app.origin}/c/discover-retirement`);
+    const discovery = await visitor.goto(`${app.origin}/c/discover-retirement`);
+    assert.equal(discovery.fromServiceWorker(), true, "Discovery must use the legacy Workbox navigation fallback");
+    assert.equal(await visitor.locator("#version").textContent(), "legacy");
     await waitForRetirement(visitor);
+    assert.equal(
+      await visitor.evaluate(() => "cleanupDone" in window),
+      false,
+      "New-page cleanup must not mask a failure in the retirement worker"
+    );
     await expectDelayedDocumentToStart(app, delayed);
     assert.equal(old.isClosed(), false);
   }
