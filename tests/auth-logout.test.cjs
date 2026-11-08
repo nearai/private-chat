@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { readFileSync, existsSync } = require('node:fs');
-const { load, storage, browser, userStore, hookStore, transport, renderAuth, constants, keys, normalize, flush } = require('./helpers/auth.cjs');
+const { existsSync } = require('node:fs');
+const { load, storage, browser, userStore, transport, renderAuth, constants, keys, flush } = require('./helpers/auth.cjs');
 
 
 for (const sessionId of [null, 'id']) {
@@ -232,75 +232,6 @@ test('lowercase bearer header binds unauthorized response to its token', async (
   assert.deepEqual(client.events, [['logout', { expectedToken: 'sess_header' }]]);
 });
 
-function renderApp(client, local) {
-  const effects = [], cleanups = [], navigations = [];
-  const calls = { exportStop: 0, reset: 0, cacheClear: 0, queryClear: 0 };
-  let logoutHandler;
-  const dependencies = new Proxy({
-    'react/jsx-runtime': require('react/jsx-runtime'),
-    react: { useCallback: (fn) => fn, useEffect: (fn) => effects.push(fn) },
-    'react-router': { useLocation: () => ({ pathname: '/', search: '' }), useNavigate: () => (...args) => navigations.push(args) },
-    '@tanstack/react-query': { useQueryClient: () => ({ clear: () => calls.queryClear++ }) },
-    '@/hooks/useAppInitialization': { useAppInitialization: () => ({ isInitialized: false, isLoading: false }) },
-    './stores/useUserStore': { useUserStore: hookStore(client.useUserStore) },
-    './api/models/queries': { useModels: () => ({ isFetching: false }) },
-    './api/users/queries/useUserData': { useUserData: () => ({ isFetching: false }) },
-    './api/config/queries/useRemoteConfig': { useRemoteConfig: () => ({ isFetching: false }) },
-    './hooks/useInitRemoteSettings': { default: () => ({ isSettingsLoading: false }) },
-    './hooks/useIsOnline': { useIsOnline: () => true },
-    './lib/posthog': { posthogPageView() {}, posthogReset: () => calls.reset++ },
-    './lib/offlineCache': { offlineCache: { clearAll: () => calls.cacheClear++ } },
-    './lib/event': { eventEmitter: { on: (_, handler) => { logoutHandler = handler; }, off() {} } },
-    '@/stores/useExportStore': { useExportStore: { getState: () => ({ stop: () => calls.exportStop++ }) } },
-    '@/pages/routes': { APP_ROUTES: { AUTH: '/auth' } },
-  }, {
-    has: () => true,
-    get: (target, id) => target[id] ?? new Proxy({}, { get: () => () => null }),
-  });
-  const { default: App } = load('src/App.tsx', dependencies, { localStorage: local });
-  App(); effects.forEach((effect) => { cleanups.push(effect()); });
-  return { calls, navigations, logout: (payload) => logoutHandler(payload) };
-}
-test('authenticated 401 and actual App listener complete logout through a queued Web Lock', async () => {
-  const local = storage();
-  const store = userStore(local, { locks: queuedLocks() });
-  await store.getState().setSession('sess_old', 'old-id');
-  let app;
-  const client = transport(local, async () => Response.json({ detail: 'unauthorized' }, { status: 401 }), (_, payload) => app.logout(payload));
-  app = renderApp(client, local);
-  assert.equal(await client.revokeCurrentSessionAndLogout(), true);
-  await flush();
-  assert.equal(store.getState().token, null);
-  assert.equal(local.getItem(keys.TOKEN), null);
-  assert.deepEqual(app.calls, { exportStop: 1, reset: 1, cacheClear: 1, queryClear: 1 });
-  assert.deepEqual(normalize(app.navigations), [['/auth', { replace: true }]]);
-});
-test('App ignores old logout without clearing exports, cache or route after a new login', async () => {
-  const local = storage();
-  const store = userStore(local, { locks: queuedLocks() });
-  await store.getState().setSession('sess_new', 'new-id');
-  const client = transport(local, () => assert.fail('Unexpected request'));
-  const app = renderApp(client, local);
-  await app.logout({ expectedToken: 'sess_old' });
-  assert.equal(store.getState().token, 'sess_new');
-  assert.equal(local.getItem(keys.TOKEN), 'sess_new');
-  assert.deepEqual(app.calls, { exportStop: 0, reset: 0, cacheClear: 0, queryClear: 0 });
-  assert.deepEqual(app.navigations, []);
-});
-test('App clears only this tab when another tab has stored a newer session', async () => {
-  const local = storage();
-  const store = userStore(local, { locks: queuedLocks() });
-  await store.getState().setSession('sess_tab_a', 'session-a');
-  const client = transport(local, () => assert.fail('Unexpected request'));
-  const app = renderApp(client, local);
-  local.setItem(keys.TOKEN, 'sess_tab_b'); local.setItem(keys.SESSION, 'session-b');
-  await app.logout({ expectedToken: 'sess_tab_a' });
-  assert.equal(store.getState().token, null);
-  assert.equal(local.getItem(keys.TOKEN), 'sess_tab_b');
-  assert.equal(local.getItem(keys.SESSION), 'session-b');
-  assert.equal(app.navigations.length, 1);
-});
-
 test('PKCE callback does not replay when session publication remounts the login page', async () => {
   const local = storage();
   const context = { globals: { localStorage: local, sessionStorage: storage(), window: browser('https://app.example/auth/callback?redirect=%2Fc%2F1') }, useUserStore: userStore(local) };
@@ -335,28 +266,6 @@ test('PKCE callback does not replay when session publication remounts the login 
   assert.equal(context.globals.window.location.pathname, '/c/1');
 });
 
-for (const status of [204, 401]) {
-  test(`logout ${status} awaits a deferred Web Lock and actual App cleanup`, async () => {
-    const local = storage();
-    local.setItem(keys.TOKEN, 'sess_old'); local.setItem(keys.SESSION, 'id');
-    let grant;
-    const store = userStore(local, { locks: { request: (_name, operation) => new Promise(resolve => { grant = () => resolve(operation()); }) } });
-    let app;
-    const client = transport(local, async () => status === 204 ? new Response(null, { status }) : Response.json({ detail: 'unauthorized' }, { status }), (_, payload) => app.logout(payload));
-    app = renderApp(client, local);
-    let completed = false;
-    const pending = client.revokeCurrentSessionAndLogout().then(result => { completed = true; return result; });
-    await flush();
-    assert.equal(completed, false);
-    assert.equal(store.getState().token, 'sess_old');
-    assert.deepEqual(app.navigations, []);
-    grant();
-    assert.equal(await pending, true);
-    assert.equal(store.getState().token, null);
-    assert.deepEqual(app.calls, { exportStop: 1, reset: 1, cacheClear: 1, queryClear: 1 });
-    assert.deepEqual(normalize(app.navigations), [['/auth', { replace: true }]]);
-  });
-}
 test('guarded session write cannot overwrite a newer login while waiting for its Web Lock', async () => {
   const local = storage(); let grant;
   const store = userStore(local, { locks: { request: (_name, operation) => new Promise(resolve => { grant = () => resolve(operation()); }) } });

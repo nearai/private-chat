@@ -13,3 +13,10 @@ export function initCrisp(): void {
   script.async = true;
   document.head.appendChild(script);
 }
+
+/** Queue the same support actions used by the Private Chat sidebar. */
+export function openFeedback(): void {
+  const crispWindow = window as unknown as Window & { $crisp?: unknown[][] };
+  crispWindow.$crisp?.push(["do", "chat:show"]);
+  crispWindow.$crisp?.push(["do", "chat:open"]);
+}

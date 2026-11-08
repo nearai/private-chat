@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:auth": "node --test tests/auth-*.test.cjs",
+    "test:sunset": "node --test tests/sunset.test.cjs",
     "test:read-only": "node --test tests/read-only.test.cjs",
     "test:pwa": "node --test tests/pwa-cleanup.test.cjs",
     "test:pwa:browser": "node --test tests/pwa-migration.browser.cjs",
