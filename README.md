@@ -180,3 +180,18 @@ Deploy with nearai/chat-api#412 and migration V42. Upgrade supported clients fir
 then verify Google/GitHub Web/mobile/Tauri login and gateway cookie behavior on
 staging before backend promotion. Native HTTP cookies do not populate the external
 browser's cookie store.
+
+## Private Chat sunset
+
+Every application path now displays a sunset page without signing in or loading chat data.
+Private Chat is sunsetting immediately; the notice changes to “shut down” on
+November 15, 2026 at 00:00 UTC, including in open tabs. The Feedback button remains
+available before and after shutdown so users can request encrypted conversation archives.
+Archive preparation, ownership verification, and delivery are handled through support.
+The notice does not initiate archival or deletion jobs.
+
+Deploy this frontend together with the Chat API conversation/file retirement.
+Keep the notice page and its existing Crisp support integration hosted after November 15.
+Legacy PWA cleanup continues to replace cached application pages.
+
+Run `pnpm test:sunset` and `pnpm build` to verify the sunset page.
